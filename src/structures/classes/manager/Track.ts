@@ -1,5 +1,5 @@
 import type { Track as ShoukakuTrack } from "shoukaku";
-import type { SourceNames, YoutubeResolutions } from "../../types";
+import { SourceNames, type YoutubeResolutions } from "../../types";
 import { TimeFormat } from "../../utils";
 
 /**
@@ -69,7 +69,11 @@ export class Track implements TrackWithSource {
 	 * @returns {string} The artwork.
 	 */
 	public getArtwork(resolution?: YoutubeResolutions): string | undefined {
-		if ((["youtube", "youtubemusic"] as SourceNames[]).includes(this.info.sourceName))
+		if (
+			([SourceNames.Youtube, SourceNames.YoutubeMusic] as SourceNames[]).includes(
+				this.info.sourceName,
+			)
+		)
 			return `https://i.ytimg.com/vi/${this.info.identifier}/${resolution ?? "hqdefault"}.jpg`;
 		return this.info.artworkUrl;
 	}
