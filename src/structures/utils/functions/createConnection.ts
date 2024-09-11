@@ -8,27 +8,32 @@ import { PlayerError } from "../../classes";
  * Create a connection of Shoukaku.
  * @param this The manager instance.
  * @param options The options of the player.
- * @param voiceOptions The options of the voice channel.
+ * @param options The options of the voice channel.
  * @returns {Promise<Player>} The shoukaku player instance.
  */
 export async function createConnection(
 	this: Manager,
 	options: PlayerOptions,
-	voiceOptions: VoiceChannelOptions,
 ): Promise<Player> {
 	if (
-		this.shoukaku.connections.has(voiceOptions.guildId) &&
-		this.shoukaku.players.has(voiceOptions.guildId)
+		this.shoukaku.connections.has(options.guildId) &&
+		this.shoukaku.players.has(options.guildId)
 	)
-		return this.shoukaku.players.get(voiceOptions.guildId)!;
+		return this.shoukaku.players.get(options.guildId)!;
 	if (
-		this.shoukaku.connections.has(voiceOptions.guildId) &&
-		!this.shoukaku.players.has(voiceOptions.guildId)
+		this.shoukaku.connections.has(options.guildId) &&
+		!this.shoukaku.players.has(options.guildId)
 	) {
-		this.shoukaku.connections.get(voiceOptions.guildId)!.disconnect();
+		this.shoukaku.connections.get(options.guildId)!.disconnect();
 	}
 
-	const connection = new Connection(this.shoukaku, voiceOptions);
+	const connection = new Connection(this.shoukaku, {
+		channelId: options.voiceId,
+		guildId: options.guildId,
+		shardId: options.shardId!,
+		deaf: options.selfDeaf,
+		mute: options.selfMute,
+	});
 
 	this.shoukaku.connections.set(connection.guildId, connection);
 	this.emit(
@@ -43,7 +48,7 @@ export async function createConnection(
 			`[Connection -> Create] Connection created for guild: ${connection.guildId}.`,
 		);
 	} catch (error) {
-		this.shoukaku.connections.delete(voiceOptions.guildId);
+		this.shoukaku.connections.delete(options.guildId);
 		throw error;
 	}
 
@@ -85,9 +90,9 @@ export async function createConnection(
 		connection.disconnect();
 		this.emit(
 			"debug",
-			`[Connection -> Manager] Connection failed for guild: ${voiceOptions.guildId}.`,
+			`[Connection -> Manager] Connection failed for guild: ${options.guildId}.`,
 		);
-		this.shoukaku.connections.delete(voiceOptions.guildId);
+		this.shoukaku.connections.delete(options.guildId);
 		throw error;
 	}
 }

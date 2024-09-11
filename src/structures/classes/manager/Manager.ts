@@ -43,20 +43,20 @@ export class Manager extends Utils.TypedEventEmitter<ManagerEvents> {
 	 * @param connector Shoukaku connector.
 	 * @param nodes Node array to use.
 	 * @param options Manager options.
-	 * @param shoukakuOptions Shoukaku options.
+	 * @param shoukaku Shoukaku options.
 	 */
 	constructor(
 		connector: Connector,
 		nodes: NodeOption[],
 		options: ManagerOptions,
-		shoukakuOptions?: ShoukakuOptions,
+		shoukaku?: ShoukakuOptions,
 	) {
 		super();
 
 		validateManagerOptions(options);
 
 		this.options = options;
-		this.shoukaku = new Shoukaku(connector, nodes, shoukakuOptions);
+		this.shoukaku = new Shoukaku(connector, nodes, shoukaku);
 
 		applyDefaultOptions.call(this, options);
 	}
@@ -138,11 +138,8 @@ export class Manager extends Utils.TypedEventEmitter<ManagerEvents> {
 		options.selfDeaf ??= false;
 		options.selfMute ??= false;
 
-		const shoukaku = await createConnection.call(this, options, {
-			guildId: options.guildId,
-			channelId: options.voiceId,
-			deaf: options.selfDeaf,
-			mute: options.selfMute,
+		const shoukaku = await createConnection.call(this, {
+			...options,
 			shardId: options.shardId && !Number.isNaN(options.shardId) ? options.shardId : 0,
 		});
 

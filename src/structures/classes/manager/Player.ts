@@ -169,7 +169,7 @@ export class Player {
 	 * @returns {Promise<SearchResult>} The search result object.
 	 */
 	public async search(query: string, options: QueryOptions): Promise<SearchResult> {
-		return this.manager.search.call(this.manager, query, options);
+		return this.manager.search(query, options);
 	}
 
 	/**
