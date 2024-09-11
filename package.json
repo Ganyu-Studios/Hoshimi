@@ -1,0 +1,48 @@
+{
+	"name": "stelle.ts",
+	"version": "0.1.0",
+	"description": "A Shoukaku wrapper highly inspired in Kazagumo.",
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"packageManager": "pnpm@9.9.0+sha512.60c18acd138bff695d339be6ad13f7e936eea6745660d4cc4a776d5247c540d0edee1a563695c183a66eb917ef88f2b4feb1fc25f32a7adcadc7aaf3438e99c1",
+	"lint-staged": {
+		"*.{ts,json}": "biome format --write ."
+	},
+	"files": ["dist"],
+	"scripts": {
+		"build": "tsup",
+		"lint": "biome lint ./src",
+		"pkg:prepublish": "pnpm build && tsx ./scripts/prepublish.mts && cd .npm && npm pack",
+		"pgk:publish": "cd .npm && npm publish",
+		"format": "biome format --write .",
+		"prepare": "pnpm build && husky"
+	},
+	"keywords": [
+		"discord",
+		"lavalink",
+		"shoukaku",
+		"discord-player",
+		"discord.js",
+		"seyfert",
+		"kazagumo",
+		"distube",
+		"music-bot",
+		"lavalink-player",
+		"lavalink-client",
+		"music"
+	],
+	"author": "Ganyu Studios",
+	"license": "MIT",
+	"devDependencies": {
+		"@biomejs/biome": "^1.8.3",
+		"@types/node": "^22.5.4",
+		"husky": "^9.1.5",
+		"lint-staged": "^15.2.10",
+		"shoukaku": "github:shipgirlproject/Shoukaku",
+		"tsup": "^8.2.4",
+		"tsx": "^4.19.0",
+		"typescript": "^5.5.4",
+		"vitest": "^2.0.5"
+	}
+}
