@@ -69,11 +69,7 @@ export class Track implements TrackWithSource {
 	 * @returns {string} The artwork.
 	 */
 	public getArtwork(resolution?: YoutubeResolutions): string | undefined {
-		if (
-			([SourceNames.Youtube, SourceNames.YoutubeMusic] as SourceNames[]).includes(
-				this.info.sourceName,
-			)
-		)
+		if ([SourceNames.Youtube, SourceNames.YoutubeMusic].includes(this.info.sourceName))
 			return `https://i.ytimg.com/vi/${this.info.identifier}/${resolution ?? "hqdefault"}.jpg`;
 		return this.info.artworkUrl;
 	}

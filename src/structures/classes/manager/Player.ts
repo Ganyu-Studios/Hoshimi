@@ -404,6 +404,7 @@ export class Player {
 	 */
 	public async setVolume(volume: number): Promise<this> {
 		if (Number.isNaN(volume)) throw new PlayerError("Volume must be a number.");
+		if (volume < 0 || volume > 100) throw new PlayerError("Volume must be between 0 and 100.");
 
 		await this.shoukaku.setGlobalVolume(volume);
 

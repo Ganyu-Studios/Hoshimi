@@ -8,7 +8,6 @@ import { PlayerError } from "../../classes";
  * Create a connection of Shoukaku.
  * @param this The manager instance.
  * @param options The options of the player.
- * @param options The options of the voice channel.
  * @returns {Promise<Player>} The shoukaku player instance.
  */
 export async function createConnection(this: Manager, options: PlayerOptions): Promise<Player> {
@@ -27,7 +26,7 @@ export async function createConnection(this: Manager, options: PlayerOptions): P
 	const connection = new Connection(this.shoukaku, {
 		channelId: options.voiceId,
 		guildId: options.guildId,
-		shardId: options.shardId!,
+		shardId: options.shardId && !Number.isNaN(options.shardId) ? options.shardId : 0,
 		deaf: options.selfDeaf,
 		mute: options.selfMute,
 	});
@@ -70,14 +69,13 @@ export async function createConnection(this: Manager, options: PlayerOptions): P
 		);
 
 		const player = new Player(connection.guildId, node);
-		const onUpdate = (state: Constants.VoiceState) => {
-			if (state !== Constants.VoiceState.SESSION_READY) return;
-			player.sendServerUpdate(connection);
-		};
 
 		await player.sendServerUpdate(connection);
 
-		connection.on("connectionUpdate", onUpdate);
+		connection.on("connectionUpdate", (state: Constants.VoiceState) => {
+			if (state !== Constants.VoiceState.SESSION_READY) return;
+			player.sendServerUpdate(connection);
+		});
 
 		this.shoukaku.players.set(player.guildId, player);
 		this.emit("debug", `[Connection -> Player] Player created for guild: ${player.guildId}.`);

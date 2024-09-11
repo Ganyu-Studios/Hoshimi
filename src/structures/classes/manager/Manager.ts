@@ -138,10 +138,7 @@ export class Manager extends Utils.TypedEventEmitter<ManagerEvents> {
 		options.selfDeaf ??= false;
 		options.selfMute ??= false;
 
-		const shoukaku = await createConnection.call(this, {
-			...options,
-			shardId: options.shardId && !Number.isNaN(options.shardId) ? options.shardId : 0,
-		});
+		const shoukaku = await createConnection.call(this, options);
 
 		const player = new Player(this, shoukaku, {
 			guildId: options.guildId,

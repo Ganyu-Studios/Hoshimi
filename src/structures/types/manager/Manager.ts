@@ -118,7 +118,7 @@ export type QueryOptions = {
 /**
  * Manager events.
  */
-export type ManagerEvents = {
+export interface ManagerEvents {
 	/**
 	 * Player track start event.}
 	 * @event Emitted when the player starts playing a track.
@@ -182,7 +182,7 @@ export type ManagerEvents = {
 	 * @event Emitted when the lavalink node closes the websocket.
 	 */
 	socketClosed: [payload: WebSocketClosedEvent];
-};
+}
 
 /**
  * Manager options.
