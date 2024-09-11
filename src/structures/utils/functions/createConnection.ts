@@ -11,10 +11,7 @@ import { PlayerError } from "../../classes";
  * @param options The options of the voice channel.
  * @returns {Promise<Player>} The shoukaku player instance.
  */
-export async function createConnection(
-	this: Manager,
-	options: PlayerOptions,
-): Promise<Player> {
+export async function createConnection(this: Manager, options: PlayerOptions): Promise<Player> {
 	if (
 		this.shoukaku.connections.has(options.guildId) &&
 		this.shoukaku.players.has(options.guildId)
