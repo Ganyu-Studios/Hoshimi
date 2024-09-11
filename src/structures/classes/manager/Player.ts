@@ -67,6 +67,10 @@ export class Player {
 	 */
 	public paused: boolean = false;
 	/**
+	 * Check if the player is connected.
+	 */
+	public connected: boolean = false;
+	/**
 	 * Volume of the player.
 	 */
 	public volume: number = 100;
@@ -199,6 +203,7 @@ export class Player {
 	public disconnect(): void {
 		this.playing = false;
 		this.paused = false;
+		this.connected = false;
 
 		this.manager.options.sendPayload(this.guildId, {
 			op: 4,
@@ -243,6 +248,8 @@ export class Player {
 	 * @returns {this} The player instance.
 	 */
 	public connect(): this {
+		if (this.connected) return this;
+
 		this.manager.options.sendPayload(this.guildId, {
 			op: 4,
 			d: {

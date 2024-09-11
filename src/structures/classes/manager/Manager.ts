@@ -153,6 +153,8 @@ export class Manager extends Utils.TypedEventEmitter<ManagerEvents> {
 			volume: Number.isNaN(Number(options.volume)) ? 100 : options.volume,
 		});
 
+		player.connected = true;
+
 		this.players.set(player.guildId, player);
 		this.emit("playerCreate", player);
 
