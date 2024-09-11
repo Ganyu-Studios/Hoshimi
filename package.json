@@ -42,7 +42,7 @@
 		"shoukaku": "github:shipgirlproject/Shoukaku",
 		"tsup": "^8.2.4",
 		"tsx": "^4.19.0",
-		"typescript": "^5.5.4",
+		"typescript": "^5.6.2",
 		"vitest": "^2.0.5"
 	}
 }
