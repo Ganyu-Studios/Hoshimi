@@ -49,7 +49,7 @@ export async function createConnection(this: Manager, options: PlayerOptions): P
 	}
 
 	try {
-		let node: Node | undefined;
+		let node: Node | undefined = undefined;
 
 		if (options.node) {
 			if (typeof options.node === "string")

@@ -29,3 +29,8 @@ const moveFiles = [".npmignore", "README.md", "dist"];
 const move = (src: string) => cp(src, `.npm/${src}`, { recursive: true });
 
 for (const file of moveFiles) await move(file);
+
+/**
+ * Script taken from https://github.com/SagiriIkeda/yunaforseyfert/blob/main/src/package/lib/prepublish.mts
+ * By SagiriIkeda
+ */

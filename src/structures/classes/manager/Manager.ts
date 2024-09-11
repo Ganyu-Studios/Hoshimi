@@ -20,6 +20,8 @@ import { Player } from "./Player";
 import { Track } from "./Track";
 import { PlayerError } from "./Error";
 
+type Events = ManagerEvents;
+
 /**
  * Main Manager class.
  */
@@ -173,8 +175,11 @@ export class Manager extends Utils.TypedEventEmitter<ManagerEvents> {
 		const search = isUrl ? query : `${engine}:${query}`;
 
 		if (options.node) {
-			if (typeof options.node === "string") node = this.shoukaku.nodes.get(options.node);
-			else node = this.shoukaku.nodes.get(options.node.name);
+			if (typeof options.node === "string")
+				node = this.shoukaku.nodes.get(options.node) ?? (await this.getLeastUsedNode());
+			else
+				node =
+					this.shoukaku.nodes.get(options.node.name) ?? (await this.getLeastUsedNode());
 		} else {
 			node = this.shoukaku.options.nodeResolver(this.shoukaku.nodes);
 		}
