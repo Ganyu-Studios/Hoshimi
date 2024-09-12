@@ -2,7 +2,6 @@ import {
 	Shoukaku,
 	type Connector,
 	Utils,
-	type NodeOption,
 	type ShoukakuOptions,
 	type Node,
 	Constants,
