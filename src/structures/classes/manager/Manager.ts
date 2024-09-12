@@ -20,12 +20,18 @@ import { Player } from "./Player";
 import { Track } from "./Track";
 import { PlayerError } from "./Error";
 
-type Events = ManagerEvents;
+/**
+ * The purpose of this, is to make the ManagerEvents interface extendable.
+ * To add new events, just add them to the ManagerEvents interface.
+ */
+type Events = {
+	[K in keyof ManagerEvents]: ManagerEvents[K];
+};
 
 /**
  * Main Manager class.
  */
-export class Manager extends Utils.TypedEventEmitter<ManagerEvents> {
+export class Manager extends Utils.TypedEventEmitter<Events> {
 	/**
 	 * Shoukaku instance.
 	 */
@@ -43,22 +49,16 @@ export class Manager extends Utils.TypedEventEmitter<ManagerEvents> {
 	 *
 	 * Constructor of the manager.
 	 * @param connector Shoukaku connector.
-	 * @param nodes Node array to use.
 	 * @param options Manager options.
 	 * @param shoukaku Shoukaku options.
 	 */
-	constructor(
-		connector: Connector,
-		nodes: NodeOption[],
-		options: ManagerOptions,
-		shoukaku?: ShoukakuOptions,
-	) {
+	constructor(connector: Connector, options: ManagerOptions, shoukaku?: ShoukakuOptions) {
 		super();
 
 		validateManagerOptions(options);
 
 		this.options = options;
-		this.shoukaku = new Shoukaku(connector, nodes, shoukaku);
+		this.shoukaku = new Shoukaku(connector, options.nodes, shoukaku);
 
 		applyDefaultOptions.call(this, options);
 	}
