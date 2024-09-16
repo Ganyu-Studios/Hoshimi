@@ -35,14 +35,14 @@
 	"author": "Ganyu Studios",
 	"license": "MIT",
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.0",
-		"@types/node": "^22.5.4",
+		"@biomejs/biome": "^1.9.1",
+		"@types/node": "^22.5.5",
 		"husky": "^9.1.6",
 		"lint-staged": "^15.2.10",
 		"shoukaku": "github:shipgirlproject/Shoukaku",
 		"tsup": "^8.2.4",
 		"tsx": "^4.19.1",
 		"typescript": "^5.6.2",
-		"vitest": "^2.1.0"
+		"vitest": "^2.1.1"
 	}
 }
