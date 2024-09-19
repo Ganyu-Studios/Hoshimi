@@ -39,7 +39,7 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 	/**
 	 * Options of the manager.
 	 */
-	public options!: ManagerOptions;
+	public options: ManagerOptions;
 	/**
 	 * Players of the manager.
 	 */
