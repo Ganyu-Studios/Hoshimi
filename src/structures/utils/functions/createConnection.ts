@@ -52,11 +52,9 @@ export async function createConnection(this: Manager, options: PlayerOptions): P
 		let node: Node | undefined = undefined;
 
 		if (options.node) {
-			if (typeof options.node === "string")
-				node = this.shoukaku.nodes.get(options.node) ?? (await this.getLeastUsedNode());
-			else
-				node =
-					this.shoukaku.nodes.get(options.node.name) ?? (await this.getLeastUsedNode());
+			const nodeName = typeof options.node === "string" ? options.node : options.node.name;
+
+			node = this.shoukaku.nodes.get(nodeName) ?? (await this.getLeastUsedNode());
 		} else {
 			node = this.shoukaku.options.nodeResolver(this.shoukaku.nodes);
 		}

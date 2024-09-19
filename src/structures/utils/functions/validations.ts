@@ -6,7 +6,7 @@ import { type ManagerOptions, type NonNodePlayerOptions, SearchEngines } from ".
  * Validate the manager options.
  * @param options The manager options.
  */
-export function validateManagerOptions(options: ManagerOptions) {
+export function validateManagerOptions(options: ManagerOptions): void {
 	const validEngines = Object.values(SearchEngines);
 
 	if (
@@ -26,6 +26,20 @@ export function validateManagerOptions(options: ManagerOptions) {
 		throw new ManagerError("Send payload must be a function.");
 	if (typeof options.autoplayFn !== "undefined" && typeof options.autoplayFn !== "function")
 		throw new ManagerError("Autoplay function must be a function.");
+
+	if (!Array.isArray(options.nodes)) throw new ManagerError("Nodes must be an array.");
+
+	if (options.nodes.length === 0) throw new ManagerError("Nodes must have at least one node.");
+
+	for (const node of options.nodes) {
+		if (typeof node.name !== "string") throw new ManagerError("Node name must be a string.");
+		if (typeof node.url !== "string") throw new ManagerError("Node url must be a string.");
+		if (typeof node.auth !== "string") throw new ManagerError("Node auth must be a string.");
+		if (typeof node.secure !== "undefined" && typeof node.secure !== "boolean")
+			throw new ManagerError("Node secure must be a boolean.");
+		if (typeof node.group !== "undefined" && typeof node.group !== "string")
+			throw new ManagerError("Node group must be a string.");
+	}
 }
 
 /**
@@ -33,7 +47,7 @@ export function validateManagerOptions(options: ManagerOptions) {
  * Validate the player options.
  * @param options The player options.
  */
-export function validatePlayerOptions(options: NonNodePlayerOptions) {
+export function validatePlayerOptions(options: NonNodePlayerOptions): void {
 	if (typeof options.guildId !== "string") throw new PlayerError("Guild id must be a string.");
 	if (typeof options.voiceId !== "string") throw new PlayerError("Voice id must be a string.");
 	if (typeof options.textId !== "undefined" && typeof options.textId !== "string")
@@ -47,21 +61,4 @@ export function validatePlayerOptions(options: NonNodePlayerOptions) {
 		throw new PlayerError("Self mute must be a boolean.");
 	if (typeof options.volume !== "undefined" && typeof options.volume !== "number")
 		throw new PlayerError("Volume must be a number.");
-}
-
-/**
- *
- * Apply default options to the manager.
- * @param this The manager instance.
- * @param options The manager options.
- * @returns
- */
-export function applyDefaultOptions(this: Manager, options: ManagerOptions) {
-	// Functions reassign
-	this.options.sendPayload ??= options.sendPayload;
-	this.options.autoplayFn ??= options.autoplayFn ?? undefined;
-
-	// Values reassign
-	this.options.defaultSearchEngine ??= options.defaultSearchEngine ?? SearchEngines.Youtube;
-	this.options.maxPreviousTracks ??= options.maxPreviousTracks ?? 25;
 }

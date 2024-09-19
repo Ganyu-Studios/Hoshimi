@@ -7,14 +7,15 @@ import {
 	Constants,
 	LoadType,
 } from "shoukaku";
-import type {
-	ManagerEvents,
-	ManagerOptions,
-	PlayerOptions,
-	QueryOptions,
-	SearchResult,
+import {
+	SearchEngines,
+	type ManagerEvents,
+	type ManagerOptions,
+	type PlayerOptions,
+	type QueryOptions,
+	type SearchResult,
 } from "../../types";
-import { applyDefaultOptions, createConnection, validateManagerOptions } from "../../utils";
+import { createConnection, validateManagerOptions, validatePlayerOptions } from "../../utils";
 import { Player } from "./Player";
 import { Track } from "./Track";
 import { PlayerError } from "./Error";
@@ -38,7 +39,7 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 	/**
 	 * Options of the manager.
 	 */
-	public options: ManagerOptions;
+	public options!: ManagerOptions;
 	/**
 	 * Players of the manager.
 	 */
@@ -54,12 +55,17 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 	constructor(connector: Connector, options: ManagerOptions, shoukaku?: ShoukakuOptions) {
 		super();
 
-		validateManagerOptions(options);
+		this.options = {
+			...options,
+			sendPayload: options.sendPayload,
+			autoplayFn: options.autoplayFn ?? undefined,
+			defaultSearchEngine: options.defaultSearchEngine ?? SearchEngines.Youtube,
+			maxPreviousTracks: options.maxPreviousTracks ?? 25,
+		};
 
-		this.options = options;
+		validateManagerOptions(this.options);
+
 		this.shoukaku = new Shoukaku(connector, options.nodes, shoukaku);
-
-		applyDefaultOptions.call(this, options);
 	}
 
 	/**
@@ -134,9 +140,11 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 	 * @returns {Promise<Player>} The new player created.
 	 */
 	public async createPlayer(options: PlayerOptions): Promise<Player> {
+		validatePlayerOptions(options);
+
 		if (this.players.has(options.guildId)) return this.players.get(options.guildId)!;
 
-		options.selfDeaf ??= false;
+		options.selfDeaf ??= true;
 		options.selfMute ??= false;
 
 		const shoukaku = await createConnection.call(this, options);
@@ -146,9 +154,9 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 			voiceId: options.voiceId,
 			textId: options.textId,
 			selfDeaf: options.selfDeaf,
-			selfMute: options.selfDeaf,
+			selfMute: options.selfMute,
 			shardId: options.shardId && !Number.isNaN(options.shardId) ? options.shardId : 0,
-			volume: Number.isNaN(Number(options.volume)) ? 100 : options.volume,
+			volume: options.volume && !Number.isNaN(options.volume) ? options.volume : 100,
 		});
 
 		player.connected = true;
@@ -174,11 +182,9 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 		const search = isUrl ? query : `${engine}:${query}`;
 
 		if (options.node) {
-			if (typeof options.node === "string")
-				node = this.shoukaku.nodes.get(options.node) ?? (await this.getLeastUsedNode());
-			else
-				node =
-					this.shoukaku.nodes.get(options.node.name) ?? (await this.getLeastUsedNode());
+			const nodeName = typeof options.node === "string" ? options.node : options.node.name;
+
+			node = this.shoukaku.nodes.get(nodeName) ?? (await this.getLeastUsedNode());
 		} else {
 			node = this.shoukaku.options.nodeResolver(this.shoukaku.nodes);
 		}
