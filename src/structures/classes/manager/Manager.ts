@@ -199,7 +199,6 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 
 		if (options.node) {
 			const nodeName = typeof options.node === "string" ? options.node : options.node.name;
-
 			node = this.shoukaku.nodes.get(nodeName) ?? (await this.getLeastUsedNode());
 		} else {
 			node = this.shoukaku.options.nodeResolver(this.shoukaku.nodes);
