@@ -113,8 +113,8 @@ export class Queue {
 	 * Shuffle the queue.
 	 * @returns {this} The queue instance.
 	 */
-	public shuffle(): void {
-		if (this.size <= 1) return;
+	public shuffle(): this {
+		if (this.size <= 1) return this;
 		if (this.size === 2) [this.tracks[0], this.tracks[1]] = [this.tracks[1]!, this.tracks[0]!];
 		else {
 			for (let i = this.tracks.length - 1; i > 0; i--) {
@@ -125,7 +125,7 @@ export class Queue {
 
 		this.manager.emit("queueUpdate", this);
 
-		return;
+		return this;
 	}
 
 	/**

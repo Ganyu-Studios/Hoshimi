@@ -1,5 +1,5 @@
 {
-	"name": "stelle.ts",
+	"name": "hoshimi",
 	"version": "0.1.0",
 	"description": "A Shoukaku wrapper highly inspired in Kazagumo.",
 	"main": "./dist/index.js",
