@@ -70,7 +70,7 @@ async function queueEnd(
 			if (payload.type === PlayerEventType.TRACK_END_EVENT)
 				this.manager.emit("trackEnd", this, track, payload);
 			this.manager.emit("debug", "[Queue -> Autoplay] Track queued from autoplay function.");
-			return this.play({ noReplace: true });
+			return this.play({ noReplace: true, pause: false });
 		}
 	}
 	this.manager.emit("debug", "[Player -> Queue] The queue has ended.");
