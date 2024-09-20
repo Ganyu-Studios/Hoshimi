@@ -81,6 +81,10 @@ export class Queue {
 		if (Array.isArray(track)) this.tracks.push(...track);
 		else this.tracks.push(track);
 
+		this.manager.emit(
+			"debug",
+			`[Queue -> Add] Added ${this.tracks.length} tracks to the queue.`,
+		);
 		this.manager.emit("queueUpdate", this);
 
 		return this;
@@ -103,6 +107,11 @@ export class Queue {
 	 */
 	public unshift(...tracks: Track[]): this {
 		this.tracks.unshift(...tracks);
+
+		this.manager.emit(
+			"debug",
+			`[Queue -> Unshift] Added ${this.tracks.length} tracks to the queue.`,
+		);
 		this.manager.emit("queueUpdate", this);
 
 		return this;
@@ -123,6 +132,7 @@ export class Queue {
 			}
 		}
 
+		this.manager.emit("debug", "[Queue -> Shuffle] Shuffled the queue.");
 		this.manager.emit("queueUpdate", this);
 
 		return this;
@@ -137,6 +147,8 @@ export class Queue {
 		this.tracks = [];
 		this.previous = [];
 		this.current = null;
+
+		this.manager.emit("debug", "[Queue -> Clear] Cleared the queue.");
 		this.manager.emit("queueUpdate", this);
 
 		return this;
@@ -156,6 +168,12 @@ export class Queue {
 		this.tracks.splice(index, 1);
 		this.add(track, to - 1);
 
+		this.manager.emit(
+			"debug",
+			`[Queue -> Move] Moved track ${track.info.title} to position ${to}.`,
+		);
+		this.manager.emit("queueUpdate", this);
+
 		return this;
 	}
 
@@ -174,6 +192,10 @@ export class Queue {
 			this.tracks.splice(start, deleteCount, ...(Array.isArray(tracks) ? tracks : [tracks]));
 		else this.tracks.splice(start, deleteCount);
 
+		this.manager.emit(
+			"debug",
+			`[Queue -> Splice] Removed ${deleteCount} tracks from the queue.`,
+		);
 		this.manager.emit("queueUpdate", this);
 
 		return this;

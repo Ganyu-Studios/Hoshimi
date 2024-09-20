@@ -15,7 +15,7 @@ import {
 	type QueryOptions,
 	type SearchResult,
 } from "../../types";
-import { createConnection, validateManagerOptions, validatePlayerOptions } from "../../utils";
+import { validateManagerOptions, validatePlayerOptions } from "../../utils";
 import { Player } from "./Player";
 import { Track } from "./Track";
 import { PlayerError } from "./Error";
@@ -147,7 +147,23 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 		options.selfDeaf ??= true;
 		options.selfMute ??= false;
 
-		const shoukaku = await createConnection.call(this, options);
+		if (this.shoukaku.connections.has(options.guildId) && this.players.has(options.guildId))
+			return this.getPlayer(options.guildId)!;
+
+		if (
+			this.shoukaku.connections.has(options.guildId) &&
+			!this.shoukaku.players.has(options.guildId)
+		) {
+			this.shoukaku.connections.get(options.guildId)!.disconnect();
+		}
+
+		const shoukaku = await this.shoukaku.joinVoiceChannel({
+			guildId: options.guildId,
+			channelId: options.voiceId,
+			shardId: options.shardId && !Number.isNaN(options.shardId) ? options.shardId : 0,
+			deaf: options.selfDeaf,
+			mute: options.selfMute,
+		});
 
 		const player = new Player(this, shoukaku, {
 			guildId: options.guildId,
