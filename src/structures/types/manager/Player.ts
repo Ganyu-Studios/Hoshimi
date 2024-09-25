@@ -90,3 +90,12 @@ export type PlayOptions = {
 	 */
 	track?: Track;
 };
+
+/**
+ * Queue JSON type.
+ */
+export type QueueJSON = {
+	tracks: Track[];
+	previous: Track[];
+	current: Track | null;
+};

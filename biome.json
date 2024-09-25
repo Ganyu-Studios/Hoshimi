@@ -13,7 +13,8 @@
 				"noParameterAssign": "off"
 			},
 			"suspicious": {
-				"noConfusingVoidType": "off"
+				"noConfusingVoidType": "off",
+				"noExplicitAny": "off"
 			}
 		}
 	},

@@ -11,6 +11,7 @@ export function validateManagerOptions(options: ManagerOptions): void {
 	const validEngines = Object.values(SearchEngines);
 
 	if (!options.nodes) throw new ManagerError("options.nodes: The nodes array is required.");
+
 	if (
 		typeof options.defaultSearchEngine !== "undefined" &&
 		!validEngines.includes(options.defaultSearchEngine)

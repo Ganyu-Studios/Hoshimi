@@ -1,3 +1,4 @@
+import type { QueueJSON } from "../../types";
 import type { Manager } from "./Manager";
 import type { Track } from "./Track";
 
@@ -22,7 +23,7 @@ export class Queue {
 	/**
 	 * Manager instance.
 	 */
-	private manager: Manager;
+	readonly manager: Manager;
 
 	/**
 	 *
@@ -199,5 +200,18 @@ export class Queue {
 		this.manager.emit("queueUpdate", this);
 
 		return this;
+	}
+
+	/**
+	 *
+	 * Convert the queue to a JSON object.
+	 * @returns {QueueJSON} The queue JSON object.
+	 */
+	public toJSON(): QueueJSON {
+		return {
+			tracks: this.tracks,
+			previous: this.previous,
+			current: this.current,
+		};
 	}
 }
