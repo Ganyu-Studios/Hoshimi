@@ -2,6 +2,6 @@
  * Utils export file.
  */
 
-export * from "./functions/handleEvents";
-export * from "./functions/timeformat";
+export * from "./functions/events";
+export * from "./functions/time";
 export * from "./functions/validations";
