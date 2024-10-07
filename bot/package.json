@@ -15,7 +15,7 @@
 	"author": "",
 	"license": "MIT",
 	"dependencies": {
-		"hoshimi": "file:../dist",
+		"hoshimi": "../",
 		"seyfert": "github:tiramisulabs/seyfert",
 		"shoukaku": "github:shipgirlproject/Shoukaku",
 		"yunaforseyfert": "github:SagiriIkeda/yunaforseyfert"
