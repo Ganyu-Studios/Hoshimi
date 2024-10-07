@@ -62,49 +62,5 @@ export default class PlayCommand extends Command {
 		} else if (res.loadType === LoadType.ERROR) {
 			console.info(res);
 		}
-
-		//player.setLoop(LoopMode.Track);
-
-		/* const { options, client, guildId, channelId, member, author } = ctx;
-		const { query } = options;
-
-		if (!guildId || !member) return;
-
-		const voice = await member.voice().catch(() => null);
-		if (!voice)
-			return ctx.write({
-				content: "You must be in a voice channel to play music.",
-				flags: MessageFlags.Ephemeral
-			});
-
-		const botVoice = await ctx.me()?.voice().catch(() => null);
-		if (botVoice && botVoice.channelId !== voice.channelId)
-			return ctx.write({
-				content: "You must be in the same voice channel as me.",
-				flags: MessageFlags.Ephemeral
-			});
-
-		const player = await client.manager.createPlayer({
-			guildId: guildId,
-			textId: channelId,
-			voiceId: voice.channelId!,
-			volume: 100
-		});
-
-		const result = await client.manager.search(query, { requester: author });
-		if (!result.tracks.length)
-			return ctx.write({ content: "No results found!" });
-
-		if (result.type === "PLAYLIST") player.queue.add(result.tracks);
-		else player.queue.add(result.tracks[0]!);
-
-		if (!player.playing && !player.paused) await player.play();
-
-		return ctx.write({
-			content:
-				result.type === "PLAYLIST"
-					? `Queued ${result.tracks.length} from ${result.playlistName}`
-					: `Queued ${result.tracks[0]!.title}`
-		}); */
 	}
 }
