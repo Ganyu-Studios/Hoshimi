@@ -121,7 +121,7 @@ export async function trackEnd(this: Player, payload: TrackEndEvent) {
 
 		await queueTrackEnd.call(this);
 
-		if (!this.queue.size || !this.queue.current) return queueEnd.call(this, current!, payload);
+		if (!this.queue.size || !this.queue.current) return queueEnd.call(this, current, payload);
 
 		this.manager.emit("debug", `[Player -> End] The track: ${current?.info.title} has ended.`);
 		this.manager.emit("trackEnd", this, current, payload);
@@ -167,7 +167,7 @@ export function socketClosed(this: Player, payload: WebSocketClosedEvent) {
  */
 export async function trackStuck(this: Player, payload: TrackStuckEvent) {
 	if (!this.queue.size && this.loop === LoopMode.Off)
-		return queueEnd.call(this, this.queue.current!, payload);
+		return queueEnd.call(this, this.queue.current, payload);
 
 	await queueTrackEnd.call(this);
 
@@ -184,7 +184,7 @@ export async function trackStuck(this: Player, payload: TrackStuckEvent) {
  */
 export async function trackError(this: Player, payload: TrackExceptionEvent) {
 	if (!this.queue.size && this.loop === LoopMode.Off)
-		return queueEnd.call(this, this.queue.current!, payload);
+		return queueEnd.call(this, this.queue.current, payload);
 
 	await queueTrackEnd.call(this);
 
