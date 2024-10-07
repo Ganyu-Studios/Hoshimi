@@ -5,7 +5,7 @@
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
-	"packageManager": "pnpm@9.10.0+sha512.73a29afa36a0d092ece5271de5177ecbf8318d454ecd701343131b8ebc0c1a91c487da46ab77c8e596d6acf1461e3594ced4becedf8921b074fbd8653ed7051c",
+	"packageManager": "pnpm@9.12.0+sha512.4abf725084d7bcbafbd728bfc7bee61f2f791f977fd87542b3579dcb23504d170d46337945e4c66485cd12d588a0c0e570ed9c477e7ccdd8507cf05f3f92eaca",
 	"lint-staged": {
 		"*.{ts,json}": ["biome format --write ."]
 	},
@@ -36,14 +36,14 @@
 	"author": "Ganyu Studios",
 	"license": "MIT",
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.2",
-		"@types/node": "^22.7.3",
+		"@biomejs/biome": "^1.9.3",
+		"@types/node": "^22.7.4",
 		"husky": "^9.1.6",
 		"lint-staged": "^15.2.10",
 		"shoukaku": "github:shipgirlproject/Shoukaku",
 		"tsup": "^8.3.0",
 		"tsx": "^4.19.1",
 		"typescript": "^5.6.2",
-		"vitest": "^2.1.1"
+		"vitest": "^2.1.2"
 	}
 }

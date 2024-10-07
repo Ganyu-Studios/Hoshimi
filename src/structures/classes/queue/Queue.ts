@@ -1,6 +1,7 @@
 import type { QueueJSON } from "../../types";
-import type { Manager } from "./Manager";
-import type { Track } from "./Track";
+import type { Player } from "../manager/Player";
+import type { Track } from "../manager/Track";
+import { QueueUtils } from "./Utils";
 
 /**
  * Main Queue class.
@@ -23,15 +24,21 @@ export class Queue {
 	/**
 	 * Manager instance.
 	 */
-	readonly manager: Manager;
+	readonly player: Player;
+
+	/**
+	 * Queue utils.
+	 */
+	readonly utils: QueueUtils;
 
 	/**
 	 *
 	 * Constructor of the queue.
-	 * @param manager Manager instance.
+	 * @param player Manager instance.
 	 */
-	constructor(manager: Manager) {
-		this.manager = manager;
+	constructor(player: Player) {
+		this.player = player;
+		this.utils = new QueueUtils(player);
 	}
 
 	/**
@@ -82,11 +89,11 @@ export class Queue {
 		if (Array.isArray(track)) this.tracks.push(...track);
 		else this.tracks.push(track);
 
-		this.manager.emit(
+		this.player.manager.emit(
 			"debug",
 			`[Queue -> Add] Added ${this.tracks.length} tracks to the queue.`,
 		);
-		this.manager.emit("queueUpdate", this);
+		this.player.manager.emit("queueUpdate", this);
 
 		return this;
 	}
@@ -109,11 +116,11 @@ export class Queue {
 	public unshift(...tracks: Track[]): this {
 		this.tracks.unshift(...tracks);
 
-		this.manager.emit(
+		this.player.manager.emit(
 			"debug",
 			`[Queue -> Unshift] Added ${this.tracks.length} tracks to the queue.`,
 		);
-		this.manager.emit("queueUpdate", this);
+		this.player.manager.emit("queueUpdate", this);
 
 		return this;
 	}
@@ -121,9 +128,9 @@ export class Queue {
 	/**
 	 *
 	 * Shuffle the queue.
-	 * @returns {this} The queue instance.
+	 * @returns {Promise<this>} The queue instance.
 	 */
-	public shuffle(): this {
+	public async shuffle(): Promise<this> {
 		if (this.size <= 1) return this;
 		if (this.size === 2) [this.tracks[0], this.tracks[1]] = [this.tracks[1]!, this.tracks[0]!];
 		else {
@@ -133,8 +140,10 @@ export class Queue {
 			}
 		}
 
-		this.manager.emit("debug", "[Queue -> Shuffle] Shuffled the queue.");
-		this.manager.emit("queueUpdate", this);
+		this.player.manager.emit("debug", "[Queue -> Shuffle] Shuffled the queue.");
+		this.player.manager.emit("queueUpdate", this);
+
+		await this.utils.save();
 
 		return this;
 	}
@@ -149,8 +158,8 @@ export class Queue {
 		this.previous = [];
 		this.current = null;
 
-		this.manager.emit("debug", "[Queue -> Clear] Cleared the queue.");
-		this.manager.emit("queueUpdate", this);
+		this.player.manager.emit("debug", "[Queue -> Clear] Cleared the queue.");
+		this.player.manager.emit("queueUpdate", this);
 
 		return this;
 	}
@@ -169,11 +178,11 @@ export class Queue {
 		this.tracks.splice(index, 1);
 		this.add(track, to - 1);
 
-		this.manager.emit(
+		this.player.manager.emit(
 			"debug",
 			`[Queue -> Move] Moved track ${track.info.title} to position ${to}.`,
 		);
-		this.manager.emit("queueUpdate", this);
+		this.player.manager.emit("queueUpdate", this);
 
 		return this;
 	}
@@ -193,11 +202,11 @@ export class Queue {
 			this.tracks.splice(start, deleteCount, ...(Array.isArray(tracks) ? tracks : [tracks]));
 		else this.tracks.splice(start, deleteCount);
 
-		this.manager.emit(
+		this.player.manager.emit(
 			"debug",
 			`[Queue -> Splice] Removed ${deleteCount} tracks from the queue.`,
 		);
-		this.manager.emit("queueUpdate", this);
+		this.player.manager.emit("queueUpdate", this);
 
 		return this;
 	}
@@ -208,6 +217,11 @@ export class Queue {
 	 * @returns {QueueJSON} The queue JSON object.
 	 */
 	public toJSON(): QueueJSON {
+		if (this.previous.length > this.player.manager.options.maxPreviousTracks!)
+			this.previous.splice(
+				this.player.manager.options.maxPreviousTracks!,
+				this.previous.length,
+			);
 		return {
 			tracks: this.tracks,
 			previous: this.previous,

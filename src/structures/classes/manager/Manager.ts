@@ -19,6 +19,7 @@ import { validateManagerOptions, validatePlayerOptions } from "../../utils";
 import { Player } from "./Player";
 import { Track } from "./Track";
 import { PlayerError } from "./Error";
+import { LocalStorage } from "../queue/Storage";
 
 /**
  * The purpose of this, is to make the ManagerEvents interface extendable.
@@ -61,6 +62,7 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 			autoplayFn: options.autoplayFn ?? undefined,
 			defaultSearchEngine: options.defaultSearchEngine ?? SearchEngines.Youtube,
 			maxPreviousTracks: options.maxPreviousTracks ?? 25,
+			storage: options.storage ?? new LocalStorage(),
 		};
 
 		validateManagerOptions(this.options);

@@ -1,4 +1,4 @@
-import type { Queue, Player, Track } from "../../classes";
+import type { Queue, Player, Track, StorageManager } from "../../classes";
 import type {
 	Exception,
 	LoadType,
@@ -218,4 +218,9 @@ export type ManagerOptions = {
 	 * @default 25
 	 */
 	maxPreviousTracks?: number;
+	/**
+	 * Custom storage manager.
+	 * @default LocalStorage
+	 */
+	storage?: StorageManager;
 };

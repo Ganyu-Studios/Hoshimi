@@ -86,6 +86,8 @@ export async function trackStart(this: Player, payload: TrackStartEvent) {
 	this.paused = false;
 	this.playing = true;
 
+	if (this.queue.current) await this.queue.utils.save();
+
 	this.manager.emit(
 		"debug",
 		`[Player -> Start] The track: ${this.queue.current?.info.title} has started playing.`,
@@ -119,6 +121,8 @@ export async function trackEnd(this: Player, payload: TrackEndEvent) {
 
 		return this.play();
 	}
+
+	if (current) await this.queue.utils.save();
 
 	queueTrackEnd.call(this);
 

@@ -1,5 +1,5 @@
 import type { NodeOption } from "shoukaku";
-import { ManagerError, PlayerError } from "../../classes";
+import { ManagerError, PlayerError, StorageManager, Track } from "../../classes";
 import { type ManagerOptions, type NonNodePlayerOptions, SearchEngines } from "../../types";
 
 /**
@@ -12,6 +12,10 @@ export function validateManagerOptions(options: ManagerOptions): void {
 
 	if (!options.nodes) throw new ManagerError("options.nodes: The nodes array is required.");
 
+	if (typeof options.storage !== "undefined" && !(options.storage instanceof StorageManager))
+		throw new ManagerError(
+			"options.storage: Storage manager must be an instance of StorageManager.",
+		);
 	if (
 		typeof options.defaultSearchEngine !== "undefined" &&
 		!validEngines.includes(options.defaultSearchEngine)
@@ -80,3 +84,10 @@ export function isNode(node: NodeOption): boolean {
 		(typeof node.group === "undefined" || typeof node.group === "string")
 	);
 }
+
+/**
+ *
+ * Check if the track is valid.
+ * @param track The track to check.
+ */
+export const isTrack = (track: Track) => track instanceof Track;

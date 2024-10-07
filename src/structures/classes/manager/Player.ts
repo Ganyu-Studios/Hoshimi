@@ -19,7 +19,7 @@ import {
 	trackStuck,
 	validatePlayerOptions,
 } from "../../utils";
-import { Queue } from "./Queue";
+import { Queue } from "../queue/Queue";
 import { PlayerError } from "./Error";
 
 /**
@@ -99,7 +99,7 @@ export class Player {
 		this.options = options;
 		this.manager = manager;
 
-		this.queue = new Queue(manager);
+		this.queue = new Queue(this);
 
 		this.guildId = options.guildId;
 		this.voiceId = options.voiceId;
