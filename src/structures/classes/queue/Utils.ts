@@ -1,7 +1,7 @@
-import { Awaitable, QueueJSON } from "../../types";
+import type { Awaitable, QueueJSON } from "../../types";
+import type { Player } from "../manager/Player";
 import { isTrack } from "../../utils";
 import { ManagerError } from "../manager/Error";
-import { Player } from "../manager/Player";
 
 export class QueueUtils {
 	private player: Player;

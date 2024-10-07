@@ -1,4 +1,4 @@
-import { Awaitable } from "../../types";
+import type { Awaitable } from "../../types";
 
 /**
  * Storage Manager class.
@@ -38,6 +38,9 @@ export abstract class StorageManager {
 	abstract has(key: string): Awaitable<boolean>;
 }
 
+/**
+ * LocalStorage class.
+ */
 export class LocalStorage {
 	private storage: Map<string, unknown> = new Map();
 

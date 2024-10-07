@@ -1,6 +1,5 @@
 import type { QueueJSON } from "../../types";
-import type { Manager } from "../manager/Manager";
-import { Player } from "../manager/Player";
+import type { Player } from "../manager/Player";
 import type { Track } from "../manager/Track";
 import { QueueUtils } from "./Utils";
 
