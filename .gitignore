@@ -1,6 +1,7 @@
 .npm
 
 *.tgz
+*.env
 
 private
 node_modules
