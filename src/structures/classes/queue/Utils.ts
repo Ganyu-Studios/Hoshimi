@@ -12,7 +12,7 @@ export class QueueUtils {
 	/**
 	 * Player instance.
 	 */
-	private player: Player;
+	private queue: Queue;
 	/**
 	 * Queue store.
 	 */
@@ -24,8 +24,8 @@ export class QueueUtils {
 	 * @param queue Player instance.
 	 */
 	constructor(queue: Queue) {
-		this.player = queue.player;
-		this.store = new QueueStore(this.player.manager.options.storage!);
+		this.queue = queue;
+		this.store = new QueueStore(this.queue.player.manager.options.storage!);
 	}
 
 	/**
@@ -34,12 +34,12 @@ export class QueueUtils {
 	 * @returns {Awaitable<void>}
 	 */
 	public save(): Awaitable<void> {
-		if (this.player.queue.previous.length > this.player.manager.options.maxPreviousTracks!)
-			this.player.queue.previous.splice(
-				this.player.manager.options.maxPreviousTracks!,
-				this.player.queue.previous.length,
+		if (this.queue.previous.length > this.queue.player.manager.options.maxPreviousTracks!)
+			this.queue.previous.splice(
+				this.queue.player.manager.options.maxPreviousTracks!,
+				this.queue.player.queue.previous.length,
 			);
-		return this.store.set(this.player.guildId, this.player.queue.toJSON());
+		return this.store.set(this.queue.player.guildId, this.queue.player.queue.toJSON());
 	}
 
 	/**
@@ -48,7 +48,7 @@ export class QueueUtils {
 	 * @returns {Promise<void>}
 	 */
 	public destroy(): Awaitable<boolean> {
-		return this.store.delete(this.player.guildId);
+		return this.store.delete(this.queue.player.guildId);
 	}
 
 	/**
@@ -57,19 +57,22 @@ export class QueueUtils {
 	 * @returns {Awaitable<void>}
 	 */
 	public async sync(override = true, syncCurrent = false): Promise<void> {
-		const data = this.store.get<QueueJSON>(this.player.guildId);
+		const data = this.store.get<QueueJSON>(this.queue.player.guildId);
 		if (!data)
-			throw new StorageError(`No data found to sync for guildId: ${this.player.guildId}`);
+			throw new StorageError(
+				`No data found to sync for guildId: ${this.queue.player.guildId}`,
+			);
 
-		if (syncCurrent && !this.player.queue.current) this.player.queue.current = data.current;
+		if (syncCurrent && !this.queue.player.queue.current)
+			this.queue.player.queue.current = data.current;
 		if (
 			Array.isArray(data.tracks) &&
 			data?.tracks.length &&
 			data.tracks.some((track) => isTrack(track))
 		)
-			this.player.queue.tracks.splice(
-				override ? 0 : this.player.queue.tracks.length,
-				override ? this.player.queue.tracks.length : 0,
+			this.queue.player.queue.tracks.splice(
+				override ? 0 : this.queue.player.queue.tracks.length,
+				override ? this.queue.player.queue.tracks.length : 0,
 				...data.tracks.filter((track) => isTrack(track)),
 			);
 		if (
@@ -77,9 +80,9 @@ export class QueueUtils {
 			data?.previous.length &&
 			data.previous.some((track) => isTrack(track))
 		)
-			this.player.queue.previous.splice(
+			this.queue.player.queue.previous.splice(
 				0,
-				override ? this.player.queue.tracks.length : 0,
+				override ? this.queue.player.queue.tracks.length : 0,
 				...data.previous.filter((track) => isTrack(track)),
 			);
 

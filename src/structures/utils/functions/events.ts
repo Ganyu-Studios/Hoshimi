@@ -16,7 +16,7 @@ import { LoopMode } from "../../types";
  * @param this The player instance.
  * @returns
  */
-function queueTrackEnd(this: Player) {
+async function queueTrackEnd(this: Player) {
 	if (
 		this.queue.current &&
 		!this.queue.previous.find(
@@ -32,6 +32,8 @@ function queueTrackEnd(this: Player) {
 				this.queue.previous.length,
 			);
 
+		await this.queue.utils.save();
+
 		this.manager.emit(
 			"debug",
 			`[Player -> Previous] The track: ${this.queue.current?.info.title} has been added to the previous track list.`,
@@ -42,6 +44,8 @@ function queueTrackEnd(this: Player) {
 	if (this.loop === LoopMode.Queue && this.queue.current) this.queue.add(this.queue.current);
 
 	if (!this.queue.current) this.queue.current = this.queue.shift();
+
+	await this.queue.utils.save();
 
 	return;
 }
@@ -65,7 +69,7 @@ async function queueEnd(
 
 	if (this.manager.options.autoplayFn && typeof this.manager.options.autoplayFn === "function") {
 		await this.manager.options.autoplayFn(this, this.queue.current ?? track);
-		if (this.queue.size > 0) queueTrackEnd.call(this);
+		if (this.queue.size > 0) await queueTrackEnd.call(this);
 		if (this.queue.current) {
 			if (payload.type === PlayerEventType.TRACK_END_EVENT)
 				this.manager.emit("trackEnd", this, track, payload);
@@ -73,6 +77,10 @@ async function queueEnd(
 			return this.play({ noReplace: true, pause: false });
 		}
 	}
+
+	if (track) await this.queue.utils.save();
+	if ((payload as TrackEndEvent).reason !== "stopped") await this.queue.utils.save();
+
 	this.manager.emit("debug", "[Player -> Queue] The queue has ended.");
 	this.manager.emit("queueEnd", this, this.queue);
 }
@@ -111,7 +119,7 @@ export async function trackEnd(this: Player, payload: TrackEndEvent) {
 	if (["loadFailed", "cleanup"].includes(payload.reason)) {
 		this.playing = false;
 
-		queueTrackEnd.call(this);
+		await queueTrackEnd.call(this);
 
 		if (!this.queue.size || !this.queue.current) return queueEnd.call(this, current!, payload);
 
@@ -124,7 +132,7 @@ export async function trackEnd(this: Player, payload: TrackEndEvent) {
 
 	if (current) await this.queue.utils.save();
 
-	queueTrackEnd.call(this);
+	await queueTrackEnd.call(this);
 
 	this.queue.current = null;
 
@@ -157,11 +165,11 @@ export function socketClosed(this: Player, payload: WebSocketClosedEvent) {
  * @param payload The payload of the event.
  * @returns
  */
-export function trackStuck(this: Player, payload: TrackStuckEvent) {
+export async function trackStuck(this: Player, payload: TrackStuckEvent) {
 	if (!this.queue.size && this.loop === LoopMode.Off)
 		return queueEnd.call(this, this.queue.current!, payload);
 
-	queueTrackEnd.call(this);
+	await queueTrackEnd.call(this);
 
 	if (!this.queue.current) return queueEnd.call(this, this.queue.current!, payload);
 	return this.manager.emit("trackStuck", this, this.queue.current, payload);
@@ -174,11 +182,11 @@ export function trackStuck(this: Player, payload: TrackStuckEvent) {
  * @param payload The payload of the event.
  * @returns
  */
-export function trackError(this: Player, payload: TrackExceptionEvent) {
+export async function trackError(this: Player, payload: TrackExceptionEvent) {
 	if (!this.queue.size && this.loop === LoopMode.Off)
 		return queueEnd.call(this, this.queue.current!, payload);
 
-	queueTrackEnd.call(this);
+	await queueTrackEnd.call(this);
 
 	if (!this.queue.current) return queueEnd.call(this, this.queue.current!, payload);
 	return this.manager.emit("trackError", this, this.queue.current, payload);

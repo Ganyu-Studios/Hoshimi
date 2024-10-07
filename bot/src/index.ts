@@ -93,6 +93,8 @@ client.manager.on("trackStart", (player, track) => {
 
 	const requester = track.requester as User;
 
+	console.info(client.manager.options.storage?.get(player.guildId));
+
 	client.messages.write(player.textId!, {
 		content: `Now playing: ${track.toHyperlink()}\nRequested by: ${requester.tag}`,
 	});
