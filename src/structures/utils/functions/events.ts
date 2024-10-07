@@ -60,7 +60,7 @@ async function queueTrackEnd(this: Player) {
  */
 async function queueEnd(
 	this: Player,
-	track: Track,
+	track: Track | null,
 	payload: TrackEndEvent | TrackStuckEvent | TrackExceptionEvent,
 ) {
 	this.playing = false;
@@ -114,7 +114,7 @@ export async function trackEnd(this: Player, payload: TrackEndEvent) {
 	const current = this.queue.current;
 
 	if (!this.queue.size && this.loop === LoopMode.Off)
-		return queueEnd.call(this, current!, payload);
+		return queueEnd.call(this, current, payload);
 	if (payload.reason === "replaced") return this.manager.emit("trackEnd", this, current, payload);
 	if (["loadFailed", "cleanup"].includes(payload.reason)) {
 		this.playing = false;
@@ -139,7 +139,7 @@ export async function trackEnd(this: Player, payload: TrackEndEvent) {
 	if (this.queue.size) this.manager.emit("trackEnd", this, current, payload);
 	else {
 		this.playing = false;
-		return queueEnd.call(this, current!, payload);
+		return queueEnd.call(this, current, payload);
 	}
 
 	this.manager.emit("debug", `[Player -> End] The track: ${current?.info.title} has ended.`);
@@ -171,7 +171,7 @@ export async function trackStuck(this: Player, payload: TrackStuckEvent) {
 
 	await queueTrackEnd.call(this);
 
-	if (!this.queue.current) return queueEnd.call(this, this.queue.current!, payload);
+	if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
 	return this.manager.emit("trackStuck", this, this.queue.current, payload);
 }
 
@@ -188,7 +188,8 @@ export async function trackError(this: Player, payload: TrackExceptionEvent) {
 
 	await queueTrackEnd.call(this);
 
-	if (!this.queue.current) return queueEnd.call(this, this.queue.current!, payload);
+	if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
+
 	return this.manager.emit("trackError", this, this.queue.current, payload);
 }
 
