@@ -90,4 +90,4 @@ export function isNode(node: NodeOption): boolean {
  * Check if the track is valid.
  * @param track The track to check.
  */
-export const isTrack = (track: Track) => track instanceof Track;
+export const isTrack = (track: Track): this is Track => track instanceof Track;

@@ -38,7 +38,7 @@ export class Queue {
 	 */
 	constructor(player: Player) {
 		this.player = player;
-		this.utils = new QueueUtils(player);
+		this.utils = new QueueUtils(this);
 	}
 
 	/**

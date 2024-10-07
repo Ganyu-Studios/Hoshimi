@@ -1,13 +1,31 @@
 import type { Awaitable, QueueJSON } from "../../types";
 import type { Player } from "../manager/Player";
 import { isTrack } from "../../utils";
-import { ManagerError } from "../manager/Error";
+import { StorageError } from "../manager/Error";
+import { QueueStore } from "./Storage";
+import type { Queue } from "./Queue";
 
+/**
+ * Queue Utils class.
+ */
 export class QueueUtils {
+	/**
+	 * Player instance.
+	 */
 	private player: Player;
+	/**
+	 * Queue store.
+	 */
+	private store: QueueStore;
 
-	constructor(player: Player) {
-		this.player = player;
+	/**
+	 *
+	 * Constructor of the queue utils.
+	 * @param queue Player instance.
+	 */
+	constructor(queue: Queue) {
+		this.player = queue.player;
+		this.store = new QueueStore(this.player.manager.options.storage!);
 	}
 
 	/**
@@ -21,10 +39,7 @@ export class QueueUtils {
 				this.player.manager.options.maxPreviousTracks!,
 				this.player.queue.previous.length,
 			);
-		return this.player.manager.options.storage!.set(
-			this.player.guildId,
-			this.player.queue.toJSON(),
-		);
+		return this.store.set(this.player.guildId, this.player.queue.toJSON());
 	}
 
 	/**
@@ -32,8 +47,8 @@ export class QueueUtils {
 	 * Destroy the queue.
 	 * @returns {Promise<void>}
 	 */
-	public destroy(): Awaitable<void> {
-		return this.player.manager.options.storage!.delete(this.player.guildId);
+	public destroy(): Awaitable<boolean> {
+		return this.store.delete(this.player.guildId);
 	}
 
 	/**
@@ -42,11 +57,11 @@ export class QueueUtils {
 	 * @returns {Awaitable<void>}
 	 */
 	public async sync(override = true, syncCurrent = false): Promise<void> {
-		const data = await this.player.manager.options.storage!.get<QueueJSON>(this.player.guildId);
+		const data = this.store.get<QueueJSON>(this.player.guildId);
 		if (!data)
-			throw new ManagerError(`No data found to sync for guildId: ${this.player.guildId}`);
+			throw new StorageError(`No data found to sync for guildId: ${this.player.guildId}`);
 
-		if (!syncCurrent && !this.player.queue.current) this.player.queue.current = data.current;
+		if (syncCurrent && !this.player.queue.current) this.player.queue.current = data.current;
 		if (
 			Array.isArray(data.tracks) &&
 			data?.tracks.length &&

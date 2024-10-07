@@ -233,6 +233,7 @@ export class Player {
 
 		await this.manager.shoukaku.leaveVoiceChannel(this.guildId);
 		await this.shoukaku.destroy();
+		await this.queue.utils.destroy();
 
 		this.shoukaku.removeAllListeners();
 		this.manager.players.delete(this.guildId);
