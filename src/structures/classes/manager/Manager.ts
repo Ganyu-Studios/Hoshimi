@@ -58,7 +58,6 @@ export class Manager extends Utils.TypedEventEmitter<Events> {
 
 		this.options = {
 			...options,
-			sendPayload: options.sendPayload,
 			autoplayFn: options.autoplayFn ?? undefined,
 			defaultSearchEngine: options.defaultSearchEngine ?? SearchEngines.Youtube,
 			maxPreviousTracks: options.maxPreviousTracks ?? 25,
