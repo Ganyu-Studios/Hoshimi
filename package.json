@@ -41,7 +41,7 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.3",
-		"@types/node": "^22.7.5",
+		"@types/node": "^22.7.6",
 		"husky": "^9.1.6",
 		"lint-staged": "^15.2.10",
 		"shoukaku": "github:shipgirlproject/Shoukaku",
