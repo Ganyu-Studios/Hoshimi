@@ -4,6 +4,8 @@ import packageJson from "../package.json";
 await rm(".npm", { recursive: true, force: true });
 await mkdir(".npm").catch(() => null);
 
+type PackageJson = typeof packageJson & { private: boolean };
+
 const {
 	scripts: _s,
 	"lint-staged": _l,
@@ -11,18 +13,9 @@ const {
 	devDependencies: _dev,
 	packageManager: _pm,
 	...newPackageJsonRaw
-} = packageJson as typeof packageJson & { private: boolean };
+} = packageJson as PackageJson;
 
-const { shoukaku } = _dev;
-
-const newPackageJson = {
-	...newPackageJsonRaw,
-	devDependencies: {
-		shoukaku,
-	},
-};
-
-await writeFile(".npm/package.json", JSON.stringify(newPackageJson, null, 4), "utf-8");
+await writeFile(".npm/package.json", JSON.stringify(newPackageJsonRaw, null, 4), "utf-8");
 
 const moveFiles = [".npmignore", "README.md", "dist"];
 

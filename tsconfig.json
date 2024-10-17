@@ -3,7 +3,6 @@
 	"compilerOptions": {
 		"rootDir": "src",
 		"outDir": "dist",
-
 		/* Base Options: */
 		"esModuleInterop": true,
 		"skipLibCheck": true,
@@ -12,19 +11,23 @@
 		"resolveJsonModule": true,
 		"moduleDetection": "force",
 		"moduleResolution": "node16",
-
 		/* Strictness */
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true,
-
 		/* If NOT transpiling with TypeScript: */
 		"module": "node16",
 		"noEmit": true,
-
 		/* If your code doesn't run in the DOM: */
 		"lib": ["es2022"]
 	},
 	"include": ["src"],
-	"exclude": ["node_modules", "dist"]
+	"exclude": [
+		"node_modules",
+		"dist",
+		"**/lib",
+		"**/__test__",
+		"**/node_modules",
+		"**/.*/"
+	]
 }
