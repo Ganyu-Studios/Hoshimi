@@ -22,12 +22,5 @@
 		"lib": ["es2022"]
 	},
 	"include": ["src"],
-	"exclude": [
-		"node_modules",
-		"dist",
-		"**/lib",
-		"**/__test__",
-		"**/node_modules",
-		"**/.*/"
-	]
+	"exclude": ["node_modules", "dist"]
 }
