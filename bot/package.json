@@ -15,14 +15,14 @@
 	"author": "",
 	"license": "MIT",
 	"dependencies": {
-		"hoshimi": "../",
+		"hoshimi": "link:..",
 		"seyfert": "github:tiramisulabs/seyfert",
 		"yunaforseyfert": "github:SagiriIkeda/yunaforseyfert"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.2",
-		"@types/node": "^22.5.5",
+		"@biomejs/biome": "^1.9.3",
+		"@types/node": "^22.7.6",
 		"tsx": "^4.19.1",
-		"typescript": "^5.6.2"
+		"typescript": "^5.6.3"
 	}
 }

@@ -9,30 +9,27 @@ importers:
   .:
     dependencies:
       hoshimi:
-        specifier: ../
+        specifier: link:..
         version: link:..
       seyfert:
         specifier: github:tiramisulabs/seyfert
-        version: https://codeload.github.com/tiramisulabs/seyfert/tar.gz/2912296d96a4f1462f205d354331e3678c0225be
-      shoukaku:
-        specifier: github:shipgirlproject/Shoukaku
-        version: https://codeload.github.com/shipgirlproject/Shoukaku/tar.gz/2f50cb7f422a4d953bbb99d13b3bb239fe487978
+        version: https://codeload.github.com/tiramisulabs/seyfert/tar.gz/56246ed5cf051d6eab5f46bac8ec1e3a3da84008
       yunaforseyfert:
         specifier: github:SagiriIkeda/yunaforseyfert
         version: https://codeload.github.com/SagiriIkeda/yunaforseyfert/tar.gz/37e84e65eba21c51bf3897866b124819deadac24
     devDependencies:
       '@biomejs/biome':
-        specifier: ^1.9.2
+        specifier: ^1.9.3
         version: 1.9.3
       '@types/node':
-        specifier: ^22.5.5
-        version: 22.7.4
+        specifier: ^22.7.6
+        version: 22.7.6
       tsx:
         specifier: ^4.19.1
         version: 4.19.1
       typescript:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^5.6.3
+        version: 5.6.3
 
 packages:
 
@@ -233,8 +230,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@types/node@22.7.4':
-    resolution: {integrity: sha512-y+NPi1rFzDs1NdQHHToqeiX2TIS79SWEAw9GYhkkx8bD0ChpfqC+n2j5OXOCpzfojBEBt6DnEnnG9MY0zk1XLg==}
+  '@types/node@22.7.6':
+    resolution: {integrity: sha512-/d7Rnj0/ExXDMcioS78/kf1lMzYk4BZV8MZGTBKzTGZ6/406ukkbYlIsZmMPhcR5KlkunDHQLrtAVmSq7r+mSw==}
 
   esbuild@0.23.1:
     resolution: {integrity: sha512-VVNz/9Sa0bs5SELtn3f7qhJCDPCF5oMEl5cO9/SSinpE9hbPVvxbd572HH5AKiP7WD8INO53GgfDDhRjkylHEg==}
@@ -252,39 +249,22 @@ packages:
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
-  seyfert@https://codeload.github.com/tiramisulabs/seyfert/tar.gz/2912296d96a4f1462f205d354331e3678c0225be:
-    resolution: {tarball: https://codeload.github.com/tiramisulabs/seyfert/tar.gz/2912296d96a4f1462f205d354331e3678c0225be}
+  seyfert@https://codeload.github.com/tiramisulabs/seyfert/tar.gz/56246ed5cf051d6eab5f46bac8ec1e3a3da84008:
+    resolution: {tarball: https://codeload.github.com/tiramisulabs/seyfert/tar.gz/56246ed5cf051d6eab5f46bac8ec1e3a3da84008}
     version: 2.1.0
-
-  shoukaku@https://codeload.github.com/shipgirlproject/Shoukaku/tar.gz/2f50cb7f422a4d953bbb99d13b3bb239fe487978:
-    resolution: {tarball: https://codeload.github.com/shipgirlproject/Shoukaku/tar.gz/2f50cb7f422a4d953bbb99d13b3bb239fe487978}
-    version: 5.0.0-dev
-    engines: {node: '>=18.0.0', npm: '>=7.0.0'}
 
   tsx@4.19.1:
     resolution: {integrity: sha512-0flMz1lh74BR4wOvBjuh9olbnwqCPc35OOlfyzHba0Dc+QNUeWX/Gq2YTbnwcWPO3BMd8fkzRVrHcsR+a7z7rA==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  typescript@5.6.2:
-    resolution: {integrity: sha512-NW8ByodCSNCwZeghjN3o+JX5OFH0Ojg6sadjEKY4huZ52TqbJTJnDo5+Tw98lSy63NZvi4n+ez5m2u5d4PkZyw==}
+  typescript@5.6.3:
+    resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
   undici-types@6.19.8:
     resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
-
-  ws@8.18.0:
-    resolution: {integrity: sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
 
   yunaforseyfert@https://codeload.github.com/SagiriIkeda/yunaforseyfert/tar.gz/37e84e65eba21c51bf3897866b124819deadac24:
     resolution: {tarball: https://codeload.github.com/SagiriIkeda/yunaforseyfert/tar.gz/37e84e65eba21c51bf3897866b124819deadac24}
@@ -399,7 +379,7 @@ snapshots:
   '@esbuild/win32-x64@0.23.1':
     optional: true
 
-  '@types/node@22.7.4':
+  '@types/node@22.7.6':
     dependencies:
       undici-types: 6.19.8
 
@@ -439,14 +419,7 @@ snapshots:
 
   resolve-pkg-maps@1.0.0: {}
 
-  seyfert@https://codeload.github.com/tiramisulabs/seyfert/tar.gz/2912296d96a4f1462f205d354331e3678c0225be: {}
-
-  shoukaku@https://codeload.github.com/shipgirlproject/Shoukaku/tar.gz/2f50cb7f422a4d953bbb99d13b3bb239fe487978:
-    dependencies:
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
+  seyfert@https://codeload.github.com/tiramisulabs/seyfert/tar.gz/56246ed5cf051d6eab5f46bac8ec1e3a3da84008: {}
 
   tsx@4.19.1:
     dependencies:
@@ -455,10 +428,8 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
-  typescript@5.6.2: {}
+  typescript@5.6.3: {}
 
   undici-types@6.19.8: {}
-
-  ws@8.18.0: {}
 
   yunaforseyfert@https://codeload.github.com/SagiriIkeda/yunaforseyfert/tar.gz/37e84e65eba21c51bf3897866b124819deadac24: {}
