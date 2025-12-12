@@ -530,15 +530,20 @@ export interface PlayerJson {
      */
     position: number;
     /**
-     * The queue of the player.
-     * @type {QueueJson | undefined}
+     * The timestamp when the player was created.
+     * @type {number}
      */
-    queue?: QueueJson;
+    createdTimestamp: number;
+    /**
+     * The queue of the player.
+     * @type {QueueJson}
+     */
+    queue: QueueJson;
     /**
      * The node of the player.
-     * @type {NodeJson | undefined}
+     * @type {NodeJson}
      */
-    node?: NodeJson;
+    node: NodeJson;
 }
 
 /**
