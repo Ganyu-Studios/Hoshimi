@@ -548,4 +548,12 @@ export class FilterManager {
 
         return this.apply();
     }
+
+    /**
+     * Convert the filter settings to a JSON object.
+     * @returns {FilterSettings} The filter settings as a JSON object.
+     */
+    public toJSON(): FilterSettings {
+        return { ...this.data };
+    }
 }

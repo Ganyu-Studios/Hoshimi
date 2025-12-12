@@ -549,6 +549,11 @@ export interface PlayerJson {
      * @type {NodeJson}
      */
     node: NodeJson;
+    /**
+     * The filter settings of the player.
+     * @type {FilterSettings}
+     */
+    filters: FilterSettings;
 }
 
 /**

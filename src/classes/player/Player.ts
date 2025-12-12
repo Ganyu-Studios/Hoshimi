@@ -694,6 +694,7 @@ export class Player {
             position: this.position,
             createdTimestamp: this.createdTimestamp,
             ping: this.ping,
+            filters: this.filterManager.toJSON(),
             queue: this.queue.toJSON(),
             node: this.node.toJSON(),
         };
