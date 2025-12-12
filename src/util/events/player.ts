@@ -160,10 +160,13 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
 
     await onEnd.call(this);
 
-    // Check if there's a next track after onEnd processed loop logic
-    if (!this.queue.current) return queueEnd.call(this, current, payload);
+    this.queue.current = null;
 
-    // Always emit TrackEnd when there's a next track to play
+    if (!this.queue.size) {
+        this.playing = false;
+        return queueEnd.call(this, current, payload);
+    }
+
     this.manager.emit(Events.TrackEnd, this, current, payload);
     this.manager.emit(Events.Debug, DebugLevels.Player, `[Player] -> [End] The track: ${current?.info.title ?? "Uhknown"} has ended.`);
 
