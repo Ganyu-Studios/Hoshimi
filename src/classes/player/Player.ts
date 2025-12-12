@@ -693,6 +693,7 @@ export class Player {
             lastPositionUpdate: this.lastPositionUpdate,
             position: this.position,
             createdTimestamp: this.createdTimestamp,
+            ping: this.ping,
             queue: this.queue.toJSON(),
             node: this.node.toJSON(),
         };

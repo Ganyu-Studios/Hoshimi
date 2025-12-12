@@ -535,6 +535,11 @@ export interface PlayerJson {
      */
     createdTimestamp: number;
     /**
+     * The ping of the player.
+     * @type {number}
+     */
+    ping: number;
+    /**
      * The queue of the player.
      * @type {QueueJson}
      */
