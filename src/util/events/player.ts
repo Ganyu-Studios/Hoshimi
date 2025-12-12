@@ -240,7 +240,7 @@ export async function playerUpdate(this: NodeStructure, payload: PlayerUpdate): 
     player.ping = payload.state.ping;
     player.connected = payload.state.connected;
     player.createdTimestamp = payload.state.time;
-    player.lastPosition = payload.state.position;
+    player.position = payload.state.position;
 
     this.nodeManager.manager.emit(Events.PlayerUpdate, player, oldPlayer, payload);
     this.nodeManager.manager.emit(

@@ -151,10 +151,10 @@ export class Player {
     public createdTimestamp: number = 0;
 
     /**
-     * The last position of the player.
+     * The position of the player.
      * @type {number}
      */
-    public lastPosition: number = 0;
+    public position: number = 0;
 
     /**
      * The voice connection details.
@@ -206,14 +206,6 @@ export class Player {
 
         this.queue = Structures.Queue(this);
         this.filterManager = Structures.FilterManager(this);
-    }
-
-    /**
-     * The current position of the player in milliseconds.
-     * @type {number}
-     */
-    public get position(): number {
-        return this.lastPosition + (this.playing && !this.paused ? Date.now() - this.createdTimestamp : 0);
     }
 
     /**
@@ -452,7 +444,7 @@ export class Player {
 
         this.playing = false;
         this.paused = false;
-        this.lastPosition = 0;
+        this.position = 0;
         this.queue.current = null;
 
         return;
