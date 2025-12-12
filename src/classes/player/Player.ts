@@ -400,10 +400,17 @@ export class Player {
 
         this.manager.emit(Events.Debug, DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${this.queue.current.info.title}`);
 
+        // Reset position to start when playing a new track (unless a specific position is provided)
+        const position = options.position ?? 0;
+
+        this.lastPosition = position;
+        this.lastPositionUpdate = Date.now();
+
         await this.updatePlayer({
             noReplace: options.noReplace,
             playerOptions: {
                 ...options,
+                position, // Ensure position is sent to Lavalink
                 track: {
                     userData: this.queue.current.userData,
                     encoded: this.queue.current.encoded,
@@ -489,6 +496,10 @@ export class Player {
         // When pausing, stop position calculation by setting lastPositionUpdate to null
         if (paused) {
             this.lastPositionUpdate = null;
+        } else {
+            // When resuming, restart position calculation from current position
+            this.lastPosition = this.position;
+            this.lastPositionUpdate = Date.now();
         }
 
         await this.updatePlayer({ playerOptions: { paused } });
