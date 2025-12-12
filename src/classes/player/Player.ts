@@ -401,7 +401,7 @@ export class Player {
         this.manager.emit(Events.Debug, DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${this.queue.current.info.title}`);
 
         // Reset position to start when playing a new track (unless a specific position is provided)
-        const position = options.position ?? 0;
+        const position: number = options.position ?? 0;
 
         this.lastPosition = position;
         this.lastPositionUpdate = Date.now();
