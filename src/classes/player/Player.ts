@@ -664,6 +664,7 @@ export class Player {
             selfDeaf: this.selfDeaf,
             options: this.options,
             voice: this.voice,
+            textId: this.textId,
             queue: this.queue.toJSON(),
             node: this.node.toJSON(),
         };
