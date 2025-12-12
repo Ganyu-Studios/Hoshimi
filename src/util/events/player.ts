@@ -43,10 +43,18 @@ async function onEnd(this: PlayerStructure): Promise<void> {
         );
     }
 
-    if (this.loop === LoopMode.Track && this.queue.current) this.queue.unshift(this.queue.current);
-    if (this.loop === LoopMode.Queue && this.queue.current) this.queue.add(this.queue.current);
-
-    if (!this.queue.current) this.queue.current = await validateTrack(this, this.queue.shift());
+    // Handle loop modes and get next track
+    if (this.loop === LoopMode.Track && this.queue.current) {
+        // In track loop, keep the current track without modifying the queue
+        // The same track will be played again
+    } else if (this.loop === LoopMode.Queue && this.queue.current) {
+        // In queue loop, add current to the end and get the next one
+        this.queue.add(this.queue.current);
+        this.queue.current = await validateTrack(this, this.queue.shift());
+    } else {
+        // Normal mode or no current: get the next track from queue
+        this.queue.current = await validateTrack(this, this.queue.shift());
+    }
 
     await this.queue.utils.save();
 
@@ -160,13 +168,10 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
 
     await onEnd.call(this);
 
-    this.queue.current = null;
+    // Check if there's a next track after onEnd processed loop logic
+    if (!this.queue.current) return queueEnd.call(this, current, payload);
 
-    if (!this.queue.size) {
-        this.playing = false;
-        return queueEnd.call(this, current, payload);
-    }
-
+    // Always emit TrackEnd when there's a next track to play
     this.manager.emit(Events.TrackEnd, this, current, payload);
     this.manager.emit(Events.Debug, DebugLevels.Player, `[Player] -> [End] The track: ${current?.info.title ?? "Uhknown"} has ended.`);
 
