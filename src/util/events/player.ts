@@ -43,18 +43,10 @@ async function onEnd(this: PlayerStructure): Promise<void> {
         );
     }
 
-    // Handle loop modes and get next track
-    if (this.loop === LoopMode.Track && this.queue.current) {
-        // In track loop, keep the current track without modifying the queue
-        // The same track will be played again
-    } else if (this.loop === LoopMode.Queue && this.queue.current) {
-        // In queue loop, add current to the end and get the next one
-        this.queue.add(this.queue.current);
-        this.queue.current = await validateTrack(this, this.queue.shift());
-    } else {
-        // Normal mode or no current: get the next track from queue
-        this.queue.current = await validateTrack(this, this.queue.shift());
-    }
+    if (this.loop === LoopMode.Track && this.queue.current) this.queue.unshift(this.queue.current);
+    if (this.loop === LoopMode.Queue && this.queue.current) this.queue.add(this.queue.current);
+
+    if (!this.queue.current) this.queue.current = await validateTrack(this, this.queue.shift());
 
     await this.queue.utils.save();
 
