@@ -515,6 +515,21 @@ export interface PlayerJson {
      */
     textId?: string;
     /**
+     * The last position received from Lavalink.
+     * @type {number}
+     */
+    lastPosition: number;
+    /**
+     * The timestamp when the last position change update happened.
+     * @type {number | null}
+     */
+    lastPositionUpdate: number | null;
+    /**
+     * The current calculated position of the player.
+     * @type {number}
+     */
+    position: number;
+    /**
      * The queue of the player.
      * @type {QueueJson | undefined}
      */

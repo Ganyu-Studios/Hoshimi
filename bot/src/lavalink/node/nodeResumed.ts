@@ -26,7 +26,8 @@ export default createLavalinkEvent({
 
             player.connected = data.state.connected;
             player.paused = data.paused;
-            player.position = data.state.position;
+            player.lastPosition = data.state.position;
+            player.lastPositionUpdate = Date.now();
             player.playing = !data.paused && !!data.track;
             player.ping = data.state.ping;
 

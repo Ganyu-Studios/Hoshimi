@@ -120,7 +120,10 @@ export function validatePlayerData(this: NodeStructure, data: Partial<UpdatePlay
         }
 
         if (typeof data.playerOptions.volume === "number") player.volume = data.playerOptions.volume;
-        if (typeof data.playerOptions.position === "number") player.position = data.playerOptions.position;
+        if (typeof data.playerOptions.position === "number") {
+            player.lastPosition = data.playerOptions.position;
+            player.lastPositionUpdate = Date.now();
+        }
     }
 }
 

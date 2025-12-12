@@ -151,10 +151,25 @@ export class Player {
     public createdTimestamp: number = 0;
 
     /**
-     * The position of the player.
+     * The last position received from Lavalink.
      * @type {number}
      */
-    public position: number = 0;
+    public lastPosition: number = 0;
+
+    /**
+     * The timestamp when the last position change update happened.
+     * @type {number | null}
+     */
+    public lastPositionUpdate: number | null = null;
+
+    /**
+     * The current calculated position of the player.
+     * @type {number}
+     * @readonly
+     */
+    public get position(): number {
+        return this.lastPosition + (this.lastPositionUpdate ? Date.now() - this.lastPositionUpdate : 0);
+    }
 
     /**
      * The voice connection details.
@@ -296,6 +311,9 @@ export class Player {
             throw new PlayerError("Position must be a positive number.");
 
         this.manager.emit(Events.Debug, DebugLevels.Player, `[Player] -> [Seek] Seeking to ${position} for guild: ${this.guildId}`);
+
+        this.lastPosition = position;
+        this.lastPositionUpdate = Date.now();
 
         await this.updatePlayer({ playerOptions: { position } });
     }
@@ -444,7 +462,8 @@ export class Player {
 
         this.playing = false;
         this.paused = false;
-        this.position = 0;
+        this.lastPosition = 0;
+        this.lastPositionUpdate = null;
         this.queue.current = null;
 
         return;
@@ -466,6 +485,11 @@ export class Player {
             DebugLevels.Player,
             `[Player] -> [Pause] Player is now ${paused ? "paused" : "resumed"} for guild: ${this.guildId}`,
         );
+
+        // When pausing, stop position calculation by setting lastPositionUpdate to null
+        if (paused) {
+            this.lastPositionUpdate = null;
+        }
 
         await this.updatePlayer({ playerOptions: { paused } });
 
@@ -665,6 +689,9 @@ export class Player {
             options: this.options,
             voice: this.voice,
             textId: this.textId,
+            lastPosition: this.lastPosition,
+            lastPositionUpdate: this.lastPositionUpdate,
+            position: this.position,
             queue: this.queue.toJSON(),
             node: this.node.toJSON(),
         };
