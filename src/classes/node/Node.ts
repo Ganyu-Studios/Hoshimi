@@ -24,7 +24,14 @@ import {
     type SessionResumingOptions,
     type UpdatePlayerInfo,
 } from "../../types/Rest";
-import { type LyricsManagerStructure, type NodeManagerStructure, type RestStructure, Structures } from "../../types/Structures";
+import {
+    type LyricsManagerStructure,
+    type NodelinkNodeStructure,
+    type NodeManagerStructure,
+    type NodeStructure,
+    type RestStructure,
+    Structures,
+} from "../../types/Structures";
 import { onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
 import { stringify, validateQuery } from "../../util/functions/utils";
 import { NodeError } from "../Errors";
@@ -202,6 +209,14 @@ export class Node {
      */
     public get id(): string {
         return this.options.id;
+    }
+
+    public isNodelink(): this is NodelinkNodeStructure {
+        return this.info?.isNodelink ?? false;
+    }
+
+    public isLavalink(): this is NodeStructure {
+        return !this.isNodelink();
     }
 
     /**

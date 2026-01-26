@@ -3,6 +3,7 @@ import type { Track, TrackRequester, UnresolvedTrack } from "../classes/Track";
 import type { FilterSettings } from "./Filters";
 import type { Awaitable, NodeIdentifier, Nullable } from "./Manager";
 import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, NodeJson, OpCodes } from "./Node";
+import type { NodelinkEventType } from "./Nodelink";
 import type { QueueJson } from "./Queue";
 
 /**
@@ -201,7 +202,7 @@ export interface HoshimiPlayerOptions {
 /**
  * The base interface for player events.
  */
-export interface PlayerEvent<E extends PlayerEventType> {
+export interface PlayerEvent<E extends PlayerEventType | NodelinkEventType> {
     /**
      * The type of the event.
      * @type {E}

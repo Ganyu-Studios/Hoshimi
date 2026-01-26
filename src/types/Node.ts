@@ -1039,6 +1039,11 @@ export interface NodeInfo {
      * @type {NodeInfoPlugin[]}
      */
     plugins: NodeInfoPlugin[];
+    /**
+     * Whether the node is a Nodelink instance.
+     * @type {boolean
+     */
+    isNodelink: boolean;
 }
 
 /**

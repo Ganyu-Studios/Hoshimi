@@ -13,6 +13,7 @@ import type {
     Ready,
     SearchQuery,
 } from "./Node";
+import type { NodelinkEvents, NodelinkSupport } from "./Nodelink";
 import type {
     HoshimiPlayerOptions,
     LyricsFoundEvent,
@@ -488,7 +489,7 @@ export interface HoshimiOptions {
 /**
  * The events for the manager.
  */
-export interface HoshimiEvents {
+export interface HoshimiEvents extends If<NodelinkSupport, NodelinkEvents, object> {
     /**
      * Emitted when the manager emits a debug message.
      * @param {DebugLevels} level The debug level of the message.
@@ -865,6 +866,11 @@ export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 export type RestOrArray<T> = T[] | [T[]];
 
 /**
+ * Conditional type to check if T is true, then A, else B or A | null.
+ */
+export type If<T extends boolean, A, B = null> = T extends true ? A : B extends null ? A | null : B;
+
+/**
  * Make a type required.
  */
 export type PickRequired<T, K extends keyof T> = {
@@ -907,3 +913,8 @@ export type NodeIdentifier = string | NodeStructure;
  * Custom structures for Hoshimi.
  */
 export interface CustomizableStructures {}
+
+/**
+ * Customizable options for Hoshimi.
+ */
+export interface CustomizableOptions {}

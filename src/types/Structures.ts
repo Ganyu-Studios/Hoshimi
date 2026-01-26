@@ -1,6 +1,8 @@
 import { LyricsManager } from "../classes/node/Lyrics";
 import { NodeManager } from "../classes/node/Manager";
 import { Node } from "../classes/node/Node";
+import { NodelinkLyricsManager } from "../classes/node/nodelink/LyricsManager";
+import { NodelinkNode } from "../classes/node/nodelink/Nodelink";
 import { Rest } from "../classes/node/Rest";
 import { FilterManager } from "../classes/player/filters/Manager";
 import { Player } from "../classes/player/Player";
@@ -43,6 +45,16 @@ export type NodeManagerStructure = InferCustomStructure<NodeManager, "NodeManage
 export type FilterManagerStructure = InferCustomStructure<FilterManager, "FilterManager">;
 
 /**
+ * The structure for the NodelinkNode class.
+ */
+export type NodelinkNodeStructure = InferCustomStructure<NodelinkNode, "NodelinkNode">;
+
+/**
+ * The structure for the NodelinkLyricsManager class.
+ */
+export type NodelinkLyricsManagerStructure = InferCustomStructure<NodelinkLyricsManager, "NodelinkLyricsManager">;
+
+/**
  * The structures of the Hoshimi classes.
  */
 export const Structures = {
@@ -66,6 +78,12 @@ export const Structures = {
     },
     FilterManager(...args: ConstructorParameters<typeof FilterManager>): FilterManagerStructure {
         return new FilterManager(...args);
+    },
+    NodelinkNode(...args: ConstructorParameters<typeof NodelinkNode>): NodelinkNodeStructure {
+        return new NodelinkNode(...args);
+    },
+    NodelinkLyricsManager(...args: ConstructorParameters<typeof NodelinkLyricsManager>): NodelinkLyricsManagerStructure {
+        return new NodelinkLyricsManager(...args);
     },
 };
 

@@ -4,8 +4,9 @@ import { DebugLevels, EventNames } from "../../types/Manager";
 import { type LavalinkPayload, NodeDestroyReasons, type NodeInfo, OpCodes, State, WebsocketCloseCodes } from "../../types/Node";
 import { PlayerEventType } from "../../types/Player";
 import type { LavalinkPlayer } from "../../types/Rest";
-import type { NodeStructure } from "../../types/Structures";
+import { type NodeStructure, Structures } from "../../types/Structures";
 import { stringify } from "../functions/utils";
+import { onNodelink } from "./nodelink";
 import {
     lyricsFound,
     lyricsLine,
@@ -101,6 +102,8 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
 
         this.nodeManager.manager.emit(EventNames.NodeRaw, this, payload);
 
+        onNodelink.call(this, payload as never);
+
         switch (payload.op) {
             case OpCodes.Stats:
                 {
@@ -152,6 +155,42 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     if (!payload.resumed && isLibrary && players.length) await resumeByLibrary.call(this, players);
 
                     this.info = await this.rest.request<NodeInfo>({ endpoint: "/info" });
+
+                    if (this.info) this.info.isNodelink = !!this.info.isNodelink;
+
+                    if (this.isNodelink()) {
+                        const nodelinkInstance = Structures.NodelinkNode(this.nodeManager, this.options);
+                        const nodelinkPrototype = Object.getPrototypeOf(nodelinkInstance);
+
+                        const lyricsManager = Structures.NodelinkLyricsManager(this);
+                        const lyricsPrototype = Object.getPrototypeOf(lyricsManager);
+
+                        Object.setPrototypeOf(this, nodelinkPrototype);
+                        Object.setPrototypeOf(this.lyricsManager, lyricsPrototype);
+
+                        this.nodeManager.manager.emit(
+                            EventNames.Debug,
+                            DebugLevels.Node,
+                            `[Socket] -> [${this.id}]: Switched to NodelinkNode structure.`,
+                        );
+                    }
+
+                    if (this.isLavalink()) {
+                        const lavalinkInstance = Structures.Node(this.nodeManager, this.options);
+                        const lavalinkPrototype = Object.getPrototypeOf(lavalinkInstance);
+
+                        const lyricsManager = Structures.LyricsManager(this);
+                        const lyricsPrototype = Object.getPrototypeOf(lyricsManager);
+
+                        Object.setPrototypeOf(this, lavalinkPrototype);
+                        Object.setPrototypeOf(this.lyricsManager, lyricsPrototype);
+
+                        this.nodeManager.manager.emit(
+                            EventNames.Debug,
+                            DebugLevels.Node,
+                            `[Socket] -> [${this.id}]: Switched to Node structure.`,
+                        );
+                    }
 
                     const resuming: boolean = this.nodeManager.manager.options.nodeOptions.resumable;
                     if (resuming) {
