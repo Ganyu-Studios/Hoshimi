@@ -121,4 +121,8 @@ declare module "hoshimi" {
     interface CustomizableStructures {
         Player: HoshimiPlayer;
     }
+
+    interface CustomizableOptions {
+        supportNodelink: true;
+    }
 }
