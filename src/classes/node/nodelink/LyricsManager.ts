@@ -26,7 +26,7 @@ export class NodelinkLyricsManager extends LyricsManager {
         return {
             lines,
             plugin: {},
-            provider: lyrics.data.source || "unknown",
+            provider: lyrics.data.provider || "unknown",
             sourceName: lyrics.data.source || "unknown",
             text: null,
         };

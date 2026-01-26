@@ -146,6 +146,7 @@ export interface NodelinkLyricsResult {
     synced: boolean;
     lang: string;
     source: string;
+    provider: string;
     lines: NodelinkLyricsLine[];
 }
 
