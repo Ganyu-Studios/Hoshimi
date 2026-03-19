@@ -428,9 +428,9 @@ export interface PauseEvent extends PlayerEvent<NodelinkEventType.Pause> {
 export interface ConnectionStatusEvent extends PlayerEvent<NodelinkEventType.ConnectionStatus> {
     /**
      * The connection metrics.
-     * @type {NodelinkConnection}
+     * @type {NodelinkConnectionMetrics}
      */
-    metrics: NodelinkConnection;
+    metrics: NodelinkConnectionMetrics;
 }
 
 /**
