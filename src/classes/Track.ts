@@ -9,8 +9,7 @@ import {
     type UnresolvedTrackInfo,
 } from "../types/Node";
 import { type PlayerStructure, Structures, type TrackStructure, type UnresolvedTrackStructure } from "../types/Structures";
-import { isResolved, isUnresolved } from "../util/functions/track";
-import { validateSource } from "../util/functions/utils";
+import { isResolved, isUnresolved, validateSource } from "../util/functions/utils";
 import { ResolveError } from "./Errors";
 
 /**

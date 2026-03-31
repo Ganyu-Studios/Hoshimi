@@ -14,7 +14,7 @@ import {
 import type { Omit, RestOrArray } from "../../../types/Manager";
 import type { PlayerStructure } from "../../../types/Structures";
 import { AudioOutputData, DefaultFilterPreset, DefaultPlayerFilters } from "../../../util/constants";
-import { isValid } from "../../../util/functions/utils";
+import { isDefined } from "../../../util/functions/utils";
 import { PlayerError } from "../../Errors";
 import { DSPXPluginFilter } from "./DSPXPlugin";
 import { LavalinkPluginFilter } from "./LavalinkPlugin";
@@ -255,10 +255,10 @@ export class FilterManager {
      */
     public has(filter: FilterType): boolean {
         const dspx: boolean = this.filters.lavalinkLavaDspxPlugin[filter as keyof typeof this.filters.lavalinkLavaDspxPlugin];
-        if (isValid(dspx)) return dspx;
+        if (isDefined(dspx)) return dspx;
 
         const plugin: boolean = this.filters.lavalinkFilterPlugin[filter as keyof typeof this.filters.lavalinkFilterPlugin];
-        if (isValid(plugin)) return plugin;
+        if (isDefined(plugin)) return plugin;
 
         const kind: boolean | AudioOutput =
             this.filters[filter as keyof Omit<EnabledPlayerFilters, "lavalinkFilterPlugin" | "lavalinkLavaDspxPlugin">];

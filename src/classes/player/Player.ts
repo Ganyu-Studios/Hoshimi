@@ -18,8 +18,7 @@ import {
     Structures,
     type TrackStructure,
 } from "../../types/Structures";
-import { isResolved, isUnresolved } from "../../util/functions/track";
-import { validatePlayerOptions } from "../../util/functions/utils";
+import { isResolved, isUnresolved, validatePlayerOptions } from "../../util/functions/utils";
 import { PlayerError } from "../Errors";
 import type { Hoshimi } from "../Hoshimi";
 import type { PlayerStorageAdapter } from "../storage/adapters/PlayerAdapter";

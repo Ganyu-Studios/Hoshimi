@@ -42,5 +42,5 @@ export * from "./types/Structures";
 // Exports related to constants.
 export * from "./util/constants";
 
-// Exports related to useful track utility functions.
-export * from "./util/functions/track";
+// Exports related to track utilities.
+export { isResolved, isUnresolved } from "./util/functions/utils";

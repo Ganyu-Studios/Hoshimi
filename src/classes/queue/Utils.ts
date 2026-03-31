@@ -4,8 +4,7 @@ import type { HoshimiQueueOptions, QueueJson } from "../../types/Queue";
 import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
 import type { QueueStorageAdapter } from "../storage/adapters/QueueAdapter";
 
-import { isResolved, isUnresolved } from "../../util/functions/track";
-import { stringify } from "../../util/functions/utils";
+import { isResolved, isUnresolved, stringify } from "../../util/functions/utils";
 import { ResolveError, StorageError } from "../Errors";
 import type { TrackRequester, TrackResolvableStructure } from "../Track";
 

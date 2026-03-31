@@ -2,14 +2,14 @@ import { NodeError, OptionError } from "../../classes/Errors";
 import type { Node } from "../../classes/node/Node";
 import { PlayerStorageAdapter } from "../../classes/storage/adapters/PlayerAdapter";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
-import type { TrackRequester } from "../../classes/Track";
+import type { TrackRequester, UnresolvedTrack } from "../../classes/Track";
 import type { TimescaleSettings } from "../../types/Filters";
 import { DebugLevels, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
-import type { NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName } from "../../types/Node";
+import type { LavalinkTrack, NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { PlayerOptions } from "../../types/Player";
 import type { UpdatePlayerInfo } from "../../types/Rest";
 import { SourceRegistry } from "../../types/Sources";
-import type { NodeStructure, PlayerStructure } from "../../types/Structures";
+import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
 import { UrlRegex } from "../constants";
 
 /**
@@ -215,12 +215,44 @@ export function validateSource(type: SearchSource | SourceName | string): Search
 }
 
 /**
- *
- * Check if the value is valid (not undefined or null).
- * @param {unknown} value
- * @returns {boolean} True if the value is valid, false otherwise.
+ * Check whether a track payload is already resolved/playable.
+ * @param {TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track payload.
+ * @returns {boolean} True when the payload is resolved.
  */
-export function isValid(value: unknown): boolean {
+export function isResolved(track: TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack): track is TrackStructure | LavalinkTrack {
+    if (!track) return false;
+
+    return (
+        typeof track.encoded === "string" && typeof track.info === "object" && !("resolve" in track && typeof track.resolve === "function")
+    );
+}
+
+/**
+ * Check whether a track payload is unresolved and requires resolution.
+ * @param {TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track payload.
+ * @returns {boolean} True when the payload is unresolved.
+ */
+export function isUnresolved(
+    track: TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack,
+): track is UnresolvedTrack | UnresolvedLavalinkTrack {
+    if (!track) return false;
+
+    return (
+        typeof track.encoded === "string" ||
+        (typeof track.info === "object" &&
+            typeof track.info.title === "string" &&
+            "resolve" in track &&
+            typeof track.resolve === "function")
+    );
+}
+
+/**
+ *
+ * Check if the value is defined (not undefined or null).
+ * @param {unknown} value
+ * @returns {boolean} True if the value is defined, false otherwise.
+ */
+export function isDefined(value: unknown): boolean {
     return typeof value !== "undefined" && value !== null;
 }
 
