@@ -18,7 +18,8 @@ import {
     Structures,
     type TrackStructure,
 } from "../../types/Structures";
-import { isTrack, isUnresolvedTrack, validatePlayerOptions, validateTrack } from "../../util/functions/utils";
+import { isResolved, isUnresolved } from "../../util/functions/track";
+import { validatePlayerOptions } from "../../util/functions/utils";
 import { PlayerError } from "../Errors";
 import type { Hoshimi } from "../Hoshimi";
 import type { PlayerStorageAdapter } from "../storage/adapters/PlayerAdapter";
@@ -386,11 +387,11 @@ export class Player {
     public async play(options: Partial<PlayOptions> = {}): Promise<void> {
         if (typeof options !== "object") throw new PlayerError("The play options must be an object.");
 
-        if (options.track) this.queue.current = await validateTrack(this, options.track);
-        else if (!this.queue.current) this.queue.current = await validateTrack(this, await this.queue.shift());
+        if (options.track) this.queue.current = await this.queue.utils.build(options.track);
+        else if (!this.queue.current) this.queue.current = await this.queue.utils.build(await this.queue.shift());
 
         if (!this.queue.current) throw new PlayerError("No track to play.");
-        if (!isTrack(this.queue.current) && !isUnresolvedTrack(this.queue.current))
+        if (!isResolved(this.queue.current) && !isUnresolved(this.queue.current))
             throw new PlayerError("The track must be a valid Track or UnresolvedTrack instance.");
 
         this.manager.emit(

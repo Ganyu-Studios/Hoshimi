@@ -9,7 +9,8 @@ import {
     type UnresolvedTrackInfo,
 } from "../types/Node";
 import { type PlayerStructure, Structures, type TrackStructure, type UnresolvedTrackStructure } from "../types/Structures";
-import { isTrack, isUnresolvedTrack, validateSource } from "../util/functions/utils";
+import { isResolved, isUnresolved } from "../util/functions/track";
+import { validateSource } from "../util/functions/utils";
 import { ResolveError } from "./Errors";
 
 /**
@@ -173,12 +174,12 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
     public async resolve(player: PlayerStructure): Promise<TrackStructure> {
         if (!player) throw new ResolveError("Player is not defined for track resolution.");
 
-        if (isTrack(this)) {
+        if (isResolved(this)) {
             const requesterFn = player.manager.options.playerOptions.requesterFn;
             return Structures.Track(this, requesterFn(this.requester));
         }
 
-        if (!isUnresolvedTrack(this)) throw new ResolveError("Track is not an unresolved track.");
+        if (!isUnresolved(this)) throw new ResolveError("Track is not an unresolved track.");
         if (!this.requester) throw new ResolveError("Requester is not defined for track resolution.");
         if (!this.info.title && !this.encoded && !this.info.uri)
             throw new ResolveError("Track is missing required properties for resolution.");

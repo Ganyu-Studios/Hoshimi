@@ -1,9 +1,7 @@
 import { DebugLevels, EventNames } from "../../types/Manager";
-import type { LavalinkTrack, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { QueueJson } from "../../types/Queue";
-import { type PlayerStructure, Structures, type TrackStructure } from "../../types/Structures";
-import { isTrack, isUnresolvedTrack } from "../../util/functions/utils";
-import { type TrackRequester, type TrackResolvableStructure, UnresolvedTrack } from "../Track";
+import type { PlayerStructure, TrackStructure } from "../../types/Structures";
+import type { TrackResolvableStructure } from "../Track";
 import { QueueUtils } from "./Utils";
 
 /**
@@ -135,33 +133,6 @@ export class Queue {
      */
     public isEmpty(): boolean {
         return this.size === 0;
-    }
-
-    /**
-     *
-     * Build a track from a Lavalink track or unresolved Lavalink track.
-     * @param {LavalinkTrack | UnresolvedLavalinkTrack} track The track to build.
-     * @param {TrackRequester} requester The requester of the track.
-     * @returns {Promise<TrackStructure>} The built track.
-     * @example
-     * ```ts
-     * const queue = player.queue;
-     * const lavalinkTrack = {...} // some lavalink track
-     * const track = await queue.build(lavalinkTrack, author);
-     *
-     * console.log(track.info.title); // The title of the track
-     * ```
-     */
-    public async build(
-        track: LavalinkTrack | UnresolvedLavalinkTrack | TrackResolvableStructure,
-        requester: TrackRequester,
-    ): Promise<TrackStructure> {
-        const requesterFn = this.player.manager.options.playerOptions.requesterFn;
-
-        if (isUnresolvedTrack(track)) return new UnresolvedTrack(track, requesterFn(requester)).resolve(this.player);
-        if (isTrack(track)) return Structures.Track(track, requesterFn(requester));
-
-        return track;
     }
 
     /**

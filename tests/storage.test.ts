@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { QueueStore } from "../src/classes/queue/Store";
 import { PlayerMemoryStorage } from "../src/classes/storage/PlayerMemory";
 import { QueueMemoryStorage } from "../src/classes/storage/QueueMemory";
 
@@ -54,25 +53,5 @@ describe("storage", () => {
 
         storage.clear();
         expect(storage.size()).toBe(0);
-    });
-
-    it("QueueStore delegates operations to the adapter", () => {
-        const storage = new QueueMemoryStorage();
-        const store = new QueueStore(storage);
-
-        const key = "guild-2";
-        const namespacedKey = `${storage.namespace}:${key}`;
-        const value = {
-            tracks: [],
-            history: [],
-            current: null,
-        };
-
-        store.set(key, value);
-        expect(store.get(key)).toBeUndefined();
-        expect(store.get(namespacedKey)).toEqual(value);
-
-        expect(store.delete(key)).toBe(true);
-        expect(store.get(key)).toBeUndefined();
     });
 });

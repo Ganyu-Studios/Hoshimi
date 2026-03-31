@@ -16,7 +16,7 @@ import {
     type WebSocketClosedEvent,
 } from "../../types/Player";
 import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
-import { stringify, validateTrack } from "../functions/utils";
+import { stringify } from "../functions/utils";
 
 /**
  *
@@ -47,7 +47,7 @@ async function onEnd(this: PlayerStructure): Promise<void> {
     if (this.loop === LoopMode.Track && this.queue.current) this.queue.unshift(this.queue.current);
     if (this.loop === LoopMode.Queue && this.queue.current) this.queue.add(this.queue.current);
 
-    if (!this.queue.current) this.queue.current = await validateTrack(this, await this.queue.shift());
+    if (!this.queue.current) this.queue.current = await this.queue.utils.build(await this.queue.shift());
 
     await this.queue.utils.save();
 

@@ -1,15 +1,15 @@
-import { NodeError, OptionError, ResolveError } from "../../classes/Errors";
+import { NodeError, OptionError } from "../../classes/Errors";
 import type { Node } from "../../classes/node/Node";
 import { PlayerStorageAdapter } from "../../classes/storage/adapters/PlayerAdapter";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
-import type { TrackRequester, TrackResolvableStructure, UnresolvedTrack } from "../../classes/Track";
+import type { TrackRequester } from "../../classes/Track";
 import type { TimescaleSettings } from "../../types/Filters";
 import { DebugLevels, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
-import type { LavalinkTrack, NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
+import type { NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName } from "../../types/Node";
 import type { PlayerOptions } from "../../types/Player";
 import type { UpdatePlayerInfo } from "../../types/Rest";
 import { SourceRegistry } from "../../types/Sources";
-import { type NodeStructure, type PlayerStructure, Structures, type TrackStructure } from "../../types/Structures";
+import type { NodeStructure, PlayerStructure } from "../../types/Structures";
 import { UrlRegex } from "../constants";
 
 /**
@@ -216,61 +216,6 @@ export function validateSource(type: SearchSource | SourceName | string): Search
 
 /**
  *
- * Resolve a track to a valid track instance.
- * @param {PlayerStructure} player The player to resolve the track for.
- * @param {TrackResolvableStructure | null} track The track to resolve.
- * @returns {Promise<TrackStructure | null>} The resolved track.
- * @throws {ResolveError} If the track is not a valid unresolved track.
- */
-export async function validateTrack(player: PlayerStructure, track: TrackResolvableStructure | null): Promise<TrackStructure | null> {
-    if (!track) return null;
-
-    const requesterFn = player.manager.options.playerOptions.requesterFn;
-
-    if (isTrack(track)) return Structures.Track(track, requesterFn(track.requester));
-
-    if (!isUnresolvedTrack(track)) throw new ResolveError("The track is not a valid unresolved track.");
-    if (!track.resolve || typeof track.resolve !== "function")
-        return Structures.UnresolvedTrack(track, requesterFn(track.requester)).resolve(player);
-
-    return track.resolve(player);
-}
-
-/**
- *
- * Check if the track is a Lavalink track.
- * @param {TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
- * @returns {boolean} If the track is a Lavalink track.
- */
-export const isTrack = (track: TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack): track is TrackStructure | LavalinkTrack => {
-    if (!track) return false;
-    return (
-        typeof track.encoded === "string" && typeof track.info === "object" && !("resolve" in track && typeof track.resolve === "function")
-    );
-};
-
-/**
- *
- * Check if the track is an unresolved track.
- * @param {TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
- * @returns {boolean} If the track is an unresolved track.
- */
-export function isUnresolvedTrack(
-    track: TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack,
-): track is UnresolvedTrack | UnresolvedLavalinkTrack {
-    if (!track) return false;
-
-    return (
-        typeof track.encoded === "string" ||
-        (typeof track.info === "object" &&
-            typeof track.info.title === "string" &&
-            "resolve" in track &&
-            typeof track.resolve === "function")
-    );
-}
-
-/**
- *
  * Check if the value is valid (not undefined or null).
  * @param {unknown} value
  * @returns {boolean} True if the value is valid, false otherwise.
@@ -293,8 +238,8 @@ export function stringify(value: unknown, space?: string | number): string {
         value,
         (_, value) => {
             if (typeof value === "function") return undefined;
-            if (typeof value === "symbol") return undefined;
 
+            if (typeof value === "symbol") return value.toString();
             if (typeof value === "bigint") return value.toString();
             if (typeof value === "object" && value !== null) {
                 if (seen.has(value)) return undefined;

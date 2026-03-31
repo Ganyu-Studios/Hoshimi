@@ -17,8 +17,10 @@ export * from "./classes/player/filters/Manager";
 export * from "./classes/player/Player";
 export * from "./classes/player/Voice";
 
-// Exports related to queue and the store.
+// Exports related to queue.
 export * from "./classes/queue/Queue";
+
+// Exports related to storage and adapters.
 export * from "./classes/storage/adapters/PlayerAdapter";
 export * from "./classes/storage/adapters/QueueAdapter";
 export * from "./classes/storage/PlayerMemory";
@@ -39,3 +41,6 @@ export * from "./types/Structures";
 
 // Exports related to constants.
 export * from "./util/constants";
+
+// Exports related to useful track utility functions.
+export * from "./util/functions/track";

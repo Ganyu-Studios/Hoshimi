@@ -1,10 +1,13 @@
 import { type Awaitable, DebugLevels, EventNames } from "../../types/Manager";
+import type { LavalinkTrack, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { HoshimiQueueOptions, QueueJson } from "../../types/Queue";
-import type { QueueStructure, TrackStructure } from "../../types/Structures";
+import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
+import type { QueueStorageAdapter } from "../storage/adapters/QueueAdapter";
 
-import { isTrack, stringify } from "../../util/functions/utils";
-import { StorageError } from "../Errors";
-import { QueueStore } from "./Store";
+import { isResolved, isUnresolved } from "../../util/functions/track";
+import { stringify } from "../../util/functions/utils";
+import { ResolveError, StorageError } from "../Errors";
+import type { TrackRequester, TrackResolvableStructure } from "../Track";
 
 /**
  * Class representing the queue utils.
@@ -21,13 +24,13 @@ export class QueueUtils {
     private readonly queue: QueueStructure;
 
     /**
-     * Queue store.
-     * @type {QueueStore}
+     * Queue storage adapter.
+     * @type {QueueStorageAdapter}
      * @private
      * @readonly
      * @internal
      */
-    private readonly store: QueueStore;
+    private readonly storage: QueueStorageAdapter;
 
     /**
      * Options for the queue.
@@ -46,7 +49,32 @@ export class QueueUtils {
     constructor(queue: QueueStructure) {
         this.queue = queue;
         this.options = queue.player.manager.options.queueOptions;
-        this.store = new QueueStore(this.options.storage);
+        this.storage = this.options.storage;
+    }
+
+    /**
+     * Build a playable track from resolved/unresolved inputs.
+     * @param {TrackResolvableStructure | null} track The input track.
+     * @param {TrackRequester} [requester] Optional requester override.
+     * @returns {Promise<TrackStructure | null>} The built track.
+     */
+    public async build(
+        track: TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack | null,
+        requester?: TrackRequester,
+    ): Promise<TrackStructure | null> {
+        if (!track) return null;
+
+        const requesterFn = this.queue.player.manager.options.playerOptions.requesterFn;
+        const trackRequester: TrackRequester | undefined = "requester" in track ? track.requester : undefined;
+        const request = requesterFn(requester ?? trackRequester);
+
+        if (isResolved(track)) return Structures.Track(track, request);
+
+        if (!isUnresolved(track)) throw new ResolveError("The track is not a valid unresolved track.");
+        if (!("resolve" in track) || typeof track.resolve !== "function")
+            return Structures.UnresolvedTrack(track, request).resolve(this.queue.player);
+
+        return track.resolve(this.queue.player);
     }
 
     /**
@@ -70,7 +98,7 @@ export class QueueUtils {
             `[Queue] -> [Adapter] Saving queue for ${this.queue.player.guildId} | Object: ${stringify(this.queue.toJSON())}`,
         );
 
-        return this.store.set(this.queue.player.guildId, this.queue.toJSON());
+        return this.storage.set(this.queue.player.guildId, this.queue.toJSON());
     }
 
     /**
@@ -89,7 +117,7 @@ export class QueueUtils {
             `[Queue] -> [Adapter] Destroying queue for ${this.queue.player.guildId}`,
         );
 
-        return this.store.delete(this.queue.player.guildId);
+        return this.storage.delete(this.queue.player.guildId);
     }
 
     /**
@@ -104,13 +132,13 @@ export class QueueUtils {
      * ```
      */
     public async sync(override: boolean = true, syncCurrent: boolean = false): Promise<void> {
-        const data: QueueJson | undefined = await this.store.get(this.queue.player.guildId);
+        const data: QueueJson | undefined = await this.storage.get(this.queue.player.guildId);
         if (!data) throw new StorageError(`No data found to sync for guildId: ${this.queue.player.guildId}`);
 
-        if (syncCurrent && data.current && !this.queue.current && isTrack(data.current)) this.queue.current = data.current;
+        if (syncCurrent && data.current && !this.queue.current && isResolved(data.current)) this.queue.current = data.current;
 
-        const tracks: TrackStructure[] = data.tracks.filter((track): track is TrackStructure => isTrack(track)) || [];
-        const history: TrackStructure[] = data.history.filter((track): track is TrackStructure => isTrack(track)) || [];
+        const tracks: TrackStructure[] = data.tracks.filter((track): track is TrackStructure => isResolved(track)) || [];
+        const history: TrackStructure[] = data.history.filter((track): track is TrackStructure => isResolved(track)) || [];
 
         const length: number = this.queue.tracks.length;
 

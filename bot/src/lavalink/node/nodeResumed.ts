@@ -32,7 +32,7 @@ export default createLavalinkEvent({
             await player.connect();
             await player.queue.utils.sync(true, false);
 
-            if (data.track) player.queue.current = await player.queue.build(data.track, session.requester);
+            if (data.track) player.queue.current = await player.queue.utils.build(data.track, session.requester);
 
             if (session.enabledAutoplay) await player.data.set("enabledAutoplay", session.enabledAutoplay);
             if (session.enabledLyrics) await player.data.set("enabledLyrics", session.enabledLyrics);

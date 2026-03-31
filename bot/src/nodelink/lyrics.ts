@@ -26,7 +26,7 @@ export class HoshimiLyricsManager extends LyricsManager {
                 },
             });
 
-            if (!lyrics || !lyrics.data.lines.length) return null;
+            if (!lyrics?.data.lines.length) return null;
 
             const lines: LyricsLine[] = lyrics.data.lines.map((line) => ({
                 line: line.text,
