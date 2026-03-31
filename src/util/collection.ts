@@ -79,6 +79,28 @@ export class Collection<K, V> extends Map<K, V> {
     }
 
     /**
+     * Tests whether at least one element in the collection passes the test implemented by the provided function.
+     * @param fn The function to test each element of the collection.
+     * @returns `true` if the callback returns truthy for any element, otherwise `false`.
+     * @example
+     * const collection = new Collection<number, string>();
+     * collection.set(1, 'one');
+     * collection.set(2, 'two');
+     * collection.set(3, 'three');
+     * const hasEvenKey = collection.some((_, key) => key % 2 === 0);
+     * console.log(hasEvenKey); // Output: true
+     */
+    public some(fn: (value: V, key: K, collection: this) => boolean): boolean {
+        if (typeof fn !== "function") throw new TypeError("The filter function must be a function.");
+
+        for (const [key, value] of this.entries()) {
+            if (fn(value, key, this)) return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Returns the value of the first element in the collection that satisfies the provided testing function.
      * @param fn The function to test each element of the collection.
      * @returns The value of the first element that passes the test. `undefined` if no element passes the test.

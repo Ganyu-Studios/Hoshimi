@@ -125,9 +125,7 @@ export class NodeManager {
      * ```
      */
     public destroy(node: NodeIdentifier): void {
-        const id: string = typeof node === "string" ? node : node.id;
-
-        const target: NodeStructure | undefined = this.nodes.get(id);
+        const target: NodeStructure | undefined = this.get(node);
         if (!target) return;
 
         target.destroy();
@@ -145,9 +143,7 @@ export class NodeManager {
      * ```
      */
     public reconnect(node: NodeIdentifier): void {
-        const id: string = typeof node === "string" ? node : node.id;
-
-        const target: NodeStructure | undefined = this.nodes.get(id);
+        const target: NodeStructure | undefined = this.get(node);
         if (!target) return;
 
         target.reconnect();
@@ -165,9 +161,7 @@ export class NodeManager {
      * ```
      */
     public disconnect(node: NodeIdentifier): void {
-        const id: string = typeof node === "string" ? node : node.id;
-
-        const target: NodeStructure | undefined = this.nodes.get(id);
+        const target: NodeStructure | undefined = this.get(node);
         if (!target) return;
 
         target.disconnect();
@@ -185,9 +179,7 @@ export class NodeManager {
      * ```
      */
     public connect(node: NodeIdentifier): void {
-        const id: string = typeof node === "string" ? node : node.id;
-
-        const target: NodeStructure | undefined = this.nodes.get(id);
+        const target: NodeStructure | undefined = this.get(node);
         if (!target) return;
 
         target.connect();
