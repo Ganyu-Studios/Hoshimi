@@ -60,7 +60,7 @@ bun add hoshimi@dev
 
 ## 📜 Basic Setup
 
-You can read [this](/bot/src/index.ts) or you can follow this one:
+You can read the [test bot](https://github.com/Ganyu-Studios/hoshimi-bot) or you can follow this one:
 
 ```typescript
 import { Hoshimi } from "hoshimi"; // She is all ears!
