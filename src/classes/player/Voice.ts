@@ -256,6 +256,8 @@ export class PlayerVoiceState {
             `[Player] -> [Disconnect] Player disconnected for guild: ${this.player.guildId}`,
         );
 
+        this.player.manager.emit(EventNames.PlayerDisconnect, this.player);
+
         this.player.connected = false;
 
         return this.player;

@@ -489,6 +489,12 @@ export class Player {
 
         await this.updatePlayer({ playerOptions: { paused } });
 
+        if (paused) {
+            this.manager.emit(EventNames.PlayerPaused, this, this.queue.current);
+        } else {
+            this.manager.emit(EventNames.PlayerResumed, this, this.queue.current);
+        }
+
         return paused;
     }
 
@@ -597,6 +603,8 @@ export class Player {
         const voice: LavalinkPlayerVoice | null = this.voice.toLavalink();
         if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
 
+        const oldNode: NodeStructure = this.node;
+
         if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);
 
         this.node = target;
@@ -624,6 +632,8 @@ export class Player {
             DebugLevels.Player,
             `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`,
         );
+
+        this.manager.emit(EventNames.PlayerMove, this, oldNode, target);
 
         await this.data.delete("internal_playerMove");
     }
