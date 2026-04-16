@@ -489,6 +489,12 @@ export class Player {
 
         await this.updatePlayer({ playerOptions: { paused } });
 
+        if (paused) {
+            this.manager.emit(EventNames.PlayerPaused, this, this.queue.current);
+        } else {
+            this.manager.emit(EventNames.PlayerResumed, this, this.queue.current);
+        }
+
         return paused;
     }
 

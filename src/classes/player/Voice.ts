@@ -256,6 +256,8 @@ export class PlayerVoiceState {
             `[Player] -> [Disconnect] Player disconnected for guild: ${this.player.guildId}`,
         );
 
+        this.player.manager.emit(EventNames.PlayerDisconnect, this.player);
+
         this.player.connected = false;
 
         return this.player;
@@ -275,7 +277,19 @@ export class PlayerVoiceState {
      * ```
      */
     public async move(voiceId: string): Promise<PlayerStructure> {
+        const oldChannelId: string | undefined = this.player.voiceId;
         await this.setState({ voiceId });
+
+        this.player.manager.emit(
+            EventNames.Debug,
+            DebugLevels.Player,
+            `[Player] -> [VoiceMove] Player moved from channel: ${oldChannelId} to: ${voiceId} for guild: ${this.player.guildId}`,
+        );
+
+        if (oldChannelId && voiceId !== oldChannelId) {
+            this.player.manager.emit(EventNames.PlayerMove, this.player, oldChannelId, voiceId);
+        }
+
         return this.player;
     }
 

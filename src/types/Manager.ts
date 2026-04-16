@@ -313,6 +313,22 @@ export enum EventNames {
      * Emitted when the player has an error.
      */
     PlayerError = "playerError",
+    /**
+     * Emitted when the player is paused.
+     */
+    PlayerPaused = "playerPaused",
+    /**
+     * Emitted when the player is resumed.
+     */
+    PlayerResumed = "playerResumed",
+    /**
+     * Emitted when the player is disconnected from the voice channel.
+     */
+    PlayerDisconnect = "playerDisconnect",
+    /**
+     * Emitted when the player is moved to a different voice channel.
+     */
+    PlayerMove = "playerMove",
 
     /**
      * Emitted when a track starts playing.
@@ -593,6 +609,30 @@ export interface HoshimiEvents {
      * @param {Error | unknown} error The error that was emitted.
      */
     playerError: [player: PlayerStructure, error: Error | unknown];
+    /**
+     * Emitted when the player is paused.
+     * @param {PlayerStructure} player The player that was paused.
+     * @param {TrackStructure | null} track The track that was paused.
+     */
+    playerPaused: [player: PlayerStructure, track: TrackStructure | null];
+    /**
+     * Emitted when the player is resumed.
+     * @param {PlayerStructure} player The player that was resumed.
+     * @param {TrackStructure | null} track The track that was resumed.
+     */
+    playerResumed: [player: PlayerStructure, track: TrackStructure | null];
+    /**
+     * Emitted when the player is disconnected from the voice channel.
+     * @param {PlayerStructure} player The player that was disconnected.
+     */
+    playerDisconnect: [player: PlayerStructure];
+    /**
+     * Emitted when the player is moved to a different voice channel.
+     * @param {PlayerStructure} player The player that was moved.
+     * @param {string} oldChannelId The voice channel id the player was moved from.
+     * @param {string} newChannelId The voice channel id the player was moved to.
+     */
+    playerMove: [player: PlayerStructure, oldChannelId: string, newChannelId: string];
 
     /**
      * Emitted when a track starts playing.
