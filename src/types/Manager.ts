@@ -631,8 +631,10 @@ export interface HoshimiEvents {
      * @param {PlayerStructure} player The player that was moved.
      * @param {NodeStructure} oldNode The node the player was moved from.
      * @param {NodeStructure} newNode The node the player was moved to.
+     * @param {string | undefined} oldChannelId The voice channel id before the move.
+     * @param {string | undefined} newChannelId The voice channel id after the move.
      */
-    playerMove: [player: PlayerStructure, oldNode: NodeStructure, newNode: NodeStructure];
+    playerMove: [player: PlayerStructure, oldNode: NodeStructure, newNode: NodeStructure, oldChannelId: string | undefined, newChannelId: string | undefined];
 
     /**
      * Emitted when a track starts playing.

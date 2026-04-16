@@ -604,6 +604,7 @@ export class Player {
         if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
 
         const oldNode: NodeStructure = this.node;
+        const oldChannelId: string | undefined = this.voiceId;
 
         if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);
 
@@ -633,7 +634,7 @@ export class Player {
             `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`,
         );
 
-        this.manager.emit(EventNames.PlayerMove, this, oldNode, target);
+        this.manager.emit(EventNames.PlayerMove, this, oldNode, target, oldChannelId, this.voiceId);
 
         await this.data.delete("internal_playerMove");
     }
