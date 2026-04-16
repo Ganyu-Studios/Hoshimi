@@ -326,7 +326,7 @@ export enum EventNames {
      */
     PlayerDisconnect = "playerDisconnect",
     /**
-     * Emitted when the player is moved to a different node.
+     * Emitted when the player is moved to a different voice channel.
      */
     PlayerMove = "playerMove",
 
@@ -627,14 +627,12 @@ export interface HoshimiEvents {
      */
     playerDisconnect: [player: PlayerStructure];
     /**
-     * Emitted when the player is moved to a different node.
+     * Emitted when the player is moved to a different voice channel.
      * @param {PlayerStructure} player The player that was moved.
-     * @param {NodeStructure} oldNode The node the player was moved from.
-     * @param {NodeStructure} newNode The node the player was moved to.
-     * @param {string | undefined} oldChannelId The voice channel id before the move.
-     * @param {string | undefined} newChannelId The voice channel id after the move.
+     * @param {string} oldChannelId The voice channel id the player was moved from.
+     * @param {string} newChannelId The voice channel id the player was moved to.
      */
-    playerMove: [player: PlayerStructure, oldNode: NodeStructure, newNode: NodeStructure, oldChannelId: string | undefined, newChannelId: string | undefined];
+    playerMove: [player: PlayerStructure, oldChannelId: string, newChannelId: string];
 
     /**
      * Emitted when a track starts playing.
