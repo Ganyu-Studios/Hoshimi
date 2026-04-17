@@ -132,7 +132,7 @@ describe("Player", () => {
         const { manager } = createManager();
         const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
 
-        await player.search({ query: "hello" });
+        await player.search({ query: "hello", requester: {} });
 
         expect(manager.search).toHaveBeenCalledWith({ query: "hello", node: player.node });
     });

@@ -743,9 +743,9 @@ export interface QueryResult {
 export interface SearchOptions extends SearchQuery {
     /**
      * The requester of the query.
-     * @type {TrackRequester}
+     * @type {TrackRequester | null}
      */
-    requester?: TrackRequester | null;
+    requester: TrackRequester | null;
     /**
      * The node or the node id to make the query.
      * @type {NodeIdentifier}
