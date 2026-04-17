@@ -134,7 +134,7 @@ describe("Player", () => {
 
         await player.search({ query: "hello", requester: {} });
 
-        expect(manager.search).toHaveBeenCalledWith({ query: "hello", node: player.node });
+        expect(manager.search).toHaveBeenCalledWith({ query: "hello", node: player.node, requester: {} });
     });
 
     it("emits trackStart with a defined track when replaying from history", async () => {
