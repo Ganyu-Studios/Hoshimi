@@ -279,7 +279,7 @@ export class Player {
      * player.skip(); // skip 1 track
      * ```
      */
-    public async skip(options: SkipOptions): Promise<void> {
+    public async skip(options: SkipOptions = {}): Promise<void> {
         const { to = 0, throwError = true } = options;
 
         if (!this.queue.size) {
