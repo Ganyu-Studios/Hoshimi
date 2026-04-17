@@ -108,22 +108,13 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
         this.playing = true;
     }
 
-    let track: TrackStructure | null = this.queue.current;
+    if (this.queue.current) await this.queue.utils.save();
 
-    // Fallback for edge-cases where queue.current was not hydrated before Lavalink emits trackStart.
-    if (!track) {
-        track = await this.queue.utils.build(payload.track);
-
-        if (track) this.queue.current = track;
-    }
-
-    if (track) await this.queue.utils.save();
-
-    this.manager.emit(EventNames.TrackStart, this, track, payload);
+    this.manager.emit(EventNames.TrackStart, this, this.queue.current, payload);
     this.manager.emit(
         EventNames.Debug,
         DebugLevels.Player,
-        `[Player] -> [Start] The track: ${track?.info.title ?? "Unknown"} has started playing.`,
+        `[Player] -> [Start] The track: ${this.queue.current?.info.title ?? "Unknown"} has started playing.`,
     );
 }
 
