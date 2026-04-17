@@ -108,6 +108,8 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
         this.playing = true;
     }
 
+    if (!this.queue.current) this.queue.current = await this.queue.utils.build(payload.track);
+
     if (this.queue.current) await this.queue.utils.save();
 
     this.manager.emit(EventNames.TrackStart, this, this.queue.current, payload);
@@ -128,9 +130,7 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
 export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): Promise<void> {
     if (await this.data.get("internal_playerMove")) return;
 
-    const current: TrackStructure | null = this.queue.current;
-
-    if (!this.queue.size && this.loop === LoopMode.Off) return queueEnd.call(this, current, payload);
+    const current: TrackStructure | null = await this.queue.utils.build(payload.track);
 
     switch (payload.reason) {
         case TrackEndReason.Stopped:
@@ -163,6 +163,8 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         }
     }
 
+    if (!this.queue.size && this.loop === LoopMode.Off) return queueEnd.call(this, current, payload);
+
     if (current) await this.queue.utils.save();
 
     await onEnd.call(this);
@@ -175,7 +177,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
     }
 
     this.manager.emit(EventNames.TrackEnd, this, current, payload);
-    this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [End] The track: ${current?.info.title ?? "Uhknown"} has ended.`);
+    this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [End] The track: ${current?.info.title ?? "Unknown"} has ended.`);
 
     return this.play();
 }
@@ -189,12 +191,13 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
  */
 export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent): Promise<void> {
     this.manager.emit(EventNames.TrackStuck, this, this.queue.current, payload);
-
     this.manager.emit(
         EventNames.Debug,
         DebugLevels.Player,
         `[Player] -> [Stuck] The track: ${this.queue.current?.info.title ?? "Unknown"} has stuck.`,
     );
+
+    const current: TrackStructure | null = await this.queue.utils.build(payload.track);
 
     if (!this.queue.size && this.loop === LoopMode.Off) {
         try {
@@ -205,13 +208,13 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
 
             return;
         } catch {
-            return queueEnd.call(this, this.queue.current, payload);
+            return queueEnd.call(this, current, payload);
         }
     }
 
     await onEnd.call(this);
 
-    if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
+    if (!this.queue.current) return queueEnd.call(this, current, payload);
 }
 
 /**
@@ -222,12 +225,13 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
  * @returns {Promise<void>} Aww, the track has an error? That's sad.
  */
 export async function trackError(this: PlayerStructure, payload: TrackExceptionEvent): Promise<void> {
-    this.manager.emit(EventNames.TrackError, this, this.queue.current, payload);
+    const current: TrackStructure | null = await this.queue.utils.build(payload.track);
 
+    this.manager.emit(EventNames.TrackError, this, current, payload);
     this.manager.emit(
         EventNames.Debug,
         DebugLevels.Player,
-        `[Player] -> [Error] The track: ${this.queue.current?.info.title ?? "Unknown"} has error.`,
+        `[Player] -> [Error] The track: ${current?.info.title ?? "Unknown"} has error.`,
     );
 }
 
@@ -261,12 +265,11 @@ export async function playerUpdate(this: NodeStructure, payload: PlayerUpdate): 
 /**
  * The lyrics found event.
  * @param {PlayerStructure} this The player that emitted the event.
- * @param {TrackStructure | null} track The track that emitted the event.
  * @param {LyricsFoundEvent} payload The payload of the event.
  * @returns {Promise<void>} Yay! Let's sing along!
  */
-export async function lyricsFound(this: PlayerStructure, track: TrackStructure | null, payload: LyricsFoundEvent): Promise<void> {
-    this.manager.emit(EventNames.LyricsFound, this, track, payload);
+export async function lyricsFound(this: PlayerStructure, payload: LyricsFoundEvent): Promise<void> {
+    this.manager.emit(EventNames.LyricsFound, this, this.queue.current, payload);
     this.manager.emit(
         EventNames.Debug,
         DebugLevels.Player,
@@ -277,12 +280,11 @@ export async function lyricsFound(this: PlayerStructure, track: TrackStructure |
 /**
  * The lyrics line event.
  * @param {PlayerStructure} this The player that emitted the event.
- * @param {TrackStructure | null} track The track that emitted the event.
  * @param {LyricsLineEvent} payload The payload of the event.
  * @returns {Promise<void>} Let's be honest, you don't care about this.
  */
-export async function lyricsLine(this: PlayerStructure, track: TrackStructure | null, payload: LyricsLineEvent): Promise<void> {
-    this.manager.emit(EventNames.LyricsLine, this, track, payload);
+export async function lyricsLine(this: PlayerStructure, payload: LyricsLineEvent): Promise<void> {
+    this.manager.emit(EventNames.LyricsLine, this, this.queue.current, payload);
     this.manager.emit(
         EventNames.Debug,
         DebugLevels.Player,
@@ -293,12 +295,11 @@ export async function lyricsLine(this: PlayerStructure, track: TrackStructure | 
 /**
  * The lyrics not found event.
  * @param {PlayerStructure} this The player that emitted the event.
- * @param {TrackStructure | null} track The track that emitted the event.
  * @param {LyricsNotFoundEvent} payload The payload of the event.
  * @returns {Promise<void>} Awww, no lyrics? That's sad.
  */
-export async function lyricsNotFound(this: PlayerStructure, track: TrackStructure | null, payload: LyricsNotFoundEvent): Promise<void> {
-    this.manager.emit(EventNames.LyricsNotFound, this, track, payload);
+export async function lyricsNotFound(this: PlayerStructure, payload: LyricsNotFoundEvent): Promise<void> {
+    this.manager.emit(EventNames.LyricsNotFound, this, this.queue.current, payload);
     this.manager.emit(
         EventNames.Debug,
         DebugLevels.Player,

@@ -203,13 +203,13 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     // Events related to lyrics.
                     //
                     case PlayerEventType.LyricsFound:
-                        await lyricsFound.call(player, player.queue.current, payload);
+                        await lyricsFound.call(player, payload);
                         break;
                     case PlayerEventType.LyricsNotFound:
-                        await lyricsNotFound.call(player, player.queue.current, payload);
+                        await lyricsNotFound.call(player, payload);
                         break;
                     case PlayerEventType.LyricsLine:
-                        await lyricsLine.call(player, player.queue.current, payload);
+                        await lyricsLine.call(player, payload);
                         break;
 
                     //

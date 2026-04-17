@@ -272,6 +272,11 @@ export interface TrackExceptionEvent extends PlayerEvent<PlayerEventType.TrackEx
      * @type {Exception}
      */
     exception: Exception;
+    /**
+     * The track that encountered the exception.
+     * @type {LavalinkTrack}
+     */
+    track: LavalinkTrack;
 }
 
 /**

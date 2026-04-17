@@ -275,7 +275,7 @@ export class Player {
      * @example
      * ```ts
      * const player = manager.getPlayer("guildId");
-     * player.skip(2); // skip 2 tracks
+     * player.skip({ to: 2 }); // skip 2 tracks
      * player.skip(); // skip 1 track
      * ```
      */
@@ -392,6 +392,8 @@ export class Player {
         if (!this.queue.current) throw new PlayerError("No track to play.");
         if (!isResolved(this.queue.current) && !isUnresolved(this.queue.current))
             throw new PlayerError("The track must be a valid Track or UnresolvedTrack instance.");
+
+        await this.queue.utils.save();
 
         this.manager.emit(
             EventNames.Debug,

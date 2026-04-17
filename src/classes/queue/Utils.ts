@@ -64,7 +64,7 @@ export class QueueUtils {
 
         const requesterFn = this.queue.player.manager.options.playerOptions.requesterFn;
         const trackRequester: TrackRequester | undefined = "requester" in track ? track.requester : undefined;
-        const request = requesterFn(requester ?? trackRequester);
+        const request = requesterFn(requester ?? trackRequester ?? {});
 
         if (isResolved(track)) return Structures.Track(track, request);
 
