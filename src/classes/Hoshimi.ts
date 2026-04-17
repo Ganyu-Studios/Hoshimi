@@ -382,6 +382,14 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
                             if (!player.connected) await player.connect();
 
+                            this.emit(
+                                EventNames.Debug,
+                                DebugLevels.Player,
+                                `[Player] -> [VoiceMove] Player moved from channel: ${voiceId} to: ${data.channel_id} for guild: ${data.guild_id}`,
+                            );
+
+                            this.emit(EventNames.PlayerMove, player, voiceId, data.channel_id);
+
                             return;
                         }
                     } else {
