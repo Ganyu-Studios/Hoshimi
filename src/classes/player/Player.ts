@@ -280,7 +280,7 @@ export class Player {
      * ```
      */
     public async skip(options: SkipOptions = {}): Promise<void> {
-        const { to = 0, throwError = true } = options;
+        const { to = 1, throwError = true } = options;
 
         if (!this.queue.size) {
             this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Skip] No tracks to skip.");
