@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
+import type { TrackStructure } from "../src";
 import { PlayerError } from "../src/classes/Errors";
 import { Player } from "../src/classes/player/Player";
 import { PlayerMemoryStorage } from "../src/classes/storage/PlayerMemory";
 import { QueueMemoryStorage } from "../src/classes/storage/QueueMemory";
-import { SearchSources } from "../src/types/Manager";
-import { State } from "../src/types/Node";
-import { LoopMode } from "../src/types/Player";
+import { EventNames, SearchSources } from "../src/types/Manager";
+import { OpCodes, State } from "../src/types/Node";
+import { LoopMode, PlayerEventType } from "../src/types/Player";
+import { trackStart } from "../src/util/events/player";
 
 function createManager() {
     const node = {
@@ -70,6 +72,28 @@ function createManager() {
     return { manager, node };
 }
 
+function basicTrack(id: string) {
+    return {
+        encoded: id,
+        info: {
+            identifier: id,
+            title: id,
+            author: "author",
+            length: 1000,
+            artworkUrl: null,
+            uri: `https://example.com/${id}`,
+            sourceName: "youtube",
+            isSeekable: true,
+            isStream: false,
+            isrc: null,
+            position: 0,
+        },
+        pluginInfo: {},
+        userData: {},
+        requester: {},
+    };
+}
+
 describe("Player", () => {
     it("validates loop mode and basic play state", () => {
         const { manager } = createManager();
@@ -111,5 +135,34 @@ describe("Player", () => {
         await player.search({ query: "hello" });
 
         expect(manager.search).toHaveBeenCalledWith({ query: "hello", node: player.node });
+    });
+
+    it("emits trackStart with a defined track when replaying from history", async () => {
+        const { manager } = createManager();
+        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+
+        const previous = basicTrack("history-track");
+
+        player.queue.history = [previous] as never;
+        player.queue.current = null;
+
+        await player.play({ track: player.queue.history[0] } as never);
+
+        expect(player.queue.current).not.toBeNull();
+        expect((player.queue.current as never as TrackStructure)?.encoded).toBe("history-track");
+
+        await trackStart.call(player as never, {
+            type: PlayerEventType.TrackStart,
+            op: OpCodes.Event,
+            guildId: player.guildId,
+            track: previous as never,
+        });
+
+        expect(manager.emit).toHaveBeenCalledWith(
+            EventNames.TrackStart,
+            player,
+            expect.objectContaining({ encoded: "history-track" }),
+            expect.objectContaining({ type: PlayerEventType.TrackStart }),
+        );
     });
 });

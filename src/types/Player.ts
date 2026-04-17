@@ -1,5 +1,5 @@
 import type { PlayerStorageAdapter } from "../classes/storage/adapters/PlayerAdapter";
-import type { TrackResolvableStructure, TrackRequester } from "../classes/Track";
+import type { TrackRequester, TrackResolvableStructure } from "../classes/Track";
 import type { FilterSettings } from "./Filters";
 import type { NodeIdentifier, Nullable, Prettify } from "./Manager";
 import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, NodeJson, OpCodes } from "./Node";

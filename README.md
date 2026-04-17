@@ -44,17 +44,7 @@
 npm install hoshimi # Stable
 npm install hoshimi@dev # Development
 
-# Using PNPM
-pnpm install hoshimi
-pnpm install hoshimi@dev
-
-# Using YARN
-yarn add hoshimi
-yarn add hoshimi@dev
-
-# Using BUN
-bun add hoshimi
-bun add hoshimi@dev
+# Or any package manager you use...
 
 ```
 

@@ -2,10 +2,9 @@ import { type Awaitable, DebugLevels, EventNames } from "../../types/Manager";
 import type { LavalinkTrack, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { HoshimiQueueOptions, QueueJson } from "../../types/Queue";
 import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
-import type { QueueStorageAdapter } from "../storage/adapters/QueueAdapter";
-
 import { isResolved, isUnresolved, stringify } from "../../util/functions/utils";
 import { ResolveError, StorageError } from "../Errors";
+import type { QueueStorageAdapter } from "../storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../Track";
 
 /**
