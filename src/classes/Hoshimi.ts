@@ -379,6 +379,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
                             player.voiceId = data.channel_id;
                             player.options.voiceId = data.channel_id;
+                            this.emit(EventNames.PlayerMove, player, voiceId, data.channel_id);
 
                             if (!player.connected) await player.connect();
 
