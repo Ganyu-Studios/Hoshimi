@@ -20,7 +20,7 @@ import { stringify } from "../functions/utils";
 
 /**
  *
- * Queue the track end event.
+ * Emitted when a queue track ends.
  * @param {PlayerStructure} this The player that emitted the event.
  * @returns {Promise<void>} Yeah, this is something weird but it works.
  */
@@ -67,7 +67,7 @@ async function queueEnd(
     track: TrackStructure | null,
     payload: TrackEndEvent | TrackStuckEvent | TrackExceptionEvent,
 ): Promise<void> {
-    if (await this.data.get("internal_playerMove")) return;
+    if (await this.data.get("internal_nodeChange")) return;
 
     this.playing = false;
     this.paused = false;
@@ -103,7 +103,7 @@ async function queueEnd(
  * @returns {Promise<void>} I mean, it's a track start event, what do you expect?
  */
 export async function trackStart(this: PlayerStructure, payload: TrackStartEvent): Promise<void> {
-    if (!(await this.data.get("internal_playerMove"))) {
+    if (!(await this.data.get("internal_nodeChange"))) {
         this.paused = false;
         this.playing = true;
     }
@@ -128,7 +128,7 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
  * @returns {Promise<void>} The track ended... sadge.
  */
 export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): Promise<void> {
-    if (await this.data.get("internal_playerMove")) return;
+    if (await this.data.get("internal_nodeChange")) return;
 
     const current: TrackStructure | null = await this.queue.utils.build(payload.track);
 
@@ -171,10 +171,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
 
     this.queue.current = null;
 
-    if (!this.queue.size) {
-        this.playing = false;
-        return queueEnd.call(this, current, payload);
-    }
+    if (!this.queue.size) return queueEnd.call(this, current, payload);
 
     this.manager.emit(EventNames.TrackEnd, this, current, payload);
     this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [End] The track: ${current?.info.title ?? "Unknown"} has ended.`);

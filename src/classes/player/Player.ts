@@ -280,7 +280,7 @@ export class Player {
      * ```
      */
     public async skip(options: SkipOptions = {}): Promise<void> {
-        const { to = 1, throwError = true } = options;
+        const { to = 0, throwError = true } = options;
 
         if (!this.queue.size) {
             this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Skip] No tracks to skip.");
@@ -288,14 +288,14 @@ export class Player {
             if (throwError) throw new PlayerError("No tracks to skip.");
         }
 
-        if (typeof to === "number" && to > 0) {
+        if (typeof to === "number" && to > 1) {
             if (to > this.queue.size) throw new PlayerError("Cannot skip to a track that doesn't exist.");
             if (to < 0) throw new PlayerError("Cannot skip to a negative number.");
 
-            this.queue.splice(0, to - 1);
+            await this.queue.splice(0, to - 1);
         }
 
-        if (!this.playing && !this.queue.current) return this.play();
+        if (!this.isPlaying() && !this.queue.current) return this.play();
 
         this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Skip] Skipping to next track for guild: ${this.guildId}`);
 
@@ -386,8 +386,10 @@ export class Player {
     public async play(options: Partial<PlayOptions> = {}): Promise<void> {
         if (typeof options !== "object") throw new PlayerError("The play options must be an object.");
 
-        if (options.track) this.queue.current = await this.queue.utils.build(options.track);
-        else if (!this.queue.current) this.queue.current = await this.queue.utils.build(await this.queue.shift());
+        if (options.track) options.track = (await this.queue.utils.build(options.track)) ?? undefined;
+        else options.track = (await this.queue.utils.build(await this.queue.shift())) ?? undefined;
+
+        this.queue.current = options.track ?? null;
 
         if (!this.queue.current) throw new PlayerError("No track to play.");
         if (!isResolved(this.queue.current) && !isUnresolved(this.queue.current))
@@ -588,7 +590,7 @@ export class Player {
         if (target.state !== State.Connected) throw new PlayerError("Target node is not connected.");
         if (target.id === this.node.id) return;
 
-        await this.data.set("internal_playerMove", true);
+        await this.data.set("internal_nodeChange", true);
 
         if (this.queue.current || this.queue.size) {
             const sources: SourceName[] = [this.queue.current, ...this.queue.tracks]
@@ -633,7 +635,7 @@ export class Player {
             `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`,
         );
 
-        await this.data.delete("internal_playerMove");
+        await this.data.delete("internal_nodeChange");
     }
 
     /**
