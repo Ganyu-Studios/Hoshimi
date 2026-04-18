@@ -294,6 +294,7 @@ export class Queue {
     /**
      *
      * Clear the queue.
+     * @param {boolean} [keepCurrent=false] Whether to keep the current track.
      * @returns {Promise<this>} The queue instance.
      * @example
      * ```ts
@@ -303,16 +304,25 @@ export class Queue {
      * await queue.add(track);
      * await queue.add(track1, track2);
      *
+     * queue.clear(true);
+     * console.log(queue.size); // 0
+     * console.log(queue.current); // track
+     *
      * console.log(queue.size); // 3
      * await queue.clear();
+     * console.log(queue.current); // null
      * console.log(queue.size); // 0
      * ```
      */
-    public async clear(): Promise<this> {
+    public async clear(keepCurrent: boolean = false): Promise<this> {
         this.tracks = [];
         this.history = [];
 
-        this.current = null;
+        if (!keepCurrent) {
+            await this.player.stop();
+
+            this.current = null;
+        }
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
         this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, "[Queue] -> [Clear] Cleared the queue.");

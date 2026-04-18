@@ -49,14 +49,14 @@
     "license": "MIT",
     "devDependencies": {
         "@biomejs/biome": "^2.4.12",
-        "@changesets/cli": "^2.30.0",
+        "@changesets/cli": "^2.31.0",
         "@types/node": "^25.6.0",
         "@types/ws": "^8.18.1",
         "husky": "^9.1.7",
         "lint-staged": "^16.4.0",
         "tsdown": "^0.21.9",
         "tsx": "^4.21.0",
-        "typescript": "^6.0.2",
+        "typescript": "^6.0.3",
         "vitest": "^4.1.4"
     },
     "dependencies": {
