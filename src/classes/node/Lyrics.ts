@@ -44,7 +44,8 @@ export class LyricsManager {
 
         validateNodePlugins({
             node: this.node,
-            plugins: [PluginNames.LavaLyrics, PluginNames.JavaLyrics, PluginNames.LavaSrc],
+            required: [PluginNames.LavaSrc],
+            optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
             atleastOne: true,
         });
 
@@ -73,7 +74,8 @@ export class LyricsManager {
 
         validateNodePlugins({
             node: this.node,
-            plugins: [PluginNames.LavaLyrics, PluginNames.JavaLyrics, PluginNames.LavaSrc],
+            required: [PluginNames.LavaSrc],
+            optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
             atleastOne: true,
         });
 
@@ -103,7 +105,8 @@ export class LyricsManager {
 
         validateNodePlugins({
             node: this.node,
-            plugins: [PluginNames.LavaLyrics, PluginNames.JavaLyrics, PluginNames.LavaSrc],
+            required: [PluginNames.LavaSrc],
+            optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
             atleastOne: true,
         });
 
@@ -132,7 +135,8 @@ export class LyricsManager {
 
         validateNodePlugins({
             node: this.node,
-            plugins: [PluginNames.LavaLyrics, PluginNames.JavaLyrics, PluginNames.LavaSrc],
+            required: [PluginNames.LavaSrc],
+            optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
             atleastOne: true,
         });
 

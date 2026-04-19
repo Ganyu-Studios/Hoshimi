@@ -35,6 +35,24 @@ export interface HoshimiQueueOptions {
 }
 
 /**
+ * The sync options for the queue.
+ */
+export interface SyncOptions {
+    /**
+     * Whether to override the current queue with the stored one.
+     * @type {boolean}
+     * @default true
+     */
+    override?: boolean;
+    /**
+     * Whether to sync the current track.
+     * @type {boolean}
+     * @default false
+     */
+    syncCurrent?: boolean;
+}
+
+/**
  * The queue json.
  */
 export interface QueueJson {

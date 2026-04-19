@@ -1,6 +1,7 @@
 import { DebugLevels, DestroyReasons, EventNames, type NodeIdentifier, type QueryResult, type SearchOptions } from "../../types/Manager";
 import { type LyricsResult, type SourceName, State } from "../../types/Node";
 import {
+    type AnyLavalinkTrack,
     type LavalinkPlayerVoice,
     type LavalinkPlayOptions,
     LoopMode,
@@ -19,7 +20,7 @@ import {
     Structures,
     type TrackStructure,
 } from "../../types/Structures";
-import { isResolved, isUnresolved, validatePlayerOptions } from "../../util/functions/utils";
+import { validatePlayerOptions } from "../../util/functions/utils";
 import { PlayerError } from "../Errors";
 import type { Hoshimi } from "../Hoshimi";
 import type { PlayerStorageAdapter } from "../storage/adapters/PlayerAdapter";
@@ -315,21 +316,26 @@ export class Player {
     public async play(options: Partial<PlayOptions> = {}): Promise<void> {
         if (typeof options !== "object") throw new PlayerError("The play options must be an object.");
 
-        let track: TrackResolvableStructure | null;
+        let track: TrackResolvableStructure | AnyLavalinkTrack | null;
 
         if (options.track) track = options.track;
         else track = await this.queue.shift();
 
-        if (!track) throw new PlayerError("No track to play.");
-        if (!isResolved(track) && !isUnresolved(track))
-            throw new PlayerError("The track must be a valid Track or UnresolvedTrack instance.");
+        this.queue.current = await this.queue.utils.build(track);
 
-        track.userData = {
-            requester: track.requester,
-            ...track.userData,
+        if (!this.queue.current) throw new PlayerError("No track to play.");
+
+        this.queue.current.userData = {
+            requester: this.queue.current.requester,
+            ...(options.track?.userData ?? {}),
+            ...(this.queue.current.userData ?? {}),
         };
 
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${track.info.title}`);
+        this.manager.emit(
+            EventNames.Debug,
+            DebugLevels.Player,
+            `[Player] -> [Play] A new track is playing: ${this.queue.current.info.title ?? "Unknown"}`,
+        );
 
         // Reset position to start when playing a new track (unless a specific position is provided)
         const position: number = options.position ?? 0;
@@ -341,10 +347,10 @@ export class Player {
             noReplace: options.noReplace,
             playerOptions: {
                 ...options,
-                position, // Ensure position is sent to Lavalink
+                position,
                 track: {
-                    userData: track.userData,
-                    encoded: track.encoded,
+                    encoded: this.queue.current.encoded,
+                    userData: this.queue.current.userData,
                 },
             },
         });

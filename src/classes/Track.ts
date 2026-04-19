@@ -8,7 +8,7 @@ import {
     type UnresolvedLavalinkTrack,
     type UnresolvedTrackInfo,
 } from "../types/Node";
-import { type PlayerStructure, Structures, type TrackStructure, type UnresolvedTrackStructure } from "../types/Structures";
+import type { PlayerStructure, TrackStructure, UnresolvedTrackStructure } from "../types/Structures";
 import { isResolved, isUnresolved, validateSource } from "../util/functions/utils";
 import { ResolveError } from "./Errors";
 
@@ -75,7 +75,7 @@ export class Track implements LavalinkTrack {
      * console.log(track.encoded); // the track encoded in base64
      * ```
      */
-    constructor(track: LavalinkTrack | null, requester?: TrackRequester) {
+    constructor(track: LavalinkTrack | null, requester: TrackRequester) {
         if (!track) throw new ResolveError("Track is not defined for construction.");
 
         this.info = track.info;
@@ -83,8 +83,6 @@ export class Track implements LavalinkTrack {
         this.requester = requester ?? {};
         this.pluginInfo = track.pluginInfo;
         this.userData = track.userData ?? {};
-
-        this.userData.requester = requester ?? {};
     }
 
     /**
@@ -124,22 +122,22 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
     readonly info: UnresolvedTrackInfo;
 
     /**
-     * The plugin info of the track.
-     * @type {Partial<PluginInfo>}
-     */
-    readonly pluginInfo?: Partial<PluginInfo>;
-
-    /**
      * The track user data.
      * @type {TrackUserData | undefined}
      */
-    public userData?: TrackUserData;
+    public userData: TrackUserData;
 
     /**
      * The requester of the track.
      * @type {TrackRequester | undefined}
      */
     public requester: TrackRequester;
+
+    /**
+     * The plugin info of the track.
+     * @type {Partial<PluginInfo>}
+     */
+    readonly pluginInfo?: Partial<PluginInfo>;
 
     /**
      * The constructor for the track.
@@ -158,14 +156,12 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
      * console.log(track.encoded); // the track encoded in base64
      * ```
      */
-    constructor(track: UnresolvedLavalinkTrack, requester?: TrackRequester) {
+    constructor(track: UnresolvedLavalinkTrack, requester: TrackRequester) {
         this.info = track.info;
         this.encoded = track.encoded;
         this.requester = requester ?? {};
-        this.pluginInfo = track.pluginInfo;
+        this.pluginInfo = track.pluginInfo ?? {};
         this.userData = track.userData ?? {};
-
-        this.userData.requester = requester ?? {};
     }
 
     /**
@@ -177,12 +173,7 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
     public async resolve(player: PlayerStructure): Promise<TrackStructure> {
         if (!player) throw new ResolveError("Player is not defined for track resolution.");
 
-        if (isResolved(this)) {
-            const requesterFn = player.manager.options.playerOptions.requesterFn;
-            const requester = await requesterFn(this.requester);
-
-            return Structures.Track(this, requester);
-        }
+        if (isResolved(this)) this;
 
         if (!isUnresolved(this)) throw new ResolveError("Track is not an unresolved track.");
         if (!this.requester) throw new ResolveError("Requester is not defined for track resolution.");

@@ -4,6 +4,8 @@ import { StorageError } from "../src/classes/Errors";
 import { Queue } from "../src/classes/queue/Queue";
 import { QueueUtils } from "../src/classes/queue/Utils";
 import { SearchSources } from "../src/types/Manager";
+import { Structures } from "../src/types/Structures";
+import { SourceNames } from "../src";
 
 function createPlayer() {
     return {
@@ -191,15 +193,62 @@ describe("QueueUtils", () => {
 
     it("sync merges queue when override is false", async () => {
         const { queue, get, set } = createQueueUtilsHarness();
-        queue.tracks = [{ info: { title: "existing" }, encoded: "e" }];
+
+        // Crear instancias reales de Track para los datos guardados
+        const savedTrack = Structures.Track(
+            {
+                encoded: "s",
+                info: {
+                    identifier: "s",
+                    title: "saved",
+                    author: "author",
+                    length: 1000,
+                    artworkUrl: null,
+                    uri: "https://example.com/s",
+                    sourceName: SourceNames.Youtube,
+                    isSeekable: true,
+                    isStream: false,
+                    isrc: null,
+                    position: 0,
+                },
+                pluginInfo: {},
+                userData: {},
+            },
+            {},
+        );
+
+        const historyTrack = Structures.Track(
+            {
+                encoded: "h",
+                info: {
+                    identifier: "h",
+                    title: "history",
+                    author: "author",
+                    length: 1000,
+                    artworkUrl: null,
+                    uri: "https://example.com/h",
+                    sourceName: SourceNames.Youtube,
+                    isSeekable: true,
+                    isStream: false,
+                    isrc: null,
+                    position: 0,
+                },
+                pluginInfo: {},
+                userData: {},
+            },
+            {},
+        );
+
+        queue.tracks = [{ info: { title: "existing" }, encoded: "e" } as never];
         get.mockResolvedValue({
-            tracks: [{ info: { title: "saved" }, encoded: "s" }],
-            history: [{ info: { title: "h" }, encoded: "h" }],
+            tracks: [savedTrack],
+            history: [historyTrack],
             current: null,
         });
 
         const utils = new QueueUtils(queue as never);
-        await utils.sync(false, false);
+
+        await utils.sync({ override: false });
 
         expect(queue.tracks.length).toBe(2);
         expect(set).toHaveBeenCalled();

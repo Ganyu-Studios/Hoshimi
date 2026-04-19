@@ -43,4 +43,4 @@ export * from "./types/Structures";
 export * from "./util/constants";
 
 // Exports related to track utilities.
-export { isResolved, isUnresolved } from "./util/functions/utils";
+export { isLavalinkResolved, isLavalinkUnresolved, isResolved, isUnresolved } from "./util/functions/utils";

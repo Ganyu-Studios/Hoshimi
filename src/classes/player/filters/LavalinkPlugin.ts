@@ -44,7 +44,7 @@ export class LavalinkPluginFilter {
      * ```
      */
     public async setEcho(settings: Partial<NonLengthEchoSettings> = DefaultFilterPreset.PluginEcho): Promise<this> {
-        validateNodePlugins({ node: this.manager.player.node, plugins: [PluginNames.FilterPlugin] });
+        validateNodePlugins({ node: this.manager.player.node, required: [PluginNames.FilterPlugin] });
 
         if (!this.manager.player.node.info?.filters?.includes(FilterType.Echo))
             throw new PlayerError("Node filters does not include the 'echo' filter. (Or the node doesn't have it enabled)");
@@ -85,7 +85,7 @@ export class LavalinkPluginFilter {
      * ```
      */
     public async setReverb(settings: Partial<LavalinkFilterPluginReverbSettings> = DefaultFilterPreset.PluginReverb): Promise<this> {
-        validateNodePlugins({ node: this.manager.player.node, plugins: [PluginNames.FilterPlugin] });
+        validateNodePlugins({ node: this.manager.player.node, required: [PluginNames.FilterPlugin] });
 
         if (!this.manager.player.node.info?.filters?.includes(FilterType.Reverb))
             throw new PlayerError("Node filters does not include the 'reverb' filter. (Or the node doesn't have it enabled)");

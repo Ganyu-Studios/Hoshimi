@@ -349,7 +349,7 @@ describe("LyricsManager", () => {
     });
 
     it("throws NodeError when required plugins are missing", async () => {
-        const { node } = createLyricsNode("sess-1", [PluginNames.LavaLyrics]);
+        const { node } = createLyricsNode("sess-1", []);
         const manager = new LyricsManager(node as never);
 
         await expect(manager.current("guild-1")).rejects.toThrow(NodeError);

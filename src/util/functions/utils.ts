@@ -2,11 +2,12 @@ import { NodeError, OptionError } from "../../classes/Errors";
 import type { Node } from "../../classes/node/Node";
 import { PlayerStorageAdapter } from "../../classes/storage/adapters/PlayerAdapter";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
-import type { TrackRequester, TrackResolvableStructure, UnresolvedTrack } from "../../classes/Track";
+import type { TrackRequester, TrackResolvableStructure } from "../../classes/Track";
+import { Track, UnresolvedTrack } from "../../classes/Track";
 import type { TimescaleSettings } from "../../types/Filters";
 import { DebugLevels, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
 import type { LavalinkTrack, NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
-import type { PlayerOptions } from "../../types/Player";
+import type { AnyLavalinkTrack, PlayerOptions } from "../../types/Player";
 import type { UpdatePlayerInfo } from "../../types/Rest";
 import { type ParsedQuery, SourceRegistry } from "../../types/Sources";
 import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
@@ -19,12 +20,20 @@ interface ValidateNodePluginsOptions {
      */
     node: Node;
     /**
-     * The plugins to validate.
+     * Array of required plugins that must all be present.
      * @type {PluginNames[]}
+     * @default []
      */
-    plugins: PluginNames[];
+    required?: PluginNames[];
     /**
-     * Whether to validate that at least one plugin is available instead of all plugins.
+     * Array of optional plugins where at least one must be present (when atleastOne is true).
+     * @type {PluginNames[]}
+     * @default []
+     */
+    optional?: PluginNames[];
+    /**
+     * Whether to validate that at least one optional plugin is available.
+     * If false, validates that all required plugins are available.
      * @type {boolean}
      * @default false
      */
@@ -187,16 +196,84 @@ export function updatePlayerData(node: NodeStructure, data: Partial<UpdatePlayer
 }
 
 /**
- *
- * Validate the plugins in the node.
+ * Validates that all required plugins are present in the node.
+ * @param {NodeInfo} info The node information containing plugin list.
+ * @param {PluginNames[]} required Array of required plugin names.
+ * @param {string} nodeId The node ID for error reporting.
+ * @throws {NodeError} If any required plugin is missing.
+ * @example
+ * ```ts
+ * validateRequiredPlugins(node.info, [PluginNames.LavaLyrics], node.id);
+ * ```
+ */
+function validateRequiredPlugins(info: NodeInfo, required: PluginNames[], nodeId: string): void {
+    const missings: PluginNames[] = required.filter((name): boolean => !info.plugins.some((p): boolean => p.name === name));
+
+    if (missings.length) {
+        throw new NodeError({
+            id: nodeId,
+            message: `The node does not support the following plugins: ${missings.join(", ")}.`,
+        });
+    }
+}
+
+/**
+ * Validates that at least one optional plugin is present in the node.
+ * @param {NodeInfo} info The node information containing plugin list.
+ * @param {PluginNames[]} optional Array of optional plugin names (at least one must be present).
+ * @param {string} nodeId The node ID for error reporting.
+ * @throws {NodeError} If none of the optional plugins are available.
+ * @example
+ * ```ts
+ * validateOptionalPlugins(node.info, [PluginNames.LavaLyrics, PluginNames.JavaLyrics], node.id);
+ * ```
+ */
+function validateOptionalPlugins(info: NodeInfo, optional: PluginNames[], nodeId: string): void {
+    const isAnyPluginActive: boolean = optional.some((name): boolean => info.plugins.some((p): boolean => p.name === name));
+    if (!isAnyPluginActive) {
+        throw new NodeError({
+            id: nodeId,
+            message: `The node does not support at least one of the following plugins: ${optional.join(", ")}.`,
+        });
+    }
+}
+
+/**
+ * Validate the plugins in the node based on required and optional specifications.
+ * Ensures the node supports the necessary plugins for operation.
  * @param {ValidateNodePluginsOptions} options The options to validate the node plugins.
- * @throws {NodeError} If validation fails.
- * @returns {void} Did you really expect a return here?
+ * @throws {NodeError} If the node is not ready, has no plugins, or validation fails.
+ * @returns {void}
+ * @example
+ * ```ts
+ * // Validate that all required plugins are present
+ * validateNodePlugins({
+ *   node,
+ *   required: [PluginNames.LavaLyrics]
+ * });
+ *
+ * // Validate that at least one optional plugin is present
+ * validateNodePlugins({
+ *   node,
+ *   optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
+ *   atleastOne: true
+ * });
+ *
+ * // Validate both required and optional plugins
+ * validateNodePlugins({
+ *   node,
+ *   required: [PluginNames.LavaLyrics],
+ *   optional: [PluginNames.JavaLyrics],
+ *   atleastOne: true
+ * });
+ * ```
  */
 export function validateNodePlugins(options: ValidateNodePluginsOptions): void {
+    // Check if node information is available
     const info: NodeInfo | null = options.node.info;
     if (!info) throw new NodeError({ id: options.node.id, message: "Node is not ready yet." });
 
+    // Skip plugin validation for Nodelink nodes (they handle plugins differently)
     if (options.node.isNodelink()) {
         options.node.nodeManager.manager.emit(
             EventNames.Debug,
@@ -207,28 +284,22 @@ export function validateNodePlugins(options: ValidateNodePluginsOptions): void {
         return;
     }
 
-    if (!info.plugins.length)
+    // Ensure the node has at least one plugin available
+    if (!info.plugins.length) {
         throw new NodeError({
             id: options.node.id,
             message: "No plugins found in the node.",
         });
+    }
 
-    if (options.atleastOne) {
-        // Validate that at least one plugin is available
-        const isAnyPluginActive: boolean = options.plugins.some((name): boolean => info.plugins.some((p): boolean => p.name === name));
-        if (!isAnyPluginActive)
-            throw new NodeError({
-                id: options.node.id,
-                message: `The node does not support at least one of the following plugins: ${options.plugins.join(", ")}.`,
-            });
-    } else {
-        // Validate that all plugins are available
-        const missings: PluginNames[] = options.plugins.filter((name): boolean => !info.plugins.some((p): boolean => p.name === name));
-        if (missings.length)
-            throw new NodeError({
-                id: options.node.id,
-                message: `The node does not support the following plugins: ${missings.join(", ")}.`,
-            });
+    // Validate required plugins (must all be present)
+    if (options.required?.length) {
+        validateRequiredPlugins(info, options.required, options.node.id);
+    }
+
+    // Validate optional plugins (at least one must be present when atleastOne is true)
+    if (options.atleastOne && options.optional?.length) {
+        validateOptionalPlugins(info, options.optional, options.node.id);
     }
 }
 
@@ -246,32 +317,77 @@ export function validateSource(type: SearchSource | SourceName | string): Search
 }
 
 /**
- * Check whether a track payload is already resolved/playable.
- * @param {TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track payload.
- * @returns {boolean} True when the payload is resolved.
+ * Check whether a track is a local Track instance (resolved).
+ * Only returns true for Track class instances (not generic LavalinkTrack objects).
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a local resolved Track instance.
  */
-export function isResolved(track: TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack): track is TrackStructure {
+export function isResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackStructure {
     if (!track) return false;
-
+    // Use instanceof to ensure it's a Track class instance, not just a LavalinkTrack object
+    // A resolved track has encoded and info, and no resolve function
     return (
-        typeof track.encoded === "string" && typeof track.info === "object" && !("resolve" in track && typeof track.resolve === "function")
+        track instanceof Track &&
+        typeof track.encoded === "string" &&
+        typeof track.info === "object" &&
+        !("resolve" in track && typeof track.resolve === "function") &&
+        typeof track.requester !== "undefined" &&
+        typeof track.info.title === "string"
     );
 }
 
 /**
- * Check whether a track payload is unresolved and requires resolution.
- * @param {TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track payload.
- * @returns {boolean} True when the payload is unresolved.
+ * Check whether a track is a local UnresolvedTrack instance (unresolved).
+ * Only returns true for UnresolvedTrack class instances.
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a local unresolved UnresolvedTrack instance.
  */
-export function isUnresolved(track: TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack): track is UnresolvedTrack {
+export function isUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedTrack {
     if (!track) return false;
-
+    // Use instanceof to ensure it's an UnresolvedTrack class instance
     return (
-        typeof track === "object" &&
-        (("info" in track && typeof track.info === "object" && typeof track.info.title === "string") ||
-            typeof track.encoded === "string") &&
+        track instanceof UnresolvedTrack &&
         "resolve" in track &&
-        typeof track.resolve === "function"
+        typeof track.resolve === "function" &&
+        typeof track.requester !== "undefined" &&
+        typeof track.info === "object" &&
+        typeof track.info.title === "string"
+    );
+}
+
+/**
+ * Check whether a track is a Lavalink-compatible resolved track (not a local Track instance).
+ * Returns true for LavalinkTrack objects that have encoded and info but are not Track class instances.
+ * This is for raw Lavalink track objects from the API or other sources.
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a Lavalink resolved track (not a local Track).
+ */
+export function isLavalinkResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is LavalinkTrack {
+    if (!track || typeof track !== "object") return false;
+    // Must have encoded and info, and NOT be a Track instance, and NOT have resolve
+    return (
+        !(track instanceof Track) &&
+        typeof track.encoded === "string" &&
+        typeof track.info === "object" &&
+        !("resolve" in track && typeof track.resolve === "function")
+    );
+}
+
+/**
+ * Check whether a track is a Lavalink-compatible unresolved track (not a local UnresolvedTrack instance).
+ * Returns true for UnresolvedLavalinkTrack objects that have a resolve-like structure but are not UnresolvedTrack instances.
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a Lavalink unresolved track (not a local UnresolvedTrack).
+ */
+export function isLavalinkUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedLavalinkTrack {
+    if (!track || typeof track !== "object") return false;
+    // Must have info and NOT be an UnresolvedTrack instance, and should not have the resolve function
+    return (
+        !(track instanceof UnresolvedTrack) &&
+        "info" in track &&
+        typeof track.info === "object" &&
+        typeof track.info?.title === "string" &&
+        !("resolve" in track && typeof track.resolve === "function")
     );
 }
 

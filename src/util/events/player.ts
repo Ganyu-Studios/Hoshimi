@@ -100,6 +100,8 @@ async function queueEnd(
     if (track) await this.queue.utils.save();
     if (payload.type === PlayerEventType.TrackEnd && payload.reason !== TrackEndReason.Stopped) await this.queue.utils.save();
 
+    await onEnd.call(this, false);
+
     this.manager.emit(EventNames.QueueEnd, this, this.queue);
     this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Queue] The queue has ended.");
 }
@@ -116,8 +118,6 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
         this.paused = false;
         this.playing = true;
     }
-
-    if (!this.queue.current) this.queue.current = await this.queue.utils.build(payload.track);
 
     if (this.queue.current) await this.queue.utils.save();
 
@@ -139,22 +139,25 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
 export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): Promise<void> {
     if (await this.data.get("internal_nodeChange")) return;
 
+    // Just use queue.current - it should be correct now because trackStart handles sync
+    const current: TrackStructure | null = this.queue.current;
+
     if (payload.reason === TrackEndReason.Replaced) {
-        this.manager.emit(EventNames.TrackEnd, this, this.queue.current, payload);
-        return;
+        this.manager.emit(EventNames.TrackEnd, this, current, payload);
+        return onEnd.call(this, false);
     }
 
     const isStopPlaying = await this.data.get("internal_stopPlaying");
 
-    if (!this.queue.size && (this.loop === LoopMode.Off || isStopPlaying)) return queueEnd.call(this, this.queue.current, payload);
+    if (!this.queue.size && (this.loop === LoopMode.Off || isStopPlaying)) return queueEnd.call(this, current, payload);
 
     const reasons: TrackEndReason[] = [TrackEndReason.LoadFailed, TrackEndReason.Cleanup];
     if (reasons.includes(payload.reason)) {
         await onEnd.call(this);
 
-        if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
+        if (!this.queue.current) return queueEnd.call(this, current, payload);
 
-        this.manager.emit(EventNames.TrackEnd, this, this.queue.current, payload);
+        this.manager.emit(EventNames.TrackEnd, this, current, payload);
         this.manager.emit(
             EventNames.Debug,
             DebugLevels.Player,
@@ -166,11 +169,11 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         return;
     }
 
-    if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
+    if (!this.queue.current) return queueEnd.call(this, current, payload);
 
     await onEnd.call(this);
 
-    this.manager.emit(EventNames.TrackEnd, this, this.queue.current, payload);
+    this.manager.emit(EventNames.TrackEnd, this, current, payload);
     this.manager.emit(
         EventNames.Debug,
         DebugLevels.Player,
@@ -357,7 +360,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
 
             await player.updatePlayer({ playerOptions: { voice } });
             await player.connect();
-            await player.queue.utils.sync(false, true);
+            await player.queue.utils.sync({ override: false, syncCurrent: true });
 
             if (track)
                 await player.play({

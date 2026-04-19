@@ -2,7 +2,7 @@ import type { PlayerStorageAdapter } from "../classes/storage/adapters/PlayerAda
 import type { TrackRequester, TrackResolvableStructure } from "../classes/Track";
 import type { FilterSettings } from "./Filters";
 import type { NodeIdentifier, Nullable, Prettify } from "./Manager";
-import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, NodeJson, OpCodes } from "./Node";
+import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, NodeJson, OpCodes, UnresolvedLavalinkTrack } from "./Node";
 import type { QueueJson } from "./Queue";
 import type { TrackStructure } from "./Structures";
 
@@ -458,9 +458,9 @@ export interface PlayOptions extends BasePlayOptions {
     noReplace?: boolean;
     /**
      * Track to play.
-     * @type {TrackResolvableStructure | undefined}
+     * @type {TrackResolvableStructure | AnyLavalinkTrack | undefined}
      */
-    track?: TrackResolvableStructure;
+    track?: TrackResolvableStructure | AnyLavalinkTrack;
 }
 
 export interface PlayerVoice {
@@ -697,3 +697,8 @@ export type VoiceChannelUpdate = Prettify<Pick<PlayerOptions, "selfDeaf" | "voic
  * The voice settings for the player.
  */
 export type LavalinkPlayerVoice = Prettify<Required<Omit<PlayerVoice, "connected" | "ping">>>;
+
+/**
+ * The type for any lavalink track, including partial and unresolved tracks.
+ */
+export type AnyLavalinkTrack = LavalinkTrack | UnresolvedLavalinkTrack;

@@ -2,7 +2,7 @@ import { DebugLevels, EventNames } from "../../types/Manager";
 import type { QueueJson } from "../../types/Queue";
 import type { PlayerStructure, TrackStructure } from "../../types/Structures";
 import type { TrackResolvableStructure } from "../Track";
-import { Utils } from "./Utils";
+import { QueueUtils } from "./Utils";
 
 /**
  * Class representing a queue.
@@ -35,10 +35,10 @@ export class Queue {
 
     /**
      * The queue utils instance.
-     * @type {Utils}
+     * @type {QueueUtils}
      * @readonly
      */
-    readonly utils: Utils;
+    readonly utils: QueueUtils;
 
     /**
      *
@@ -55,7 +55,7 @@ export class Queue {
      */
     constructor(player: PlayerStructure) {
         this.player = player;
-        this.utils = new Utils(this);
+        this.utils = new QueueUtils(this);
     }
 
     /**

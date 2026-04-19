@@ -1,17 +1,17 @@
 import { type Awaitable, DebugLevels, EventNames } from "../../types/Manager";
-import type { LavalinkTrack, UnresolvedLavalinkTrack } from "../../types/Node";
-import type { HoshimiQueueOptions, QueueJson } from "../../types/Queue";
+import type { AnyLavalinkTrack } from "../../types/Player";
+import type { HoshimiQueueOptions, QueueJson, SyncOptions } from "../../types/Queue";
 import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
-import { isResolved, isUnresolved, stringify } from "../../util/functions/utils";
+import { isLavalinkResolved, isLavalinkUnresolved, isResolved, isUnresolved, stringify } from "../../util/functions/utils";
 import { ResolveError, StorageError } from "../Errors";
 import type { QueueStorageAdapter } from "../storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../Track";
 
 /**
  * Class representing the queue utils.
- * @class Utils
+ * @class QueueUtils
  */
-export class Utils {
+export class QueueUtils {
     /**
      * Player instance.
      * @type {Queue}
@@ -51,34 +51,40 @@ export class Utils {
     }
 
     /**
-     * Build a playable track from resolved/unresolved inputs.
+     * Build a track from a resolvable structure.
+     * Automatically resolves UnresolvedTrack instances to avoid double resolution.
      * @param {TrackResolvableStructure | null} track The input track.
      * @param {TrackRequester} [requester] Optional requester override.
-     * @returns {Promise<TrackStructure | null>} The built track.
+     * @returns {Promise<TrackStructure | null>} The built and resolved track.
      */
     public async build(
-        track: TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack | null,
+        track?: TrackResolvableStructure | AnyLavalinkTrack | null,
         requester?: TrackRequester,
     ): Promise<TrackStructure | null> {
-        if (!track) return null;
+        if (!track) throw new ResolveError("Are you trying to build a track without providing one? Please provide a track to build.");
 
         const requesterFn = this.queue.player.manager.options.playerOptions.requesterFn;
 
-        const currentRequester: TrackRequester | undefined = "requester" in track ? track.requester : track.userData?.requester;
-        const trackRequester = await requesterFn(requester ?? currentRequester ?? {});
+        const currentRequester: TrackRequester | undefined = "requester" in track ? track.requester : track.userData.requester;
+        const trackRequester: TrackRequester = await requesterFn(requester ?? currentRequester ?? {});
 
-        if (isResolved(track)) return Structures.Track(track, trackRequester);
+        this.queue.player.manager.emit(
+            EventNames.Debug,
+            DebugLevels.Queue,
+            `[Queue] -> [Utils] Building track for ${this.queue.player.guildId} | Input: ${stringify(track)} | Requester: ${stringify(trackRequester)}`,
+        );
 
-        if (!isUnresolved(track)) throw new ResolveError("The track is not a valid unresolved track.");
-        if (!("resolve" in track) || typeof track.resolve !== "function")
-            return Structures.UnresolvedTrack(track, trackRequester).resolve(this.queue.player);
+        if (isResolved(track)) return track;
+        if (isUnresolved(track)) return track.resolve(this.queue.player);
+        if (isLavalinkResolved(track)) return Structures.Track(track, trackRequester);
+        if (isLavalinkUnresolved(track)) return Structures.UnresolvedTrack(track, trackRequester).resolve(this.queue.player);
 
-        return track.resolve(this.queue.player);
+        throw new ResolveError(`Unable to build track from input: ${stringify(track)}`); // This should never happen, but just in case.
     }
 
     /**
      *
-     * Save the queue.
+     * Save the queue to the storage.
      * @returns {Awaitable<void>}
      * @example
      * ```ts
@@ -102,7 +108,7 @@ export class Utils {
 
     /**
      *
-     * Destroy the queue.
+     * Destroy the queue, removing all stored data.
      * @returns {Promise<void>}
      * @example
      * ```ts
@@ -121,23 +127,25 @@ export class Utils {
 
     /**
      *
-     * Sync the queue.
-     * @param {boolean} [override=true] Whether to override the current queue or not.
-     * @param {boolean} [syncCurrent=false] Whether to sync the current track or not.
+     * Sync the queue with the stored data.
+     * @param {SyncOptions} [options={}] Sync options.
      * @returns {Promise<void>} The promise for the sync operation.
      * @example
      * ```ts
      * await player.queue.utils.sync();
      * ```
      */
-    public async sync(override: boolean = true, syncCurrent: boolean = false): Promise<void> {
-        const data: QueueJson | undefined = await this.storage.get(this.queue.player.guildId);
-        if (!data) throw new StorageError(`No data found to sync for guildId: ${this.queue.player.guildId}`);
+    public async sync(options: SyncOptions = {}): Promise<void> {
+        const { override = true, syncCurrent = false } = options;
 
-        if (syncCurrent && data.current && !this.queue.current && isResolved(data.current)) this.queue.current = data.current;
+        const storedQueue: QueueJson | undefined = await this.storage.get(this.queue.player.guildId);
+        if (!storedQueue) throw new StorageError(`No data found to sync for guildId: ${this.queue.player.guildId}`);
 
-        const tracks: TrackStructure[] = data.tracks.filter((track): track is TrackStructure => isResolved(track)) || [];
-        const history: TrackStructure[] = data.history.filter((track): track is TrackStructure => isResolved(track)) || [];
+        if (syncCurrent && storedQueue.current && !this.queue.current && isResolved(storedQueue.current))
+            this.queue.current = storedQueue.current;
+
+        const tracks: TrackStructure[] = storedQueue.tracks.filter((track): track is TrackStructure => isResolved(track)) || [];
+        const history: TrackStructure[] = storedQueue.history.filter((track): track is TrackStructure => isResolved(track)) || [];
 
         const length: number = this.queue.tracks.length;
 
@@ -147,7 +155,7 @@ export class Utils {
         this.queue.player.manager.emit(
             EventNames.Debug,
             DebugLevels.Queue,
-            `[Queue] -> [Adapter] Syncing queue for ${this.queue.player.guildId} | Object: ${stringify(data)}`,
+            `[Queue] -> [Adapter] Syncing queue for ${this.queue.player.guildId} | Object: ${stringify(storedQueue)}`,
         );
 
         await this.save();
