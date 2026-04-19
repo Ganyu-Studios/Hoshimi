@@ -70,6 +70,8 @@ async function queueEnd(
 ): Promise<void> {
     if (await this.data.get("internal_nodeChange")) return;
 
+    await this.data.delete("internal_stopPlaying");
+
     this.playing = false;
     this.paused = false;
     this.queue.current = null;
@@ -143,7 +145,9 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         return onEnd.call(this, false);
     }
 
-    if (!this.queue.size && this.loop === LoopMode.Off) return queueEnd.call(this, this.queue.current, payload);
+    const isStopPlaying = await this.data.get("internal_stopPlaying");
+
+    if (!this.queue.size && (this.loop === LoopMode.Off || isStopPlaying)) return queueEnd.call(this, this.queue.current, payload);
 
     const reasons: TrackEndReason[] = [TrackEndReason.LoadFailed, TrackEndReason.Cleanup];
     if (reasons.includes(payload.reason)) {
@@ -190,7 +194,9 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
         `[Player] -> [Stuck] The track: ${this.queue.current?.info.title ?? "Unknown"} has stuck.`,
     );
 
-    if (!this.queue.size && this.loop === LoopMode.Off) {
+    const isStopPlaying = await this.data.get("internal_stopPlaying");
+
+    if (!this.queue.size && (this.loop === LoopMode.Off || isStopPlaying)) {
         try {
             await this.node.updatePlayer({
                 guildId: this.guildId,

@@ -292,37 +292,31 @@ export class Queue {
     }
 
     /**
-     *
      * Clear the queue.
-     * @param {boolean} [keepCurrent=false] Whether to keep the current track.
+     * @param {ClearOptions} [options] The options for clearing the queue.
      * @returns {Promise<this>} The queue instance.
      * @example
      * ```ts
      * const queue = player.queue;
      *
+     * // Clear queue and stop playback
      * console.log(queue.size); // 0
      * await queue.add(track);
      * await queue.add(track1, track2);
-     *
-     * queue.clear(true);
-     * console.log(queue.size); // 0
-     * console.log(queue.current); // track
-     *
-     * console.log(queue.size); // 3
      * await queue.clear();
-     * console.log(queue.current); // null
+     * console.log(queue.current); // track
+     * console.log(queue.size); // 0
+     *
+     * // Keep current track
+     * await queue.add(track);
+     * await queue.clear();
+     * console.log(queue.current); // track
      * console.log(queue.size); // 0
      * ```
      */
-    public async clear(keepCurrent: boolean = false): Promise<this> {
+    public async clear(): Promise<this> {
         this.tracks = [];
         this.history = [];
-
-        if (!keepCurrent) {
-            await this.player.stop();
-
-            this.current = null;
-        }
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
         this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, "[Queue] -> [Clear] Cleared the queue.");

@@ -268,6 +268,123 @@ export class Player {
     }
 
     /**
+     * Connect the player to the voice channel.
+     * @returns {Promise<this>} The player instance.
+     * @example
+     * ```ts
+     * const player = manager.getPlayer("guildId");
+     * player.connect();
+     * ```
+     */
+    public async connect(): Promise<this> {
+        await this.voice.connect();
+        return this;
+    }
+
+    /**
+     *
+     * Disconnect the player from the voice channel.
+     * @returns {Promise<this>} The player instance.
+     * @example
+     * ```ts
+     * const player = manager.getPlayer("guildId");
+     * player.disconnect();
+     * ```
+     */
+    public async disconnect(): Promise<this> {
+        await this.voice.disconnect();
+        return this;
+    }
+
+    /**
+     *
+     * Play a track in the player.
+     * @param {Partial<PlayOptions>} [options] The options to play the track.
+     * @returns {Promise<void>}
+     * @throws {PlayerError} If there are no tracks to play.
+     * @example
+     * ```ts
+     * const player = manager.getPlayer("guildId");
+     *
+     * player.play({
+     * 	track: track,
+     * 	noReplace: true,
+     * });
+     * ```
+     */
+    public async play(options: Partial<PlayOptions> = {}): Promise<void> {
+        if (typeof options !== "object") throw new PlayerError("The play options must be an object.");
+
+        if (options.track) options.track = (await this.queue.utils.build(options.track)) ?? undefined;
+        else options.track = (await this.queue.utils.build(await this.queue.shift())) ?? undefined;
+
+        if (!options.track) throw new PlayerError("No track to play.");
+        if (!isResolved(options.track) && !isUnresolved(options.track))
+            throw new PlayerError("The track must be a valid Track or UnresolvedTrack instance.");
+
+        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${options.track.info.title}`);
+
+        // Reset position to start when playing a new track (unless a specific position is provided)
+        const position: number = options.position ?? 0;
+
+        this.lastPosition = position;
+        this.lastPositionUpdate = Date.now();
+
+        await this.updatePlayer({
+            noReplace: options.noReplace,
+            playerOptions: {
+                ...options,
+                position, // Ensure position is sent to Lavalink
+                track: {
+                    userData: options.track.userData,
+                    encoded: options.track.encoded,
+                },
+            },
+        });
+
+        this.queue.current = options.track;
+
+        await this.queue.utils.save();
+
+        return;
+    }
+
+    /**
+     * Stop the player from playing.
+     * @param {Partial<StopOptions>} [options] The options for stopping the player.
+     * @returns {Promise<void>}
+     * @example
+     * ```ts
+     * // Stop and destroy the player (default)
+     * const player = manager.getPlayer("guildId");
+     * await player.stop();
+     *
+     * // Stop without destroying, only clear queue
+     * await player.stop({ destroy: false, clearQueue: true });
+     *
+     * // Stop and leave voice channel
+     * await player.stop({ destroy: false, leaveVoice: true });
+     * ```
+     */
+    public async stop(options: Partial<StopOptions> = {}): Promise<void> {
+        await this.node.stopPlayer(this.guildId);
+        await this.data.set("internal_stopPlaying", true);
+
+        const { destroy = true, clearQueue = false, leaveVoice = false } = options;
+
+        if (destroy) await this.destroy(DestroyReasons.Stop);
+        if (clearQueue) await this.queue.clear();
+        if (leaveVoice) await this.voice.disconnect();
+
+        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Stop] Player stopped for guild: ${this.guildId}`);
+
+        this.playing = false;
+        this.paused = false;
+        this.lastPosition = 0;
+        this.lastPositionUpdate = null;
+    }
+
+    /**
      *
      * Play the next track in the queue.
      * @param {SkipOptions} options The options for skipping tracks.
@@ -329,17 +446,72 @@ export class Player {
 
     /**
      *
-     * Disconnect the player from the voice channel.
-     * @returns {Promise<this>} The player instance.
+     * Change the node the player is connected to.
+     * @param {NodeIdentifier} node The node to change to.
+     * @returns {Promise<void>} A promise that resolves when the node has been changed.
+     * @throws {PlayerError} If the target node is not found, not connected, or missing source managers.
      * @example
      * ```ts
      * const player = manager.getPlayer("guildId");
-     * player.disconnect();
+     * player.move("newNodeId");
      * ```
      */
-    public async disconnect(): Promise<this> {
-        await this.voice.disconnect();
-        return this;
+    public async move(node: NodeIdentifier): Promise<void> {
+        const id: string = typeof node === "string" ? node : node.id;
+        const target: NodeStructure | undefined = this.manager.nodeManager.get(id);
+
+        if (!target) throw new PlayerError("Target node not found.");
+        if (!target.info) throw new PlayerError("Target node info not available.");
+
+        if (target.state !== State.Connected) throw new PlayerError("Target node is not connected.");
+        if (target.id === this.node.id) return;
+
+        await this.data.set("internal_nodeChange", true);
+
+        if (this.queue.current || this.queue.size) {
+            const sources: SourceName[] = [this.queue.current, ...this.queue.tracks]
+                .filter((t): t is TrackResolvableStructure => t != null || typeof t !== "undefined")
+                .map((t): SourceName | undefined => t.info.sourceName)
+                .filter((s): s is SourceName => s != null || typeof s !== "undefined");
+
+            const missings: SourceName[] = [...new Set(sources)].filter((s): boolean => !target.info!.sourceManagers.includes(s));
+            if (missings.length) throw new PlayerError(`Target node is missing source managers for: ${missings.join(", ")}`);
+        }
+
+        const current: TrackStructure | null = this.queue.current;
+
+        const voice: LavalinkPlayerVoice | null = this.voice.toLavalink();
+        if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
+
+        if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);
+
+        this.node = target;
+
+        await this.connect();
+
+        const playerOptions: LavalinkPlayOptions = { voice };
+
+        if (current) {
+            playerOptions.position = this.lastPosition;
+            playerOptions.volume = this.volume;
+            playerOptions.track = {
+                encoded: current.encoded,
+                info: current.info,
+                userData: current.userData,
+                pluginInfo: current.pluginInfo,
+            };
+        }
+
+        await this.updatePlayer({ playerOptions });
+        await this.filterManager.apply();
+
+        this.manager.emit(
+            EventNames.Debug,
+            DebugLevels.Player,
+            `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`,
+        );
+
+        await this.data.delete("internal_nodeChange");
     }
 
     /**
@@ -366,101 +538,6 @@ export class Player {
         );
 
         return this.manager.deletePlayer(this.guildId);
-    }
-
-    /**
-     *
-     * Play a track in the player.
-     * @param {Partial<PlayOptions>} [options] The options to play the track.
-     * @returns {Promise<void>}
-     * @throws {PlayerError} If there are no tracks to play.
-     * @example
-     * ```ts
-     * const player = manager.getPlayer("guildId");
-     *
-     * player.play({
-     * 	track: track,
-     * 	noReplace: true,
-     * });
-     * ```
-     */
-    public async play(options: Partial<PlayOptions> = {}): Promise<void> {
-        if (typeof options !== "object") throw new PlayerError("The play options must be an object.");
-
-        if (options.track) options.track = (await this.queue.utils.build(options.track)) ?? undefined;
-        else options.track = (await this.queue.utils.build(await this.queue.shift())) ?? undefined;
-
-        if (!options.track) throw new PlayerError("No track to play.");
-        if (!isResolved(options.track) && !isUnresolved(options.track))
-            throw new PlayerError("The track must be a valid Track or UnresolvedTrack instance.");
-
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${options.track.info.title}`);
-
-        // Reset position to start when playing a new track (unless a specific position is provided)
-        const position: number = options.position ?? 0;
-
-        this.lastPosition = position;
-        this.lastPositionUpdate = Date.now();
-
-        await this.updatePlayer({
-            noReplace: options.noReplace,
-            playerOptions: {
-                ...options,
-                position, // Ensure position is sent to Lavalink
-                track: {
-                    userData: options.track.userData,
-                    encoded: options.track.encoded,
-                },
-            },
-        });
-
-        this.queue.current = options.track;
-
-        await this.queue.utils.save();
-
-        return;
-    }
-
-    /**
-     * Connect the player to the voice channel.
-     * @returns {Promise<this>} The player instance.
-     * @example
-     * ```ts
-     * const player = manager.getPlayer("guildId");
-     * player.connect();
-     * ```
-     */
-    public async connect(): Promise<this> {
-        await this.voice.connect();
-        return this;
-    }
-
-    /**
-     *
-     * Stop the player from playing.
-     * @param {Partial<StopOptions>} [options] The options for stopping the player.
-     * @returns {Promise<void>}
-     * @example
-     * ```ts
-     * const player = manager.getPlayer("guildId");
-     * player.stop();
-     * ```
-     */
-    public async stop(options: Partial<StopOptions> = {}): Promise<void> {
-        await this.node.stopPlayer(this.guildId);
-
-        const { destroy = true, clearQueue = false, leaveVoice = false } = options;
-
-        if (destroy) await this.destroy(DestroyReasons.Stop);
-        if (clearQueue) await this.queue.clear();
-        if (leaveVoice) await this.voice.disconnect();
-
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Stop] Player stopped for guild: ${this.guildId}`);
-
-        this.playing = false;
-        this.paused = false;
-        this.lastPosition = 0;
-        this.lastPositionUpdate = null;
     }
 
     /**
@@ -557,76 +634,6 @@ export class Player {
      */
     public async setVoice(options: NullableVoiceChannelUpdate = {}): Promise<void> {
         await this.voice.setState(options);
-    }
-
-    /**
-     *
-     * Change the node the player is connected to.
-     * @param {NodeIdentifier} node The node to change to.
-     * @returns {Promise<void>} A promise that resolves when the node has been changed.
-     * @throws {PlayerError} If the target node is not found, not connected, or missing source managers.
-     * @example
-     * ```ts
-     * const player = manager.getPlayer("guildId");
-     * player.move("newNodeId");
-     * ```
-     */
-    public async move(node: NodeIdentifier): Promise<void> {
-        const id: string = typeof node === "string" ? node : node.id;
-        const target: NodeStructure | undefined = this.manager.nodeManager.get(id);
-
-        if (!target) throw new PlayerError("Target node not found.");
-        if (!target.info) throw new PlayerError("Target node info not available.");
-
-        if (target.state !== State.Connected) throw new PlayerError("Target node is not connected.");
-        if (target.id === this.node.id) return;
-
-        await this.data.set("internal_nodeChange", true);
-
-        if (this.queue.current || this.queue.size) {
-            const sources: SourceName[] = [this.queue.current, ...this.queue.tracks]
-                .filter((t): t is TrackResolvableStructure => t != null || typeof t !== "undefined")
-                .map((t): SourceName | undefined => t.info.sourceName)
-                .filter((s): s is SourceName => s != null || typeof s !== "undefined");
-
-            const missings: SourceName[] = [...new Set(sources)].filter((s): boolean => !target.info!.sourceManagers.includes(s));
-            if (missings.length) throw new PlayerError(`Target node is missing source managers for: ${missings.join(", ")}`);
-        }
-
-        const current: TrackStructure | null = this.queue.current;
-
-        const voice: LavalinkPlayerVoice | null = this.voice.toLavalink();
-        if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
-
-        if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);
-
-        this.node = target;
-
-        await this.connect();
-
-        const playerOptions: LavalinkPlayOptions = { voice };
-
-        if (current) {
-            playerOptions.position = this.lastPosition;
-            playerOptions.volume = this.volume;
-            playerOptions.track = {
-                encoded: current.encoded,
-                info: current.info,
-                userData: current.userData,
-                pluginInfo: current.pluginInfo,
-            };
-        }
-
-        await this.updatePlayer({ playerOptions });
-        await this.filterManager.apply();
-
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`,
-        );
-
-        await this.data.delete("internal_nodeChange");
     }
 
     /**
