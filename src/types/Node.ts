@@ -606,7 +606,7 @@ export interface LavalinkTrack {
      * The user data of the track.
      * @type {TrackUserData | undefined}
      */
-    userData: TrackUserData;
+    userData?: TrackUserData;
 }
 
 export interface UnresolvedLavalinkTrack {
@@ -629,7 +629,7 @@ export interface UnresolvedLavalinkTrack {
      * The user data of the track.
      * @type {TrackUserData | undefined}
      */
-    userData: TrackUserData;
+    userData?: TrackUserData;
 }
 
 /**

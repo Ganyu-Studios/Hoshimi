@@ -65,7 +65,7 @@ export class QueueUtils {
 
         const requesterFn = this.queue.player.manager.options.playerOptions.requesterFn;
 
-        const currentRequester: TrackRequester | undefined = "requester" in track ? track.requester : track.userData.requester;
+        const currentRequester: TrackRequester | undefined = "requester" in track ? track.requester : track.userData?.requester;
         const trackRequester: TrackRequester = await requesterFn(requester ?? currentRequester ?? {});
 
         this.queue.player.manager.emit(

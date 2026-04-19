@@ -48,7 +48,7 @@ export class Track implements LavalinkTrack {
      * The track user data.
      * @type {TrackUserData}
      */
-    public userData: TrackUserData;
+    public userData?: TrackUserData;
 
     /**
      * The requester of the track.
@@ -125,7 +125,7 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
      * The track user data.
      * @type {TrackUserData | undefined}
      */
-    public userData: TrackUserData;
+    public userData?: TrackUserData;
 
     /**
      * The requester of the track.
