@@ -2,15 +2,34 @@ import { NodeError, OptionError } from "../../classes/Errors";
 import type { Node } from "../../classes/node/Node";
 import { PlayerStorageAdapter } from "../../classes/storage/adapters/PlayerAdapter";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
-import type { TrackRequester, UnresolvedTrack } from "../../classes/Track";
+import type { TrackRequester, TrackResolvableStructure, UnresolvedTrack } from "../../classes/Track";
 import type { TimescaleSettings } from "../../types/Filters";
 import { DebugLevels, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
 import type { LavalinkTrack, NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { PlayerOptions } from "../../types/Player";
 import type { UpdatePlayerInfo } from "../../types/Rest";
-import { SourceRegistry } from "../../types/Sources";
+import { type ParsedQuery, SourceRegistry } from "../../types/Sources";
 import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
 import { UrlRegex } from "../constants";
+
+interface ValidateNodePluginsOptions {
+    /**
+     * The node to validate the plugins for.
+     * @type {Node}
+     */
+    node: Node;
+    /**
+     * The plugins to validate.
+     * @type {PluginNames[]}
+     */
+    plugins: PluginNames[];
+    /**
+     * Whether to validate that at least one plugin is available instead of all plugins.
+     * @type {boolean}
+     * @default false
+     */
+    atleastOne?: boolean;
+}
 
 /**
  *
@@ -97,7 +116,7 @@ export function validateQuery(search: SearchQuery): string {
 
     const query: string = search.query.trim();
 
-    const parsed = SourceRegistry.parseQuery(query);
+    const parsed: ParsedQuery | null = SourceRegistry.parseQuery(query);
     if (parsed) {
         if (UrlRegex.test(parsed.value)) return parsed.value;
         return SourceRegistry.createIdentifier(parsed.source, parsed.value);
@@ -170,18 +189,19 @@ export function updatePlayerData(node: NodeStructure, data: Partial<UpdatePlayer
 /**
  *
  * Validate the plugins in the node.
- * @param {Node} node The node to validate the plugins for.
- * @param {RestOrArray<string>} plugins The plugins to validate.
+ * @param {ValidateNodePluginsOptions} options The options to validate the node plugins.
+ * @throws {NodeError} If validation fails.
+ * @returns {void} Did you really expect a return here?
  */
-export function validateNodePlugins(node: Node, plugins: PluginNames[]): void {
-    const info: NodeInfo | null = node.info;
-    if (!info) throw new NodeError({ id: node.id, message: "Node is not ready yet." });
+export function validateNodePlugins(options: ValidateNodePluginsOptions): void {
+    const info: NodeInfo | null = options.node.info;
+    if (!info) throw new NodeError({ id: options.node.id, message: "Node is not ready yet." });
 
-    if (node.isNodelink()) {
-        node.nodeManager.manager.emit(
+    if (options.node.isNodelink()) {
+        options.node.nodeManager.manager.emit(
             EventNames.Debug,
             DebugLevels.Node,
-            `[Node] Skipping plugin validation for node ${node.id} because it is a Nodelink node.`,
+            `[Node] Skipping plugin validation for node ${options.node.id} because it is a Nodelink node.`,
         );
 
         return;
@@ -189,16 +209,27 @@ export function validateNodePlugins(node: Node, plugins: PluginNames[]): void {
 
     if (!info.plugins.length)
         throw new NodeError({
-            id: node.id,
+            id: options.node.id,
             message: "No plugins found in the node.",
         });
 
-    const missings: PluginNames[] = plugins.filter((name): boolean => !info.plugins.some((p): boolean => p.name === name));
-    if (missings.length)
-        throw new NodeError({
-            id: node.id,
-            message: `The node does not support the following plugins: ${missings.join(", ")}.`,
-        });
+    if (options.atleastOne) {
+        // Validate that at least one plugin is available
+        const isAnyPluginActive: boolean = options.plugins.some((name): boolean => info.plugins.some((p): boolean => p.name === name));
+        if (!isAnyPluginActive)
+            throw new NodeError({
+                id: options.node.id,
+                message: `The node does not support at least one of the following plugins: ${options.plugins.join(", ")}.`,
+            });
+    } else {
+        // Validate that all plugins are available
+        const missings: PluginNames[] = options.plugins.filter((name): boolean => !info.plugins.some((p): boolean => p.name === name));
+        if (missings.length)
+            throw new NodeError({
+                id: options.node.id,
+                message: `The node does not support the following plugins: ${missings.join(", ")}.`,
+            });
+    }
 }
 
 /**
@@ -219,7 +250,7 @@ export function validateSource(type: SearchSource | SourceName | string): Search
  * @param {TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track payload.
  * @returns {boolean} True when the payload is resolved.
  */
-export function isResolved(track: TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack): track is TrackStructure | LavalinkTrack {
+export function isResolved(track: TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack): track is TrackStructure {
     if (!track) return false;
 
     return (
@@ -232,17 +263,15 @@ export function isResolved(track: TrackStructure | LavalinkTrack | UnresolvedLav
  * @param {TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track payload.
  * @returns {boolean} True when the payload is unresolved.
  */
-export function isUnresolved(
-    track: TrackStructure | LavalinkTrack | UnresolvedLavalinkTrack,
-): track is UnresolvedTrack | UnresolvedLavalinkTrack {
+export function isUnresolved(track: TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack): track is UnresolvedTrack {
     if (!track) return false;
 
     return (
-        typeof track.encoded === "string" ||
-        (typeof track.info === "object" &&
-            typeof track.info.title === "string" &&
-            "resolve" in track &&
-            typeof track.resolve === "function")
+        typeof track === "object" &&
+        (("info" in track && typeof track.info === "object" && typeof track.info.title === "string") ||
+            typeof track.encoded === "string") &&
+        "resolve" in track &&
+        typeof track.resolve === "function"
     );
 }
 
@@ -293,7 +322,7 @@ export function stringify(value: unknown, space?: string | number): string {
  * @param {TrackRequester} requester The requester to default.
  * @returns {TrackRequester} The default requester.
  */
-export function requesterFn<T extends TrackRequester = TrackRequester>(requester: TrackRequester): T {
+export function requesterFn<T>(requester: TrackRequester): T {
     if (!requester) return {} as T;
     return requester as T;
 }

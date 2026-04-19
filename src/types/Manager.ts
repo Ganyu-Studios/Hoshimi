@@ -911,7 +911,7 @@ export type Awaitable<T> = Promise<T> | T;
 /**
  * Create a type that infers the value of a key from an object.
  */
-export type Inferable<T, K extends string> = T extends { [key in K]: infer R } ? R : unknown;
+export type Inferable<T, K extends string, D = unknown> = T extends { [key in K]: infer R } ? R : D;
 
 /**
  * Create a type that infers the value of a key from an object.

@@ -546,8 +546,8 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
         if (!node) throw new ManagerError("No nodes are available.");
 
-        const res: LavalinkSearchResponse | null = await node.search(options);
-        if (!res)
+        const search: LavalinkSearchResponse | null = await node.search(options);
+        if (!search)
             return {
                 loadType: LoadType.Empty,
                 exception: null,
@@ -559,16 +559,16 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
         this.emit(
             EventNames.Debug,
             DebugLevels.Manager,
-            `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Result: ${stringify(res)}`,
+            `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Result: ${stringify(search)}`,
         );
 
         const requesterFn = this.options.playerOptions.requesterFn;
-        const requester = requesterFn(options.requester);
+        const requester = await requesterFn(options.requester);
 
-        switch (res.loadType) {
+        switch (search.loadType) {
             case LoadType.Empty: {
                 return {
-                    loadType: res.loadType,
+                    loadType: search.loadType,
                     exception: null,
                     playlist: null,
                     pluginInfo: null,
@@ -578,8 +578,8 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
             case LoadType.Error: {
                 return {
-                    loadType: res.loadType,
-                    exception: res.data,
+                    loadType: search.loadType,
+                    exception: search.data,
                     playlist: null,
                     pluginInfo: null,
                     tracks: [],
@@ -588,31 +588,31 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
             case LoadType.Playlist: {
                 return {
-                    loadType: res.loadType,
+                    loadType: search.loadType,
                     exception: null,
-                    playlist: res.data,
-                    pluginInfo: res.data.pluginInfo,
-                    tracks: res.data.tracks.map((t): TrackStructure => Structures.Track(t, requester)),
+                    playlist: search.data,
+                    pluginInfo: search.data.pluginInfo,
+                    tracks: search.data.tracks.map((t): TrackStructure => Structures.Track(t, requester)),
                 };
             }
 
             case LoadType.Search: {
                 return {
-                    loadType: res.loadType,
+                    loadType: search.loadType,
                     exception: null,
                     playlist: null,
                     pluginInfo: null,
-                    tracks: res.data.map((t): TrackStructure => Structures.Track(t, requester)),
+                    tracks: search.data.map((t): TrackStructure => Structures.Track(t, requester)),
                 };
             }
 
             case LoadType.Track: {
                 return {
-                    loadType: res.loadType,
+                    loadType: search.loadType,
                     exception: null,
                     playlist: null,
-                    pluginInfo: res.data.pluginInfo,
-                    tracks: [Structures.Track(res.data, requester)],
+                    pluginInfo: search.data.pluginInfo,
+                    tracks: [Structures.Track(search.data, requester)],
                 };
             }
         }

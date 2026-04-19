@@ -141,8 +141,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
 
     if (payload.reason === TrackEndReason.Replaced) {
         this.manager.emit(EventNames.TrackEnd, this, this.queue.current, payload);
-
-        return onEnd.call(this, false);
+        return;
     }
 
     const isStopPlaying = await this.data.get("internal_stopPlaying");
@@ -162,7 +161,9 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
             `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`,
         );
 
-        return this.play({ noReplace: true });
+        if (this.queue.current) await this.play({ noReplace: true });
+
+        return;
     }
 
     if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
@@ -176,7 +177,9 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`,
     );
 
-    return this.play({ noReplace: true });
+    if (this.queue.current) await this.play({ noReplace: true });
+
+    return;
 }
 
 /**

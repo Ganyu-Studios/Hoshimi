@@ -2,7 +2,7 @@ import { DebugLevels, EventNames } from "../../types/Manager";
 import type { QueueJson } from "../../types/Queue";
 import type { PlayerStructure, TrackStructure } from "../../types/Structures";
 import type { TrackResolvableStructure } from "../Track";
-import { QueueUtils } from "./Utils";
+import { Utils } from "./Utils";
 
 /**
  * Class representing a queue.
@@ -35,10 +35,10 @@ export class Queue {
 
     /**
      * The queue utils instance.
-     * @type {QueueUtils}
+     * @type {Utils}
      * @readonly
      */
-    readonly utils: QueueUtils;
+    readonly utils: Utils;
 
     /**
      *
@@ -55,7 +55,7 @@ export class Queue {
      */
     constructor(player: PlayerStructure) {
         this.player = player;
-        this.utils = new QueueUtils(this);
+        this.utils = new Utils(this);
     }
 
     /**
@@ -224,7 +224,7 @@ export class Queue {
     /**
      *
      * Add tracks to the beginning of the queue.
-     * @param {TrackStructure[]} tracks The tracks to add.
+     * @param {TrackResolvableStructure[]} tracks The tracks to add.
      * @returns {Promise<this>} The queue instance.
      * @example
      * ```ts
@@ -240,7 +240,7 @@ export class Queue {
      * console.log(queue.tracks); // [track1, track2, track]
      * ```
      */
-    public async unshift(...tracks: TrackStructure[]): Promise<this> {
+    public async unshift(...tracks: TrackResolvableStructure[]): Promise<this> {
         this.tracks.unshift(...tracks);
 
         this.player.manager.emit(
@@ -329,7 +329,7 @@ export class Queue {
     /**
      *
      * Move a track to a specific position in the queue.
-     * @param {TrackStructure} track The track to move.
+     * @param {TrackResolvableStructure} track The track to move.
      * @param {number} to The position to move.
      * @returns {Promise<this>} The queue instance.
      * @example
@@ -344,7 +344,7 @@ export class Queue {
      * console.log(queue.tracks); // [track1, track, track2]
      * ```
      */
-    public async move(track: TrackStructure, to: number): Promise<this> {
+    public async move(track: TrackResolvableStructure, to: number): Promise<this> {
         const index: number = this.tracks.indexOf(track);
         if (index === -1) return this;
 

@@ -9,9 +9,9 @@ import type { TrackRequester, TrackResolvableStructure } from "../Track";
 
 /**
  * Class representing the queue utils.
- * @class QueueUtils
+ * @class Utils
  */
-export class QueueUtils {
+export class Utils {
     /**
      * Player instance.
      * @type {Queue}
@@ -63,14 +63,15 @@ export class QueueUtils {
         if (!track) return null;
 
         const requesterFn = this.queue.player.manager.options.playerOptions.requesterFn;
-        const trackRequester: TrackRequester | undefined = "requester" in track ? track.requester : undefined;
-        const request = requesterFn(requester ?? trackRequester ?? {});
 
-        if (isResolved(track)) return Structures.Track(track, request);
+        const currentRequester: TrackRequester | undefined = "requester" in track ? track.requester : track.userData?.requester;
+        const trackRequester = await requesterFn(requester ?? currentRequester ?? {});
+
+        if (isResolved(track)) return Structures.Track(track, trackRequester);
 
         if (!isUnresolved(track)) throw new ResolveError("The track is not a valid unresolved track.");
         if (!("resolve" in track) || typeof track.resolve !== "function")
-            return Structures.UnresolvedTrack(track, request).resolve(this.queue.player);
+            return Structures.UnresolvedTrack(track, trackRequester).resolve(this.queue.player);
 
         return track.resolve(this.queue.player);
     }

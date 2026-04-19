@@ -180,7 +180,7 @@ export interface HoshimiPlayerOptions {
      * The function to use to get the requester data.
      * @param {TrackRequester} requester The requester of the track.
      */
-    requesterFn?<T extends TrackRequester = TrackRequester>(requester: TrackRequester): T;
+    requesterFn?<T>(requester: TrackRequester): T;
     /**
      * The options for handling errors.
      * @type {ErrorPlayerActions | undefined}

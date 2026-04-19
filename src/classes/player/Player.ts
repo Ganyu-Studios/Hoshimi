@@ -315,14 +315,21 @@ export class Player {
     public async play(options: Partial<PlayOptions> = {}): Promise<void> {
         if (typeof options !== "object") throw new PlayerError("The play options must be an object.");
 
-        if (options.track) options.track = (await this.queue.utils.build(options.track)) ?? undefined;
-        else options.track = (await this.queue.utils.build(await this.queue.shift())) ?? undefined;
+        let track: TrackResolvableStructure | null;
 
-        if (!options.track) throw new PlayerError("No track to play.");
-        if (!isResolved(options.track) && !isUnresolved(options.track))
+        if (options.track) track = options.track;
+        else track = await this.queue.shift();
+
+        if (!track) throw new PlayerError("No track to play.");
+        if (!isResolved(track) && !isUnresolved(track))
             throw new PlayerError("The track must be a valid Track or UnresolvedTrack instance.");
 
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${options.track.info.title}`);
+        track.userData = {
+            requester: track.requester,
+            ...track.userData,
+        };
+
+        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${track.info.title}`);
 
         // Reset position to start when playing a new track (unless a specific position is provided)
         const position: number = options.position ?? 0;
@@ -336,13 +343,11 @@ export class Player {
                 ...options,
                 position, // Ensure position is sent to Lavalink
                 track: {
-                    userData: options.track.userData,
-                    encoded: options.track.encoded,
+                    userData: track.userData,
+                    encoded: track.encoded,
                 },
             },
         });
-
-        this.queue.current = options.track;
 
         await this.queue.utils.save();
 

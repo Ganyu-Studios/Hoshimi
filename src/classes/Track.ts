@@ -83,6 +83,8 @@ export class Track implements LavalinkTrack {
         this.requester = requester ?? {};
         this.pluginInfo = track.pluginInfo;
         this.userData = track.userData ?? {};
+
+        this.userData.requester = requester ?? {};
     }
 
     /**
@@ -162,6 +164,8 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
         this.requester = requester ?? {};
         this.pluginInfo = track.pluginInfo;
         this.userData = track.userData ?? {};
+
+        this.userData.requester = requester ?? {};
     }
 
     /**
@@ -175,7 +179,9 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
 
         if (isResolved(this)) {
             const requesterFn = player.manager.options.playerOptions.requesterFn;
-            return Structures.Track(this, requesterFn(this.requester));
+            const requester = await requesterFn(this.requester);
+
+            return Structures.Track(this, requester);
         }
 
         if (!isUnresolved(this)) throw new ResolveError("Track is not an unresolved track.");
@@ -270,4 +276,4 @@ export type TrackRequester = Inferable<CustomizableTrack, "requester">;
 /**
  * The user data of the track.
  */
-export type TrackUserData = Inferable<CustomizableTrack, "userData">;
+export type TrackUserData = Inferable<CustomizableTrack, "userData", Record<string, unknown>>;

@@ -5,7 +5,7 @@ import { SourceNames } from "./Node";
 /**
  * Interface representing a parsed query with an explicit source prefix.
  */
-interface ParsedQuery {
+export interface ParsedQuery {
     /**
      * The canonical source identifier parsed from the query prefix.
      * @type {string}
