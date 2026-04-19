@@ -22,9 +22,10 @@ import { stringify } from "../functions/utils";
  *
  * Emitted when a queue track ends.
  * @param {PlayerStructure} this The player that emitted the event.
+ * @param {boolean} [updateCurrent=true] Whether to update the current track or not.
  * @returns {Promise<void>} Yeah, this is something weird but it works.
  */
-async function onEnd(this: PlayerStructure): Promise<void> {
+async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Promise<void> {
     if (
         this.queue.current &&
         !this.queue.history.find(
@@ -47,7 +48,7 @@ async function onEnd(this: PlayerStructure): Promise<void> {
     if (this.loop === LoopMode.Track && this.queue.current) this.queue.unshift(this.queue.current);
     if (this.loop === LoopMode.Queue && this.queue.current) this.queue.add(this.queue.current);
 
-    if (!this.queue.current) this.queue.current = await this.queue.utils.build(await this.queue.shift());
+    if (!this.queue.current && updateCurrent) this.queue.current = await this.queue.utils.build(await this.queue.shift());
 
     await this.queue.utils.save();
 
@@ -86,6 +87,12 @@ async function queueEnd(
 
             return this.play({ noReplace: true, paused: false });
         }
+    }
+
+    if (this.queue.current) {
+        if (payload.type === PlayerEventType.TrackEnd) this.manager.emit(EventNames.TrackEnd, this, track, payload);
+
+        return this.play({ noReplace: true, paused: false });
     }
 
     if (track) await this.queue.utils.save();
@@ -130,53 +137,42 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
 export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): Promise<void> {
     if (await this.data.get("internal_nodeChange")) return;
 
-    const current: TrackStructure | null = await this.queue.utils.build(payload.track);
+    if (payload.reason === TrackEndReason.Replaced) {
+        this.manager.emit(EventNames.TrackEnd, this, this.queue.current, payload);
 
-    switch (payload.reason) {
-        case TrackEndReason.Stopped:
-            // soontm
-            break;
-
-        case TrackEndReason.Replaced: {
-            this.manager.emit(EventNames.TrackEnd, this, current, payload);
-            return;
-        }
-
-        case TrackEndReason.LoadFailed:
-        case TrackEndReason.Cleanup: {
-            this.playing = false;
-
-            await onEnd.call(this);
-
-            if (!this.queue.size || !this.queue.current) return queueEnd.call(this, current, payload);
-
-            this.manager.emit(EventNames.TrackEnd, this, current, payload);
-            this.manager.emit(
-                EventNames.Debug,
-                DebugLevels.Player,
-                `[Player] -> [End] The track: ${current?.info.title ?? "Unknown"} has ended.`,
-            );
-
-            this.queue.current = null;
-
-            return this.play();
-        }
+        return onEnd.call(this, false);
     }
 
-    if (!this.queue.size && this.loop === LoopMode.Off) return queueEnd.call(this, current, payload);
+    if (!this.queue.size && this.loop === LoopMode.Off) return queueEnd.call(this, this.queue.current, payload);
 
-    if (current) await this.queue.utils.save();
+    const reasons: TrackEndReason[] = [TrackEndReason.LoadFailed, TrackEndReason.Cleanup];
+    if (reasons.includes(payload.reason)) {
+        await onEnd.call(this);
+
+        if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
+
+        this.manager.emit(EventNames.TrackEnd, this, this.queue.current, payload);
+        this.manager.emit(
+            EventNames.Debug,
+            DebugLevels.Player,
+            `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`,
+        );
+
+        return this.play({ noReplace: true });
+    }
+
+    if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
 
     await onEnd.call(this);
 
-    this.queue.current = null;
+    this.manager.emit(EventNames.TrackEnd, this, this.queue.current, payload);
+    this.manager.emit(
+        EventNames.Debug,
+        DebugLevels.Player,
+        `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`,
+    );
 
-    if (!this.queue.size) return queueEnd.call(this, current, payload);
-
-    this.manager.emit(EventNames.TrackEnd, this, current, payload);
-    this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [End] The track: ${current?.info.title ?? "Unknown"} has ended.`);
-
-    return this.play();
+    return this.play({ noReplace: true });
 }
 
 /**
@@ -194,8 +190,6 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
         `[Player] -> [Stuck] The track: ${this.queue.current?.info.title ?? "Unknown"} has stuck.`,
     );
 
-    const current: TrackStructure | null = await this.queue.utils.build(payload.track);
-
     if (!this.queue.size && this.loop === LoopMode.Off) {
         try {
             await this.node.updatePlayer({
@@ -205,13 +199,13 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
 
             return;
         } catch {
-            return queueEnd.call(this, current, payload);
+            return queueEnd.call(this, this.queue.current, payload);
         }
     }
 
     await onEnd.call(this);
 
-    if (!this.queue.current) return queueEnd.call(this, current, payload);
+    if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
 }
 
 /**
@@ -222,13 +216,11 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
  * @returns {Promise<void>} Aww, the track has an error? That's sad.
  */
 export async function trackError(this: PlayerStructure, payload: TrackExceptionEvent): Promise<void> {
-    const current: TrackStructure | null = await this.queue.utils.build(payload.track);
-
-    this.manager.emit(EventNames.TrackError, this, current, payload);
+    this.manager.emit(EventNames.TrackError, this, this.queue.current, payload);
     this.manager.emit(
         EventNames.Debug,
         DebugLevels.Player,
-        `[Player] -> [Error] The track: ${current?.info.title ?? "Unknown"} has error.`,
+        `[Player] -> [Error] The track: ${this.queue.current?.info.title ?? "Unknown"} has error.`,
     );
 }
 

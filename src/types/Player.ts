@@ -667,6 +667,27 @@ export interface SkipOptions {
     throwError?: boolean;
 }
 
+export interface StopOptions {
+    /**
+     * Whether to destroy the player after stopping.
+     * @type {boolean | undefined}
+     * @default true
+     */
+    destroy?: boolean;
+    /**
+     * Wheter to clear the queue after stopping.
+     * @type {boolean | undefined}
+     * @default false
+     */
+    clearQueue?: boolean;
+    /**
+     * Whether to leave the voice channel after stopping.
+     * @type {boolean | undefined}
+     * @default false
+     */
+    leaveVoice?: boolean;
+}
+
 /**
  * The voice channel update options.
  */

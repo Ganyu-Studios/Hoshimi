@@ -9,6 +9,7 @@ import {
     type PlayerOptions,
     type PlayOptions,
     type SkipOptions,
+    type StopOptions,
 } from "../../types/Player";
 import type { LavalinkPlayer, UpdatePlayerInfo } from "../../types/Rest";
 import {
@@ -389,19 +390,11 @@ export class Player {
         if (options.track) options.track = (await this.queue.utils.build(options.track)) ?? undefined;
         else options.track = (await this.queue.utils.build(await this.queue.shift())) ?? undefined;
 
-        this.queue.current = options.track ?? null;
-
-        if (!this.queue.current) throw new PlayerError("No track to play.");
-        if (!isResolved(this.queue.current) && !isUnresolved(this.queue.current))
+        if (!options.track) throw new PlayerError("No track to play.");
+        if (!isResolved(options.track) && !isUnresolved(options.track))
             throw new PlayerError("The track must be a valid Track or UnresolvedTrack instance.");
 
-        await this.queue.utils.save();
-
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Play] A new track is playing: ${this.queue.current.info.title}`,
-        );
+        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${options.track.info.title}`);
 
         // Reset position to start when playing a new track (unless a specific position is provided)
         const position: number = options.position ?? 0;
@@ -415,11 +408,15 @@ export class Player {
                 ...options,
                 position, // Ensure position is sent to Lavalink
                 track: {
-                    userData: this.queue.current.userData,
-                    encoded: this.queue.current.encoded,
+                    userData: options.track.userData,
+                    encoded: options.track.encoded,
                 },
             },
         });
+
+        this.queue.current = options.track;
+
+        await this.queue.utils.save();
 
         return;
     }
@@ -441,7 +438,7 @@ export class Player {
     /**
      *
      * Stop the player from playing.
-     * @param {boolean} [destroy=true] Whether to destroy the player or not.
+     * @param {Partial<StopOptions>} [options] The options for stopping the player.
      * @returns {Promise<void>}
      * @example
      * ```ts
@@ -449,10 +446,14 @@ export class Player {
      * player.stop();
      * ```
      */
-    public async stop(destroy: boolean = true): Promise<void> {
+    public async stop(options: Partial<StopOptions> = {}): Promise<void> {
         await this.node.stopPlayer(this.guildId);
 
+        const { destroy = true, clearQueue = false, leaveVoice = false } = options;
+
         if (destroy) await this.destroy(DestroyReasons.Stop);
+        if (clearQueue) await this.queue.clear();
+        if (leaveVoice) await this.voice.disconnect();
 
         this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Stop] Player stopped for guild: ${this.guildId}`);
 
@@ -460,9 +461,6 @@ export class Player {
         this.paused = false;
         this.lastPosition = 0;
         this.lastPositionUpdate = null;
-        this.queue.current = null;
-
-        return;
     }
 
     /**
@@ -476,11 +474,7 @@ export class Player {
      * ```
      */
     public async setPaused(paused: boolean = !this.paused): Promise<boolean> {
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Pause] Player is now ${paused ? "paused" : "resumed"} for guild: ${this.guildId}`,
-        );
+        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Pause] Player is now ${paused} for guild: ${this.guildId}`);
 
         // When pausing, stop position calculation by setting lastPositionUpdate to null
         if (paused) {
@@ -493,11 +487,8 @@ export class Player {
 
         await this.updatePlayer({ playerOptions: { paused } });
 
-        if (paused) {
-            this.manager.emit(EventNames.PlayerPaused, this, this.queue.current);
-        } else {
-            this.manager.emit(EventNames.PlayerResumed, this, this.queue.current);
-        }
+        if (paused) this.manager.emit(EventNames.PlayerPaused, this, this.queue.current);
+        else this.manager.emit(EventNames.PlayerResumed, this, this.queue.current);
 
         return paused;
     }
