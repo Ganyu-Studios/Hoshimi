@@ -1,8 +1,8 @@
 import { type Awaitable, DebugLevels, EventNames } from "../../types/Manager";
 import type { AnyLavalinkTrack } from "../../types/Player";
-import type { HoshimiQueueOptions, QueueJson, SyncOptions } from "../../types/Queue";
+import type { HoshimiQueueOptions, QueueJSON, SyncOptions, TrackJSON } from "../../types/Queue";
 import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
-import { isLavalinkResolved, isLavalinkUnresolved, isResolved, isUnresolved, stringify } from "../../util/functions/utils";
+import { isLavalinkResolved, isLavalinkUnresolved, isResolved, isStoredTrack, isUnresolved, stringify } from "../../util/functions/utils";
 import { ResolveError, StorageError } from "../Errors";
 import type { QueueStorageAdapter } from "../storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../Track";
@@ -138,14 +138,19 @@ export class QueueUtils {
     public async sync(options: SyncOptions = {}): Promise<void> {
         const { override = true, syncCurrent = false } = options;
 
-        const storedQueue: QueueJson | undefined = await this.storage.get(this.queue.player.guildId);
+        const storedQueue: QueueJSON | undefined = await this.storage.get(this.queue.player.guildId);
         if (!storedQueue) throw new StorageError(`No data found to sync for guildId: ${this.queue.player.guildId}`);
 
-        if (syncCurrent && storedQueue.current && !this.queue.current && isResolved(storedQueue.current))
-            this.queue.current = storedQueue.current;
+        if (syncCurrent && storedQueue.current && !this.queue.current && isStoredTrack(storedQueue.current))
+            this.queue.current = Structures.Track(storedQueue.current, storedQueue.current.requester);
 
-        const tracks: TrackStructure[] = storedQueue.tracks.filter((track): track is TrackStructure => isResolved(track)) || [];
-        const history: TrackStructure[] = storedQueue.history.filter((track): track is TrackStructure => isResolved(track)) || [];
+        const tracks: TrackStructure[] = storedQueue.tracks
+            .filter((track): track is TrackJSON => isStoredTrack(track))
+            .map((track): TrackStructure => Structures.Track(track, track.requester));
+
+        const history: TrackStructure[] = storedQueue.history
+            .filter((track): track is TrackJSON => isStoredTrack(track))
+            .map((track): TrackStructure => Structures.Track(track, track.requester));
 
         const length: number = this.queue.tracks.length;
 
@@ -158,6 +163,6 @@ export class QueueUtils {
             `[Queue] -> [Adapter] Syncing queue for ${this.queue.player.guildId} | Object: ${stringify(storedQueue)}`,
         );
 
-        await this.save();
+        return this.save();
     }
 }

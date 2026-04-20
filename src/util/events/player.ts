@@ -6,7 +6,7 @@ import {
     type LyricsLineEvent,
     type LyricsNotFoundEvent,
     PlayerEventType,
-    type PlayerJson,
+    type PlayerJSON,
     type PlayerUpdate,
     type TrackEndEvent,
     TrackEndReason,
@@ -97,7 +97,6 @@ async function queueEnd(
         return this.play({ noReplace: true, paused: false });
     }
 
-    if (track) await this.queue.utils.save();
     if (payload.type === PlayerEventType.TrackEnd && payload.reason !== TrackEndReason.Stopped) await this.queue.utils.save();
 
     await onEnd.call(this, false);
@@ -247,7 +246,7 @@ export async function playerUpdate(this: NodeStructure, payload: PlayerUpdate): 
     const player: PlayerStructure | undefined = this.nodeManager.manager.getPlayer(payload.guildId);
     if (!player) return;
 
-    const oldPlayer: PlayerJson = player.toJSON();
+    const oldPlayer: PlayerJSON = player.toJSON();
 
     player.ping = payload.state.ping;
     player.connected = payload.state.connected;

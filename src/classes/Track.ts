@@ -8,6 +8,7 @@ import {
     type UnresolvedLavalinkTrack,
     type UnresolvedTrackInfo,
 } from "../types/Node";
+import { TrackJSON } from "../types/Queue";
 import type { PlayerStructure, TrackStructure, UnresolvedTrackStructure } from "../types/Structures";
 import { isResolved, isUnresolved, validateSource } from "../util/functions/utils";
 import { ResolveError } from "./Errors";
@@ -101,6 +102,21 @@ export class Track implements LavalinkTrack {
         if (embedable) return `[${this.info.title}](${this.info.uri})`;
         return `[${this.info.title}](<${this.info.uri}>)`;
     }
+
+    /**
+     *
+     * Converts the track to a JSON object for storage.
+     * @returns {TrackJSON} The JSON representation of the track for storage.
+     */
+    public toJSON(): TrackJSON {
+        return {
+            requester: this.requester,
+            encoded: this.encoded,
+            info: this.info,
+            pluginInfo: this.pluginInfo,
+            userData: this.userData,
+        };
+    }
 }
 
 /**
@@ -162,6 +178,21 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
         this.requester = requester ?? {};
         this.pluginInfo = track.pluginInfo ?? {};
         this.userData = track.userData ?? {};
+    }
+
+    /**
+     *
+     * Converts the track to a JSON object for storage.
+     * @returns {TrackJSON} The JSON representation of the track for storage.
+     */
+    public toJSON(): TrackJSON {
+        return {
+            requester: this.requester,
+            encoded: this.encoded!,
+            info: this.info as TrackInfo,
+            pluginInfo: this.pluginInfo!,
+            userData: this.userData,
+        };
     }
 
     /**

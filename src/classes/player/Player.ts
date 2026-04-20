@@ -6,7 +6,7 @@ import {
     type LavalinkPlayOptions,
     LoopMode,
     type LyricsMethods,
-    type PlayerJson,
+    type PlayerJSON,
     type PlayerOptions,
     type PlayOptions,
     type SkipOptions,
@@ -668,7 +668,7 @@ export class Player {
     /**
      *
      * Return the player as a json object.
-     * @returns {PlayerJson}
+     * @returns {PlayerJSON}
      * @example
      * ```ts
      * const player = manager.getPlayer("guildId");
@@ -676,7 +676,7 @@ export class Player {
      * console.log(json); // the player as a json object
      * ```
      */
-    public toJSON(): PlayerJson {
+    public toJSON(): PlayerJSON {
         return {
             volume: this.volume,
             loop: this.loop,

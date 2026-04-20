@@ -1,5 +1,5 @@
 import type { RestOrArray } from "../../types/Manager";
-import type { QueueJson } from "../../types/Queue";
+import type { QueueJSON } from "../../types/Queue";
 import { QueueStorageAdapter } from "./adapters/QueueAdapter";
 
 /**
@@ -7,22 +7,22 @@ import { QueueStorageAdapter } from "./adapters/QueueAdapter";
  * @class QueueMemoryStorage
  * @extends {QueueStorageAdapter}
  */
-export class QueueMemoryStorage<T extends QueueJson = QueueJson> extends QueueStorageAdapter<T> {
+export class QueueMemoryStorage<T extends QueueJSON = QueueJSON> extends QueueStorageAdapter<T> {
     /**
      * Memory storage.
-     * @type {Map<string, QueueJson>}
+     * @type {Map<string, QueueJSON>}
      * @private
      * @readonly
      * @internal
      */
-    private readonly storage: Map<string, QueueJson> = new Map();
+    private readonly storage: Map<string, QueueJSON> = new Map();
 
     public get(key: string): T | undefined {
         return this.parse(this.storage.get(key));
     }
 
     public set(key: string, value: T): void {
-        this.storage.set(this.buildKey(this.namespace, key), this.stringify<QueueJson>(value));
+        this.storage.set(this.buildKey(this.namespace, key), this.stringify<QueueJSON>(value));
     }
 
     public delete(key: string): boolean {

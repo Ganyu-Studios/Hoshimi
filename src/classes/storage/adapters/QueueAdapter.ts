@@ -1,5 +1,5 @@
 import type { Awaitable, RestOrArray } from "../../../types/Manager";
-import type { QueueJson } from "../../../types/Queue";
+import type { QueueJSON } from "../../../types/Queue";
 
 /**
  * Class representing a storage manager.
@@ -16,7 +16,7 @@ import type { QueueJson } from "../../../types/Queue";
  * console.log(value); // "value"
  * ```
  */
-export abstract class QueueStorageAdapter<T extends QueueJson = QueueJson> {
+export abstract class QueueStorageAdapter<T extends QueueJSON = QueueJSON> {
     /**
      * The namespace of the storage.
      * @type {string}

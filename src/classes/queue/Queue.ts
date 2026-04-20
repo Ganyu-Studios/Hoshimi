@@ -1,5 +1,5 @@
 import { DebugLevels, EventNames } from "../../types/Manager";
-import type { QueueJson } from "../../types/Queue";
+import type { QueueJSON, TrackJSON } from "../../types/Queue";
 import type { PlayerStructure, TrackStructure } from "../../types/Structures";
 import type { TrackResolvableStructure } from "../Track";
 import { QueueUtils } from "./Utils";
@@ -321,7 +321,7 @@ export class Queue {
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
         this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, "[Queue] -> [Clear] Cleared the queue.");
 
-        await this.utils.save();
+        await this.utils.destroy();
 
         return this;
     }
@@ -399,24 +399,24 @@ export class Queue {
     /**
      *
      * Convert the queue to a JSON object.
-     * @returns {QueueJson} The queue JSON object.
+     * @returns {QueueJSON} The queue JSON object.
      * @example
      * ```ts
      * const queue = player.queue;
      * await queue.add(track);
      *
-     * console.log(queue.toJSON()); // { tracks: [track], history: [], current: null }
+     * console.log(queue.toJSON()); // { tracks: [{ ... }, { ... }], history: [], current: null }
      * ```
      */
-    public toJSON(): QueueJson {
+    public toJSON(): QueueJSON {
         const max: number = this.player.manager.options.queueOptions.maxHistory;
 
         if (this.history.length > max) this.history.splice(max, this.history.length);
 
         return {
-            tracks: this.tracks,
-            history: this.history,
-            current: this.current,
+            tracks: this.tracks.map((track): TrackJSON => track.toJSON()),
+            history: this.history.map((track): TrackJSON => track.toJSON()),
+            current: this.current?.toJSON() ?? null,
         };
     }
 }

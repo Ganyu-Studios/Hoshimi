@@ -8,6 +8,7 @@ import type { TimescaleSettings } from "../../types/Filters";
 import { DebugLevels, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
 import type { LavalinkTrack, NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { AnyLavalinkTrack, PlayerOptions } from "../../types/Player";
+import { TrackJSON } from "../../types/Queue";
 import type { UpdatePlayerInfo } from "../../types/Rest";
 import { type ParsedQuery, SourceRegistry } from "../../types/Sources";
 import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
@@ -331,6 +332,7 @@ export function isResolved(track: TrackResolvableStructure | AnyLavalinkTrack): 
         typeof track.encoded === "string" &&
         typeof track.info === "object" &&
         !("resolve" in track && typeof track.resolve === "function") &&
+        "requester" in track &&
         typeof track.requester !== "undefined" &&
         typeof track.info.title === "string"
     );
@@ -369,7 +371,8 @@ export function isLavalinkResolved(track: TrackResolvableStructure | AnyLavalink
         !(track instanceof Track) &&
         typeof track.encoded === "string" &&
         typeof track.info === "object" &&
-        !("resolve" in track && typeof track.resolve === "function")
+        !("resolve" in track && typeof track.resolve === "function") &&
+        "requester" in track
     );
 }
 
@@ -388,6 +391,23 @@ export function isLavalinkUnresolved(track: TrackResolvableStructure | AnyLavali
         typeof track.info === "object" &&
         typeof track.info?.title === "string" &&
         !("resolve" in track && typeof track.resolve === "function")
+    );
+}
+
+/**
+ * Check whether a track is a stored track (has the structure of a TrackJSON object).
+ * This is used to identify tracks that come from storage and need to be transformed back into Track instances.
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a stored track (TrackJSON structure).
+ */
+export function isStoredTrack(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackJSON {
+    if (!track || typeof track !== "object") return false;
+    return (
+        typeof track.encoded === "string" &&
+        typeof track.info === "object" &&
+        typeof track.info.title === "string" &&
+        "requester" in track &&
+        typeof track.requester !== "undefined"
     );
 }
 

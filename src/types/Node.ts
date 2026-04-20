@@ -1265,7 +1265,7 @@ export interface LyricsLine {
 /**
  * The interface of the node json object.
  */
-export interface NodeJson {
+export interface HodeJSON {
     /**
      * The node id.
      * @type {string}

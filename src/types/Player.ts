@@ -2,8 +2,8 @@ import type { PlayerStorageAdapter } from "../classes/storage/adapters/PlayerAda
 import type { TrackRequester, TrackResolvableStructure } from "../classes/Track";
 import type { FilterSettings } from "./Filters";
 import type { NodeIdentifier, Nullable, Prettify } from "./Manager";
-import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, NodeJson, OpCodes, UnresolvedLavalinkTrack } from "./Node";
-import type { QueueJson } from "./Queue";
+import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, HodeJSON, OpCodes, UnresolvedLavalinkTrack } from "./Node";
+import type { QueueJSON } from "./Queue";
 import type { TrackStructure } from "./Structures";
 
 /**
@@ -499,7 +499,7 @@ export interface PlayerVoice {
 /**
  * The JSON representation of the player.
  */
-export interface PlayerJson {
+export interface PlayerJSON {
     /**
      * The guild id of the player.
      * @type {string}
@@ -582,14 +582,14 @@ export interface PlayerJson {
     ping: number;
     /**
      * The queue of the player.
-     * @type {QueueJson}
+     * @type {QueueJSON}
      */
-    queue: QueueJson;
+    queue: QueueJSON;
     /**
      * The node of the player.
-     * @type {NodeJson}
+     * @type {HodeJSON}
      */
-    node: NodeJson;
+    node: HodeJSON;
     /**
      * The filter settings of the player.
      * @type {FilterSettings}

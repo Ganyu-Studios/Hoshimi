@@ -16,7 +16,7 @@ import type {
     LyricsFoundEvent,
     LyricsLineEvent,
     LyricsNotFoundEvent,
-    PlayerJson,
+    PlayerJSON,
     PlayerUpdate,
     TrackEndEvent,
     TrackExceptionEvent,
@@ -594,9 +594,9 @@ export interface HoshimiEvents {
     /**
      * Emitted when the player updates.
      * @param {PlayerStructure} newPlayer The new player.
-     * @param {PlayerJson} oldPlayer The old player.
+     * @param {PlayerJSON} oldPlayer The old player.
      */
-    playerUpdate: [newPlayer: PlayerStructure, oldPlayer: PlayerJson, payload: PlayerUpdate];
+    playerUpdate: [newPlayer: PlayerStructure, oldPlayer: PlayerJSON, payload: PlayerUpdate];
     /**
      * Emitted when the player is destroyed.
      * @param {PlayerStructure} player The player that was destroyed.

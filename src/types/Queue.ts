@@ -1,7 +1,8 @@
 import type { QueueStorageAdapter } from "../classes/storage/adapters/QueueAdapter";
-import type { TrackResolvableStructure } from "../classes/Track";
+import type { TrackRequester, TrackResolvableStructure } from "../classes/Track";
 import type { Awaitable } from "./Manager";
-import type { PlayerStructure, TrackStructure } from "./Structures";
+import { LavalinkTrack } from "./Node";
+import type { PlayerStructure } from "./Structures";
 
 /**
  * The queue options.
@@ -53,22 +54,29 @@ export interface SyncOptions {
 }
 
 /**
+ * The type for any lavalink track, including partial and unresolved tracks.
+ */
+export interface TrackJSON extends LavalinkTrack {
+    requester: TrackRequester;
+}
+
+/**
  * The queue json.
  */
-export interface QueueJson {
+export interface QueueJSON {
     /**
      * The tracks of the queue.
      * @type {TrackResolvableStructure[]}
      */
-    tracks: TrackResolvableStructure[];
+    tracks: TrackJSON[];
     /**
      * The previous tracks of the queue.
      * @type {TrackStructure[]}
      */
-    history: TrackStructure[];
+    history: TrackJSON[];
     /**
      * The current track of the queue.
      * @type {TrackStructure | null}
      */
-    current: TrackStructure | null;
+    current: TrackJSON | null;
 }
