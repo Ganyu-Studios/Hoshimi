@@ -7,7 +7,7 @@ import {
     NodeDestroyReasons,
     type NodeDisconnectInfo,
     type NodeInfo,
-    type HodeJSON,
+    type NodeJSON,
     type NodeOptions,
     type ResumableHeaders,
     type SearchQuery,
@@ -598,7 +598,7 @@ export class Node {
     /**
      *
      * Convert the node to JSON.
-     * @returns {HodeJSON} The JSON representation of the node.
+     * @returns {NodeJSON} The JSON representation of the node.
      * @example
      * ```ts
      * const node = manager.nodeManager.get("node1");
@@ -608,7 +608,7 @@ export class Node {
      * }
      * ```
      */
-    public toJSON(): HodeJSON {
+    public toJSON(): NodeJSON {
         return {
             id: this.id,
             sessionId: this.sessionId,

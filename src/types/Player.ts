@@ -2,7 +2,7 @@ import type { PlayerStorageAdapter } from "../classes/storage/adapters/PlayerAda
 import type { TrackRequester, TrackResolvableStructure } from "../classes/Track";
 import type { FilterSettings } from "./Filters";
 import type { NodeIdentifier, Nullable, Prettify } from "./Manager";
-import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, HodeJSON, OpCodes, UnresolvedLavalinkTrack } from "./Node";
+import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, NodeJSON, OpCodes, UnresolvedLavalinkTrack } from "./Node";
 import type { QueueJSON } from "./Queue";
 import type { TrackStructure } from "./Structures";
 
@@ -587,9 +587,9 @@ export interface PlayerJSON {
     queue: QueueJSON;
     /**
      * The node of the player.
-     * @type {HodeJSON}
+     * @type {NodeJSON}
      */
-    node: HodeJSON;
+    node: NodeJSON;
     /**
      * The filter settings of the player.
      * @type {FilterSettings}
