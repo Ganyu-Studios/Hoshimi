@@ -147,7 +147,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                         );
                     }
 
-                    const players: PlayerStructure[] = this.nodeManager.manager.players.filter((p) => p.node.id === this.id);
+                    const players: PlayerStructure[] = this.nodeManager.manager.players.filter((p): boolean => p.node.id === this.id);
                     const isLibrary: boolean = this.nodeManager.manager.options.nodeOptions.resumeByLibrary;
 
                     if (!payload.resumed && isLibrary && players.length) await resumeByLibrary.call(this, players);
