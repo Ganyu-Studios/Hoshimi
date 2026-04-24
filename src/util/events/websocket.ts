@@ -46,7 +46,7 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
  * @param {string} reason The close reason message.
  * @returns {void}
  */
-export function onClose(this: NodeStructure, code: number, reason: string): void {
+export async function onClose(this: NodeStructure, code: number, reason: string): Promise<void> {
     this.nodeManager.manager.emit(
         EventNames.Debug,
         DebugLevels.Node,
@@ -54,6 +54,73 @@ export function onClose(this: NodeStructure, code: number, reason: string): void
     );
 
     this.nodeManager.manager.emit(EventNames.NodeDisconnect, this);
+
+    const { moveOptions } = this.nodeManager.manager.options.nodeOptions;
+
+    if (moveOptions.move) {
+        const players: PlayerStructure[] = this.nodeManager.manager.players.filter((player): boolean => player.node.id === this.id);
+        if (players.length) {
+            try {
+                let targetNode: NodeStructure | null = null;
+
+                if (typeof moveOptions.filterBy === "function") {
+                    const nodes: NodeStructure[] = this.nodeManager.nodes.filter(
+                        (node): boolean => node.state === State.Connected && node.id !== this.id,
+                    );
+
+                    if (!nodes.length) {
+                        this.nodeManager.manager.emit(
+                            EventNames.Debug,
+                            DebugLevels.Node,
+                            `[PlayerMove] -> [${this.id}]: No connected nodes available to move players to.`,
+                        );
+
+                        return;
+                    }
+
+                    const filterFn = moveOptions.filterBy;
+
+                    targetNode = nodes.reduce((best, current): NodeStructure => {
+                        const bestScore: number = filterFn(best);
+                        const currentScore: number = filterFn(current);
+
+                        return currentScore < bestScore ? current : best;
+                    });
+                } else {
+                    targetNode = this.nodeManager.getLeastUsed(moveOptions.filterBy);
+                }
+
+                if (!targetNode || targetNode.id === this.id) {
+                    this.nodeManager.manager.emit(
+                        EventNames.Debug,
+                        DebugLevels.Node,
+                        `[PlayerMove] -> [${this.id}]: No valid target node available to move players to.`,
+                    );
+
+                    return;
+                }
+
+                const results: PromiseSettledResult<void>[] = await Promise.allSettled(
+                    players.map((player): Promise<void> => player.move(targetNode)),
+                );
+
+                const successful: number = results.filter((r) => r.status === "fulfilled").length;
+                const failed: number = results.length - successful;
+
+                this.nodeManager.manager.emit(
+                    EventNames.Debug,
+                    DebugLevels.Node,
+                    `[PlayerMove] -> [${this.id}]: Moved ${successful} players to ${targetNode.id} from disconnected node. Failed: ${failed}`,
+                );
+            } catch (error) {
+                this.nodeManager.manager.emit(
+                    EventNames.Debug,
+                    DebugLevels.Node,
+                    `[PlayerMove] -> [${this.id}]: Error while moving players. Error: ${error}`,
+                );
+            }
+        }
+    }
 
     if (code !== WebsocketCloseCodes.NormalClosure || reason !== NodeDestroyReasons.Destroy) {
         if (this.nodeManager.nodes.has(this.id)) this.reconnect();
@@ -68,8 +135,6 @@ export function onClose(this: NodeStructure, code: number, reason: string): void
  * @returns {void}
  */
 export function onError(this: NodeStructure, error?: Error): void {
-    if (!error) return;
-
     if (this.reconnectTimeout) {
         clearInterval(this.reconnectTimeout);
         this.reconnectTimeout = null;
@@ -78,7 +143,7 @@ export function onError(this: NodeStructure, error?: Error): void {
     this.nodeManager.manager.emit(
         EventNames.Debug,
         DebugLevels.Node,
-        `[Socket] -> [${this.id}]: Connection error with ${this.address}. | Error: ${error.message}`,
+        `[Socket] -> [${this.id}]: Connection error with ${this.address}. | Error: ${error?.message ?? "Unknown error"}`,
     );
     this.nodeManager.manager.emit(EventNames.NodeError, this, error);
 }
@@ -135,9 +200,11 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     this.sessionId = payload.sessionId;
                     this.session.resuming = payload.resumed;
 
+                    const { sessionOptions } = this.nodeManager.manager.options.nodeOptions;
+
                     if (payload.resumed) {
                         const players: LavalinkPlayer[] = await this.rest.getPlayers();
-                        const timeout: number = this.nodeManager.manager.options.nodeOptions.resumeTimeout;
+                        const timeout: number = sessionOptions.timeout;
 
                         this.nodeManager.manager.emit(EventNames.NodeResumed, this, players, payload);
                         this.nodeManager.manager.emit(
@@ -148,7 +215,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     }
 
                     const players: PlayerStructure[] = this.nodeManager.manager.players.filter((p): boolean => p.node.id === this.id);
-                    const isLibrary: boolean = this.nodeManager.manager.options.nodeOptions.resumeByLibrary;
+                    const isLibrary: boolean = sessionOptions.byLibrary;
 
                     if (!payload.resumed && isLibrary && players.length) await resumeByLibrary.call(this, players);
 
@@ -156,9 +223,9 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
 
                     if (this.info) this.info.isNodelink = !!this.info.isNodelink;
 
-                    const resuming: boolean = this.nodeManager.manager.options.nodeOptions.resumable;
+                    const resuming: boolean = sessionOptions.resumable;
                     if (resuming) {
-                        const timeout: number = this.nodeManager.manager.options.nodeOptions.resumeTimeout;
+                        const timeout: number = sessionOptions.timeout;
 
                         this.nodeManager.manager.emit(
                             EventNames.Debug,

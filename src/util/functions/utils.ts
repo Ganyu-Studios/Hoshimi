@@ -1,14 +1,14 @@
-import { NodeError, OptionError } from "../../classes/Errors";
+import { MergeError, NodeError, OptionError } from "../../classes/Errors";
 import type { Node } from "../../classes/node/Node";
 import { PlayerStorageAdapter } from "../../classes/storage/adapters/PlayerAdapter";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../../classes/Track";
 import { Track, UnresolvedTrack } from "../../classes/Track";
 import type { TimescaleSettings } from "../../types/Filters";
-import { DebugLevels, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
+import { DebugLevels, type DeepRequired, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
 import type { LavalinkTrack, NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { AnyLavalinkTrack, PlayerOptions } from "../../types/Player";
-import { TrackJSON } from "../../types/Queue";
+import type { TrackJSON } from "../../types/Queue";
 import type { UpdatePlayerInfo } from "../../types/Rest";
 import { type ParsedQuery, SourceRegistry } from "../../types/Sources";
 import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
@@ -91,12 +91,36 @@ export function validateManagerOptions(options: HoshimiOptions): void {
     }
 
     if (typeof options.nodeOptions !== "undefined") {
-        if (typeof options.nodeOptions.resumable !== "undefined" && typeof options.nodeOptions.resumable !== "boolean")
-            throw new OptionError("The manager option 'options.nodeOptions.resumable' must be a boolean.");
-        if (typeof options.nodeOptions.resumeTimeout !== "undefined" && typeof options.nodeOptions.resumeTimeout !== "number")
-            throw new OptionError("The manager option 'options.nodeOptions.resumeTimeout' must be a number.");
-        if (typeof options.nodeOptions.resumeByLibrary !== "undefined" && typeof options.nodeOptions.resumeByLibrary !== "boolean")
-            throw new OptionError("The manager option 'options.nodeOptions.resumeByLibrary' must be a boolean.");
+        if (typeof options.nodeOptions.sessionOptions !== "undefined") {
+            if (
+                typeof options.nodeOptions.sessionOptions.resumable !== "undefined" &&
+                typeof options.nodeOptions.sessionOptions.resumable !== "boolean"
+            )
+                throw new OptionError("The manager option 'options.nodeOptions.resumable' must be a boolean.");
+            if (
+                typeof options.nodeOptions.sessionOptions.timeout !== "undefined" &&
+                typeof options.nodeOptions.sessionOptions.timeout !== "number"
+            )
+                throw new OptionError("The manager option 'options.nodeOptions.resumeTimeout' must be a number.");
+            if (
+                typeof options.nodeOptions.sessionOptions.byLibrary !== "undefined" &&
+                typeof options.nodeOptions.sessionOptions.byLibrary !== "boolean"
+            )
+                throw new OptionError("The manager option 'options.nodeOptions.resumeByLibrary' must be a boolean.");
+        }
+        if (typeof options.nodeOptions.moveOptions !== "undefined") {
+            if (typeof options.nodeOptions.moveOptions !== "object")
+                throw new OptionError("The manager option 'options.nodeOptions.moveOptions' must be a valid object.");
+            if (typeof options.nodeOptions.moveOptions.move !== "undefined" && typeof options.nodeOptions.moveOptions.move !== "boolean")
+                throw new OptionError("The manager option 'options.nodeOptions.moveOptions.move' must be a boolean.");
+            if (typeof options.nodeOptions.moveOptions.filterBy !== "undefined") {
+                const filterBy = options.nodeOptions.moveOptions.filterBy;
+                if (typeof filterBy !== "string" && typeof filterBy !== "function")
+                    throw new OptionError(
+                        "The manager option 'options.nodeOptions.moveOptions.filterBy' must be a valid NodeSortTypes string or a function.",
+                    );
+            }
+        }
         if (typeof options.nodeOptions.userAgent !== "undefined" && typeof options.nodeOptions.userAgent !== "string")
             throw new OptionError("The manager option 'options.nodeOptions.userAgent' must be a string.");
     }
@@ -454,12 +478,80 @@ export function stringify(value: unknown, space?: string | number): string {
 
 /**
  *
+ * Check if the value is a non-null object (excluding arrays).
+ * @param {unknown} value The value to check.
+ * @returns {boolean} True if the value is a non-null object, false otherwise.
+ */
+export const isObject = (value: unknown): value is Record<string, any> =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ *
+ * Check if the value is a plain object (not an instance of a class, array, or other non-plain object).
+ * @param {unknown} value The value to check.
+ * @returns {boolean} True if the value is a plain object, false otherwise.
+ */
+export const isPlainObject = (value: unknown): value is Record<string, any> => {
+    if (!isObject(value)) return false;
+
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+};
+
+/**
+ *
+ * Merge the given options with the default options, filling in any missing values from the default.
+ * @param {T} def The default options to merge with the given options. This should be a complete object with all default values.
+ * @param {T} given The given options to merge with the default options. This can be a partial object where only some values are provided.
+ * @returns {DeepRequired<T>} The merged options where all missing values from the given options are filled in with the default values. The returned object is fully required (no optional properties) because all defaults are applied.
+ */
+export function mergeDefault<T extends Record<string, any>>(def: T, given: T): DeepRequired<T> {
+    if (!given) return def as DeepRequired<T>;
+
+    const mergeRecursive = (defObj: Record<string, any>, givenObj: Record<string, any> | undefined, path: string = ""): any => {
+        if (givenObj !== undefined && !isPlainObject(givenObj) && !isPlainObject(defObj)) {
+            return givenObj;
+        }
+
+        const target: Record<string, any> = isPlainObject(givenObj) ? { ...givenObj } : {};
+        const defaultKeys: string[] = Object.keys(defObj);
+
+        for (const key in target) {
+            if (!defaultKeys.includes(key)) delete target[key];
+        }
+
+        for (const key of defaultKeys) {
+            const defValue = defObj[key];
+            const givenValue = target[key];
+            const keyPath = path ? `${path}.${key}` : key;
+
+            if (defValue === null || (typeof defValue === "string" && defValue.length === 0)) {
+                if (givenValue === undefined || givenValue === null || (typeof givenValue === "string" && givenValue.length === 0)) {
+                    throw new MergeError(`${keyPath} was not found from the given options.`);
+                }
+            }
+
+            if (isPlainObject(defValue)) {
+                target[key] = mergeRecursive(defValue, givenValue, keyPath);
+            } else {
+                target[key] = givenValue ?? defValue;
+            }
+        }
+
+        return target;
+    };
+
+    return mergeRecursive(def, given) as DeepRequired<T>;
+}
+
+/**
+ *
  * Get the default requester.
  * @param {TrackRequester} requester The requester to default.
  * @returns {TrackRequester} The default requester.
  */
 export function requesterFn<T>(requester: TrackRequester): T {
-    if (!requester) return {} as T;
+    if (!requester || typeof requester !== "object" || !Object.keys(requester).length) return {} as T;
     return requester as T;
 }
 

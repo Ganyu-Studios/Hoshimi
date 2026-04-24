@@ -13,6 +13,7 @@ import type {
     WebSocketClosedEvent,
 } from "./Player";
 import type { CustomizableSources } from "./Sources";
+import type { NodeStructure } from "./Structures";
 
 /**
  * The states.
@@ -480,7 +481,7 @@ export enum NodeSortTypes {
 /**
  * The track result.
  */
-interface TrackResult {
+export interface TrackResult {
     /**
      * The load type of the result.
      * @type {LoadType.Track}
@@ -496,7 +497,7 @@ interface TrackResult {
 /**
  * The playlist result.
  */
-interface PlaylistResult {
+export interface PlaylistResult {
     /**
      * The load type of the result.
      * @type {LoadType.Playlist}
@@ -512,7 +513,7 @@ interface PlaylistResult {
 /**
  * The search result.
  */
-interface SearchResult {
+export interface SearchResult {
     /**
      * The load type of the result.
      * @type {LoadType.Search}
@@ -528,7 +529,7 @@ interface SearchResult {
 /**
  * The empty result.
  */
-interface EmptyResult {
+export interface EmptyResult {
     /**
      * The load type of the result.
      * @type {LoadType.Empty}
@@ -544,7 +545,7 @@ interface EmptyResult {
 /**
  * The error result.
  */
-interface ErrorResult {
+export interface ErrorResult {
     /**
      * The load type of the result.
      * @type {LoadType.Error}
@@ -1160,6 +1161,44 @@ export interface SearchQuery {
 }
 
 /**
+ * The node session options.
+ */
+export interface NodeSessionOptions {
+    /**
+     * Make the node resumable.
+     * @type {boolean}
+     * @default false
+     */
+    resumable?: boolean;
+    /**
+     * The timeout for resuming the session in seconds.
+     * @type {number}
+     * @default 60
+     */
+    timeout?: number;
+    /**
+     * Hoshimi will try to resume the players in the node if it's possible.
+     * @type {boolean}
+     * @default false
+     */
+    byLibrary?: boolean;
+}
+
+export interface NodePlayerMoveOptions {
+    /**
+     * The node sort type or a custom function to filter the nodes to move the players to when a node gets disconnected.
+     * @type {PlayerMoveFilter | undefined}
+     */
+    filterBy?: PlayerMoveFilter;
+    /**
+     * Whether to move the players to another node if the node gets disconnected.
+     * @type {boolean}
+     * @default false
+     */
+    move?: boolean;
+}
+
+/**
  * The manager node options.
  */
 export interface HoshimiNodeOptions {
@@ -1170,23 +1209,15 @@ export interface HoshimiNodeOptions {
      */
     userAgent?: UserAgent;
     /**
-     * Make the node resumable.
-     * @type {boolean}
-     * @default false
+     * The session options for the node.
+     * @type {NodeSessionOptions | undefined}
      */
-    resumable?: boolean;
+    sessionOptions?: NodeSessionOptions;
     /**
-     * Hoshimi will try to resume the players in the node if it's possible.
-     * @type {boolean}
-     * @default false
+     * Whether to move the players to another node if the node gets disconnected.
+     * @type {NodePlayerMoveOptions | undefined}
      */
-    resumeByLibrary?: boolean;
-    /**
-     * The timeout for resuming the session in seconds.
-     * @type {number}
-     * @default 60
-     */
-    resumeTimeout?: number;
+    moveOptions?: NodePlayerMoveOptions;
 }
 
 /**
@@ -1282,6 +1313,11 @@ export interface NodeJSON {
      */
     options: NodeOptions;
 }
+
+/**
+ * The type for the player move filter.
+ */
+export type PlayerMoveFilter = NodeSortTypes | ((node: NodeStructure) => number);
 
 /**
  * The type for the unresolved track info.

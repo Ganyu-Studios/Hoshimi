@@ -6,10 +6,7 @@ import type { LavalinkRestError } from "../types/Rest";
  * @extends {Error}
  */
 export class ManagerError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "Hoshimi [ManagerError]";
-    }
+    override name = "Hoshimi [ManagerError]";
 }
 
 /**
@@ -18,10 +15,7 @@ export class ManagerError extends Error {
  * @extends {Error}
  */
 export class OptionError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "Hoshimi [OptionError]";
-    }
+    override name = "Hoshimi [OptionError]";
 }
 
 /**
@@ -30,10 +24,7 @@ export class OptionError extends Error {
  * @extends {Error}
  */
 export class PlayerError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "Hoshimi [PlayerError]";
-    }
+    override name = "Hoshimi [PlayerError]";
 }
 
 /**
@@ -54,10 +45,7 @@ export class NodeError extends Error {
  * @extends {Error}
  */
 export class StorageError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "Hoshimi [StorageError]";
-    }
+    override name = "Hoshimi [StorageError]";
 }
 
 /**
@@ -66,10 +54,7 @@ export class StorageError extends Error {
  * @extends {Error}
  */
 export class NodeManagerError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "Hoshimi [NodeManagerError]";
-    }
+    override name = "Hoshimi [NodeManagerError]";
 }
 
 /**
@@ -78,10 +63,16 @@ export class NodeManagerError extends Error {
  * @extends {Error}
  */
 export class ResolveError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "Hoshimi [ResolveError]";
-    }
+    override name = "Hoshimi [ResolveError]";
+}
+
+/**
+ * Error class for merging nodes.
+ * @class MergeError
+ * @extends {Error}
+ */
+export class MergeError extends Error {
+    override name = "Hoshimi [MergeError]";
 }
 
 /**

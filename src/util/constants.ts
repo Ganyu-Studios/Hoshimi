@@ -1,7 +1,12 @@
 import PackageJson from "../../package.json";
+import { PlayerMemoryStorage } from "../classes/storage/PlayerMemory";
+import { QueueMemoryStorage } from "../classes/storage/QueueMemory";
 import type { ChannelMixSettings, FilterSettings } from "../types/Filters";
 import { AudioOutput } from "../types/Filters";
-import type { UserAgent } from "../types/Node";
+import { type RequiredHoshimiOptions, SearchSources } from "../types/Manager";
+import { NodeSortTypes, type UserAgent } from "../types/Node";
+import { autoplayFn } from "./functions/autoplay";
+import { requesterFn } from "./functions/utils";
 
 /**
  * The auto output record type.
@@ -143,5 +148,54 @@ export const DefaultPlayerFilters: Readonly<FilterSettings> = Object.freeze<Filt
         cosScale: 1,
         sinScale: 1,
         tanScale: 1,
+    },
+});
+
+/**
+ * The default options for Hoshimi.
+ * @type {Readonly<RequiredHoshimiOptions>}
+ */
+export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.freeze<RequiredHoshimiOptions>({
+    nodes: [],
+    sendPayload: () => {},
+    defaultSearchSource: SearchSources.Youtube,
+    restOptions: {
+        resumeTimeout: 10000,
+    },
+    nodeOptions: {
+        userAgent: HoshimiAgent,
+        sessionOptions: {
+            resumable: false,
+            timeout: 60,
+            byLibrary: false,
+        },
+        moveOptions: {
+            filterBy: NodeSortTypes.Penalties,
+            move: false,
+        },
+    },
+    queueOptions: {
+        autoplayFn,
+        storage: new QueueMemoryStorage(),
+        maxHistory: 25,
+        autoPlay: false,
+    },
+    playerOptions: {
+        requesterFn,
+        storage: new PlayerMemoryStorage(),
+        onDisconnect: {
+            autoDestroy: false,
+            autoReconnect: false,
+            autoQueue: false,
+        },
+        onError: {
+            autoDestroy: false,
+            autoSkip: false,
+            autoStop: false,
+        },
+    },
+    client: {
+        id: "0",
+        username: "hoshimi-client",
     },
 });

@@ -200,7 +200,7 @@ export class NodeManager {
      * ```
      */
     public getLeastUsed(sortType: NodeSortTypes = NodeSortTypes.Penalties): NodeStructure {
-        const nodes: NodeStructure[] = this.nodes.filter((node) => node.state === State.Connected);
+        const nodes: NodeStructure[] = this.nodes.filter((node): boolean => node.state === State.Connected);
         if (!nodes.length) throw new NodeManagerError("No connected nodes available.");
 
         const sortFilters: Record<NodeSortTypes, SortFunction> = {

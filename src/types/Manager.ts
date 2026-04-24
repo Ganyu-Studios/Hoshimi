@@ -416,7 +416,7 @@ export enum DestroyReasons {
 /**
  * The client data for the manager.
  */
-export interface ClientData extends Record<string | number | symbol, unknown> {
+export interface ClientInfo extends Record<string | number | symbol, unknown> {
     /**
      * The id of the client.
      * @type {string}
@@ -489,9 +489,9 @@ export interface HoshimiOptions {
     nodes: NodeOptions[];
     /**
      * The client data to use.
-     * @type {ClientData}
+     * @type {ClientInfo}
      */
-    client?: Partial<ClientData>;
+    client?: Partial<ClientInfo>;
     /**
      * The default search source to use.
      * @type {SearchSources}
@@ -964,15 +964,20 @@ export type Prettify<T> = {
 /**
  * Make a type required.
  */
-export type DeepRequired<T> = {
-    [P in keyof T]-?: T[P] extends (...args: any[]) => any
-        ? T[P]
-        : T[P] extends any[]
-          ? T[P]
-          : T[P] extends object
-            ? DeepRequired<T[P]>
-            : Required<T[P]>;
-};
+export type DeepRequired<T> = T extends (...args: any[]) => any
+    ? T
+    : T extends any[]
+      ? T
+      : T extends Date | RegExp | string | number | boolean
+        ? T
+        : T extends object
+          ? { [K in keyof T]-?: DeepRequired<T[K]> }
+          : T;
+
+/**
+ * The required options for the manager.
+ */
+export type RequiredHoshimiOptions = DeepRequired<HoshimiOptions>;
 
 /**
  * A node identifier can be either a string or a node structure.

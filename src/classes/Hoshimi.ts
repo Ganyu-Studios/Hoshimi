@@ -2,16 +2,15 @@ import { EventEmitter } from "node:events";
 import {
     type ChannelDelete,
     type ChannelDeletePacket,
-    type ClientData,
+    type ClientInfo,
     DebugLevels,
-    type DeepRequired,
     DestroyReasons,
     EventNames,
     type HoshimiEvents,
     type HoshimiOptions,
     type QueryResult,
+    type RequiredHoshimiOptions,
     type SearchOptions,
-    SearchSources,
     type VoicePacket,
     type VoiceServer,
     type VoiceState,
@@ -20,22 +19,14 @@ import { type LavalinkSearchResponse, LoadType, State } from "../types/Node";
 import type { LavalinkPlayerVoice, PlayerOptions } from "../types/Player";
 import { type NodeManagerStructure, type NodeStructure, type PlayerStructure, Structures, type TrackStructure } from "../types/Structures";
 import { Collection } from "../util/collection";
-import { HoshimiAgent } from "../util/constants";
-import { autoplayFn } from "../util/functions/autoplay";
-import { requesterFn, stringify, validateManagerOptions } from "../util/functions/utils";
+import { HoshimiDefaultOptions } from "../util/constants";
+import { isPlainObject, mergeDefault, stringify, validateManagerOptions } from "../util/functions/utils";
 import { ManagerError, OptionError } from "./Errors";
-import { PlayerMemoryStorage } from "./storage/PlayerMemory";
-import { QueueMemoryStorage } from "./storage/QueueMemory";
 
 /**
  * The packet type for the manager.
  */
 type GatewayPackets = VoicePacket | VoiceServer | VoiceState | ChannelDeletePacket;
-
-/**
- * The required options for the manager.
- */
-type RequiredOptions = DeepRequired<HoshimiOptions>;
 
 /**
  * Class representing the Hoshimi manager.
@@ -78,7 +69,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
      * The options for the manager.
      * @type {HoshimiOptions}
      */
-    public options: RequiredOptions;
+    public options: RequiredHoshimiOptions;
 
     /**
      * The players for the manager.
@@ -156,45 +147,9 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
     constructor(options: HoshimiOptions) {
         super();
 
-        if (!options) throw new ManagerError("You must provide the options for the manager.");
+        if (!options || !isPlainObject(options)) throw new ManagerError("You must provide the options for the manager.");
 
-        this.options = {
-            ...options,
-            defaultSearchSource: options.defaultSearchSource ?? SearchSources.Youtube,
-            restOptions: {
-                resumeTimeout: options.restOptions?.resumeTimeout ?? 10000,
-            },
-            nodeOptions: {
-                userAgent: options.nodeOptions?.userAgent ?? HoshimiAgent,
-                resumable: options.nodeOptions?.resumable ?? false,
-                resumeByLibrary: options.nodeOptions?.resumeByLibrary ?? false,
-                resumeTimeout: options.nodeOptions?.resumeTimeout ?? 60,
-            },
-            queueOptions: {
-                maxHistory: options.queueOptions?.maxHistory ?? 25,
-                autoplayFn: options.queueOptions?.autoplayFn ?? autoplayFn,
-                autoPlay: options.queueOptions?.autoPlay ?? false,
-                storage: options.queueOptions?.storage ?? new QueueMemoryStorage(),
-            },
-            playerOptions: {
-                requesterFn: options.playerOptions?.requesterFn ?? requesterFn,
-                storage: options.playerOptions?.storage ?? new PlayerMemoryStorage(),
-                onDisconnect: {
-                    autoDestroy: options.playerOptions?.onDisconnect?.autoDestroy ?? false,
-                    autoReconnect: options.playerOptions?.onDisconnect?.autoReconnect ?? false,
-                    autoQueue: options.playerOptions?.onDisconnect?.autoQueue ?? false,
-                },
-                onError: {
-                    autoDestroy: options.playerOptions?.onError?.autoDestroy ?? false,
-                    autoSkip: options.playerOptions?.onError?.autoSkip ?? false,
-                    autoStop: options.playerOptions?.onError?.autoStop ?? false,
-                },
-            },
-            client: {
-                id: options.client?.id ?? "",
-                username: options.client?.username ?? "hoshimi-client",
-            },
-        };
+        this.options = mergeDefault(HoshimiDefaultOptions, options);
 
         validateManagerOptions(this.options);
 
@@ -446,7 +401,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
     /**
      *
      * Initialize the manager.
-     * @param {ClientData} info The client data to use.
+     * @param {ClientInfo} info The client data to use.
      * @returns {void}
      * @example
      * ```ts
@@ -456,7 +411,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
      * });
      * ```
      */
-    public init(info: ClientData): void {
+    public init(info: ClientInfo): void {
         if (this.ready) return;
 
         this.options.client = {

@@ -8,7 +8,7 @@ import {
     type UnresolvedLavalinkTrack,
     type UnresolvedTrackInfo,
 } from "../types/Node";
-import { TrackJSON } from "../types/Queue";
+import type { TrackJSON } from "../types/Queue";
 import type { PlayerStructure, TrackStructure, UnresolvedTrackStructure } from "../types/Structures";
 import { isResolved, isUnresolved, validateSource } from "../util/functions/utils";
 import { ResolveError } from "./Errors";

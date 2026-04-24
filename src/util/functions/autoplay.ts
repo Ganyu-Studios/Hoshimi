@@ -41,7 +41,7 @@ export async function autoplayFn(player: PlayerStructure, lastTrack: TrackResolv
     switch (lastTrack.info.sourceName) {
         case SourceNames.Spotify: {
             const filtered: TrackStructure[] = player.queue.history
-                .filter(({ info }) => info.sourceName === SourceNames.Spotify)
+                .filter(({ info }): boolean => info.sourceName === SourceNames.Spotify)
                 .slice(0, 1);
             if (!filtered.length) filtered.push(lastTrack as TrackStructure);
 
@@ -60,24 +60,21 @@ export async function autoplayFn(player: PlayerStructure, lastTrack: TrackResolv
                 const track: TrackStructure | undefined = filter(tracks)[index];
                 if (!track) return;
 
-                player.queue.add(track);
+                await player.queue.add(track);
             }
             break;
         }
 
         case SourceNames.Youtube:
         case SourceNames.YoutubeMusic: {
-            const search = `https://www.youtube.com/watch?v=${lastTrack.info.identifier}&list=RD${lastTrack.info.identifier}`;
-            const res: QueryResult = await player.search({
-                query: search,
-                requester: lastTrack.requester,
-            });
+            const query = `https://www.youtube.com/watch?v=${lastTrack.info.identifier}&list=RD${lastTrack.info.identifier}`;
+            const search: QueryResult = await player.search({ query, requester: lastTrack.requester });
 
-            if (res.tracks.length) {
-                const random: number = Math.floor(Math.random() * res.tracks.length);
-                const tracks: TrackStructure[] = filter(res.tracks).slice(random, random + limit);
+            if (search.tracks.length) {
+                const random: number = Math.floor(Math.random() * search.tracks.length);
+                const tracks: TrackStructure[] = filter(search.tracks).slice(random, random + limit);
 
-                player.queue.add(tracks);
+                await player.queue.add(tracks);
             }
         }
     }
