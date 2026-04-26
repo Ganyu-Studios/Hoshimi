@@ -378,13 +378,14 @@ export class Player {
      * ```
      */
     public async stop(options: Partial<StopOptions> = {}): Promise<void> {
+        const { destroy = true, clearQueue = false, leaveVoice = false } = options;
+
+        if (clearQueue) await this.queue.clear();
+
         await this.node.stopPlayer(this.guildId);
         await this.data.set("internal_stopPlaying", true);
 
-        const { destroy = true, clearQueue = false, leaveVoice = false } = options;
-
         if (destroy) await this.destroy(DestroyReasons.Stop);
-        if (clearQueue) await this.queue.clear();
         if (leaveVoice) await this.voice.disconnect();
 
         this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Stop] Player stopped for guild: ${this.guildId}`);
