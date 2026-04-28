@@ -19,7 +19,7 @@
 </div>
 
 ## 📦 Features
-- 📋 **V4**: Works with lavalink v4 and their features (wip).
+- 📋 **Lavalink V4 / NodeLink Support**: Works with lavalink v4 and Nodelink features (wip).
 - 🔗 **Node Manager**: Manage nodes, auto least‑used selection, session resume and more.
 - ▶️ **Autoplay**: YouTube and Spotify recommendations out of the box; easily extend with your own function.
 - 📝 **Lyrics**: Control your lyrics with live-lyrics updates; validates required plugins.
@@ -105,6 +105,7 @@ client.events.values.RAW = {
 ## 💖 Used By
 
 - **[Stelle](https://github.com/Ganyu-Studios/stelle-music)**: Currently on the [hoshimi](https://github.com/Ganyu-Studios/stelle-music/tree/hoshimi) branch.
+- **[Miyu](https://ptb.discord.com/oauth2/authorize?client_id=1277180179273482280)**: By [Kenver](https://github.com/Kenver123)
 
 ## 📝 Additional Notes
 I am currently working on this package.</br> This package takes some ideas provided from libraries like:
