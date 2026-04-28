@@ -104,7 +104,7 @@ client.events.values.RAW = {
 
 ## 💖 Used By
 
-- **[Stelle](https://github.com/Ganyu-Studios/stelle-music)**: Currently on the [hoshimi](https://github.com/Ganyu-Studios/stelle-music/tree/hoshimi) branch.
+- **[Stelle](https://github.com/Ganyu-Studios/stelle-music)**: by [Ganyu Studios](https://github.com/Ganyu-Studios/stelle-music)
 - **[Miyu](https://ptb.discord.com/oauth2/authorize?client_id=1277180179273482280)**: by [Kenver](https://github.com/Kenver123)
 
 ## 📝 Additional Notes
