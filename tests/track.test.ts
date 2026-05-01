@@ -30,11 +30,11 @@ function createTrack(overrides?: Record<string, unknown>): Record<string, unknow
 
 describe("Track", () => {
     it("throws ResolveError when constructing Track with null", () => {
-        expect(() => new Track(null)).toThrow(ResolveError);
+        expect(() => new Track(null, {})).toThrow(ResolveError);
     });
 
     it("builds hyperlink in embeddable and non-embeddable formats", () => {
-        const track = new Track(createTrack() as never);
+        const track = new Track(createTrack() as never, {});
 
         expect(track.toHyperlink()).toBe("[Track Title](https://example.com/track)");
         expect(track.toHyperlink(false)).toBe("[Track Title](<https://example.com/track>)");
