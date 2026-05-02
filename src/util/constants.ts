@@ -163,7 +163,7 @@ export const LoopValues: LoopMode[] = Object.values(LoopMode).filter((v): v is L
  * @type {Readonly<RequiredHoshimiOptions>}
  */
 export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.freeze<RequiredHoshimiOptions>({
-    nodes: [],
+    nodes: [{ host: "localhost", port: 2333, password: "youshallnotpass" }],
     sendPayload: () => {},
     defaultSearchSource: SearchSources.Youtube,
     restOptions: {

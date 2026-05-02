@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Hoshimi } from "../src";
+import { Hoshimi, HoshimiDefaultOptions } from "../src";
 import { PlayerError } from "../src/classes/Errors";
 import { Player } from "../src/classes/player/Player";
 import { State } from "../src/types/Node";
@@ -8,7 +8,7 @@ import { LoopMode } from "../src/types/Player";
 describe("Player", () => {
     it("validates loop mode and basic play state", () => {
         const manager = new Hoshimi({
-            nodes: [{ host: "localhost", port: 2333, password: "pass" }],
+            nodes: HoshimiDefaultOptions.nodes,
         } as never);
 
         // Add a connected node to the manager
@@ -18,7 +18,7 @@ describe("Player", () => {
             options: { host: "localhost", port: 2333, password: "pass" },
         } as never);
 
-        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
 
         expect(player.isPlaying()).toBe(false);
 
@@ -34,7 +34,7 @@ describe("Player", () => {
 
     it("seek and setVolume throw on invalid input", async () => {
         const manager = new Hoshimi({
-            nodes: [{ host: "localhost", port: 2333, password: "pass" }],
+            nodes: HoshimiDefaultOptions.nodes,
         } as never);
 
         // Add a connected node to the manager
@@ -44,7 +44,7 @@ describe("Player", () => {
             options: { host: "localhost", port: 2333, password: "pass" },
         } as never);
 
-        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
 
         await expect(player.seek(-1)).rejects.toThrow(PlayerError);
         await expect(player.setVolume(101)).rejects.toThrow(PlayerError);
@@ -52,7 +52,7 @@ describe("Player", () => {
 
     it("move throws when target node is missing", async () => {
         const manager = new Hoshimi({
-            nodes: [{ host: "localhost", port: 2333, password: "pass" }],
+            nodes: HoshimiDefaultOptions.nodes,
         } as never);
 
         // Add a connected node to the manager
@@ -64,14 +64,14 @@ describe("Player", () => {
 
         manager.nodeManager.get = vi.fn().mockReturnValue(undefined);
 
-        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
 
         await expect(player.move("missing-node")).rejects.toThrow(PlayerError);
     });
 
     it("search delegates to manager.search", async () => {
         const manager = new Hoshimi({
-            nodes: [{ host: "localhost", port: 2333, password: "pass" }],
+            nodes: HoshimiDefaultOptions.nodes,
         } as never);
 
         // Add a connected node to the manager
@@ -85,7 +85,7 @@ describe("Player", () => {
         // Spy on manager.search before creating the player
         const searchSpy = vi.spyOn(manager, "search");
 
-        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
 
         await player.search({ query: "hello", requester: {} });
 
