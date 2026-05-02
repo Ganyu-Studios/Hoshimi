@@ -491,12 +491,12 @@ export const isObject = (value: unknown): value is Record<string, any> =>
  * @param {unknown} value The value to check.
  * @returns {boolean} True if the value is a plain object, false otherwise.
  */
-export const isPlainObject = (value: unknown): value is Record<string, any> => {
+export function isPlainObject(value: unknown): value is Record<string, any> {
     if (!isObject(value)) return false;
 
     const proto = Object.getPrototypeOf(value);
     return proto === Object.prototype || proto === null;
-};
+}
 
 /**
  *

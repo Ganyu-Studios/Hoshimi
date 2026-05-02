@@ -1,7 +1,8 @@
 import { DebugLevels, EventNames } from "../../types/Manager";
 import type { QueueJSON, TrackJSON } from "../../types/Queue";
 import type { PlayerStructure, TrackStructure } from "../../types/Structures";
-import type { TrackResolvableStructure } from "../Track";
+import { QueueError } from "../Errors";
+import { Track, type TrackResolvableStructure, UnresolvedTrack } from "../Track";
 import { QueueUtils } from "./Utils";
 
 /**
@@ -409,6 +410,12 @@ export class Queue {
      * ```
      */
     public toJSON(): QueueJSON {
+        const tracks: TrackResolvableStructure[] = [...this.tracks, ...this.history, this.current].filter(
+            (track): track is TrackResolvableStructure => !!track,
+        );
+        if (tracks.length && tracks.every((track): boolean => !(track instanceof Track) && !(track instanceof UnresolvedTrack)))
+            throw new QueueError("Cannot convert queue to JSON because it contains invalid object tracks.");
+
         const max: number = this.player.manager.options.queueOptions.maxHistory;
 
         if (this.history.length > max) this.history.splice(max, this.history.length);

@@ -1,121 +1,39 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { StorageError } from "../src/classes/Errors";
-import { Queue } from "../src/classes/queue/Queue";
-import { QueueUtils } from "../src/classes/queue/Utils";
-import { SearchSources } from "../src/types/Manager";
+import { Hoshimi, type LavalinkTrack, SourceNames, type TrackResolvableStructure } from "../src";
+import { QueueError, StorageError } from "../src/classes/Errors";
 import { Structures } from "../src/types/Structures";
-import { SourceNames } from "../src";
 
-function createPlayer() {
-    return {
-        guildId: "guild-1",
-        manager: {
-            emit: vi.fn(),
-            options: {
-                queueOptions: {
-                    maxHistory: 2,
-                    storage: {
-                        set: vi.fn(),
-                        get: vi.fn(),
-                        delete: vi.fn(),
-                    },
-                },
-                playerOptions: {
-                    requesterFn: <T>(requester: unknown) => requester as T,
-                },
-                defaultSearchSource: SearchSources.Youtube,
+function mockedTrack(id: string) {
+    return Structures.Track(
+        {
+            encoded: id,
+            info: {
+                identifier: id,
+                title: id,
+                author: "author",
+                length: 1000,
+                artworkUrl: null,
+                uri: `https://example.com/${id}`,
+                sourceName: SourceNames.Youtube,
+                isSeekable: true,
+                isStream: false,
+                isrc: null,
+                position: 0,
             },
-        },
-    };
-}
-
-function basicTrack(id: string) {
-    return {
-        encoded: id,
-        info: {
-            identifier: id,
-            title: id,
-            author: "author",
-            length: 1000,
-            artworkUrl: null,
-            uri: `https://example.com/${id}`,
-            sourceName: "youtube",
-            isSeekable: true,
-            isStream: false,
-            isrc: null,
-            position: 0,
-        },
-    };
-}
-
-type QueueLike = {
-    tracks: unknown[];
-    history: unknown[];
-    current: unknown;
-    toJSON: () => { tracks: unknown[]; history: unknown[]; current: unknown };
-    player: {
-        guildId: string;
-        manager: {
-            emit: (...args: unknown[]) => unknown;
-            options: {
-                queueOptions: {
-                    maxHistory: number;
-                    storage: {
-                        set: (key: string, value: unknown) => unknown;
-                        get: (key: string) => unknown;
-                        delete: (key: string) => unknown;
-                    };
-                };
-            };
-        };
-    };
-};
-
-function createQueueUtilsHarness() {
-    const set = vi.fn();
-    const get = vi.fn();
-    const del = vi.fn();
-
-    const queue: QueueLike = {
-        tracks: [],
-        history: [],
-        current: null,
-        toJSON: vi.fn(function toJSON() {
-            return {
-                tracks: queue.tracks,
-                history: queue.history,
-                current: queue.current,
-            };
-        }),
-        player: {
-            guildId: "guild-1",
-            manager: {
-                emit: vi.fn(),
-                options: {
-                    queueOptions: {
-                        maxHistory: 2,
-                        storage: {
-                            set,
-                            get,
-                            delete: del,
-                        },
-                    },
-                },
-            },
-        },
-    };
-
-    return { queue, set, get, del };
+        } as LavalinkTrack,
+        {},
+    );
 }
 
 describe("Queue", () => {
     it("adds and shifts tracks", async () => {
-        const queue = new Queue(createPlayer() as never);
+        const manager = new Hoshimi({ nodes: [{ host: "localhost", port: 2333, password: "pass" }] } as never);
+        const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
         vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
 
-        await queue.add(basicTrack("t1") as never);
-        await queue.add([basicTrack("t2"), basicTrack("t3")] as never);
+        await queue.add(mockedTrack("t1") as never);
+        await queue.add([mockedTrack("t2"), mockedTrack("t3")] as never);
 
         expect(queue.size).toBe(3);
 
@@ -125,35 +43,45 @@ describe("Queue", () => {
     });
 
     it("shuffle handles small and larger queues", async () => {
-        const queue = new Queue(createPlayer() as never);
+        const manager = new Hoshimi({ nodes: [{ host: "localhost", port: 2333, password: "pass" }] } as never);
+        const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
         vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
         vi.spyOn(Math, "random").mockReturnValue(0);
 
-        await queue.add([basicTrack("a"), basicTrack("b")] as never);
+        await queue.add([mockedTrack("a"), mockedTrack("b")] as never);
         await queue.shuffle();
         expect(queue.tracks[0]?.encoded).toBe("b");
 
-        await queue.add([basicTrack("c"), basicTrack("d")] as never);
+        await queue.add([mockedTrack("c"), mockedTrack("d")] as never);
         await queue.shuffle();
         expect(queue.size).toBe(4);
     });
 
     it("move does nothing when track is not present", async () => {
-        const queue = new Queue(createPlayer() as never);
+        const manager = new Hoshimi({ nodes: [{ host: "localhost", port: 2333, password: "pass" }] } as never);
+        const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
         vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
 
-        await queue.add([basicTrack("a"), basicTrack("b")] as never);
+        await queue.add([mockedTrack("a"), mockedTrack("b")] as never);
         const snapshot = [...queue.tracks];
 
-        await queue.move(basicTrack("x") as never, 1);
+        await queue.move(mockedTrack("x") as never, 1);
 
         expect(queue.tracks).toEqual(snapshot);
     });
 
     it("toJSON trims history to maxHistory", () => {
-        const queue = new Queue(createPlayer() as never);
-        queue.history = [basicTrack("h1"), basicTrack("h2"), basicTrack("h3")] as never;
+        const manager = new Hoshimi({
+            nodes: [{ host: "localhost", port: 2333, password: "pass" }],
+            queueOptions: { maxHistory: 2 },
+        } as never);
 
+        const queue = Structures.Queue({
+            guildId: "guild-1",
+            manager,
+        } as never);
+
+        queue.history = [mockedTrack("h1"), mockedTrack("h2"), mockedTrack("h3")];
         const json = queue.toJSON();
 
         expect(json.history.length).toBe(2);
@@ -161,96 +89,71 @@ describe("Queue", () => {
 });
 
 describe("QueueUtils", () => {
-    it("save trims history and persists queue", () => {
-        const { queue, set } = createQueueUtilsHarness();
-        queue.tracks = [{}, {}, {}];
-        queue.history = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    it("save trims history and persists queue", async () => {
+        const manager = new Hoshimi({
+            nodes: [{ host: "localhost", port: 2333, password: "pass" }],
+            queueOptions: { maxHistory: 2 },
+        } as never);
 
-        const utils = new QueueUtils(queue as never);
-        utils.save();
+        const queue = Structures.Queue({
+            guildId: "guild-1",
+            manager,
+        } as never);
+
+        queue.utils.storage.set = vi.fn();
+
+        queue.tracks = [mockedTrack("t1"), mockedTrack("t2"), mockedTrack("t3")] as TrackResolvableStructure[];
+        queue.history = [mockedTrack("h1"), mockedTrack("h2"), mockedTrack("h3")];
+
+        await queue.utils.save();
 
         expect(queue.history.length).toBe(2);
-        expect(set).toHaveBeenCalledWith("guild-1", queue.toJSON());
+        expect(queue.utils.storage.set).toHaveBeenCalledWith("guild-1", queue.toJSON());
     });
 
-    it("destroy delegates to storage delete", () => {
-        const { queue, del } = createQueueUtilsHarness();
-        const utils = new QueueUtils(queue as never);
+    it("destroy delegates to storage delete", async () => {
+        const manager = new Hoshimi({ nodes: [{ host: "localhost", port: 2333, password: "pass" }] } as never);
+        const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
+        queue.utils.storage.delete = vi.fn().mockResolvedValue(true);
 
-        utils.destroy();
+        await queue.utils.destroy();
 
-        expect(del).toHaveBeenCalledWith("guild-1");
+        expect(queue.utils.storage.delete).toHaveBeenCalledWith("guild-1");
     });
 
     it("sync throws StorageError when no saved data exists", async () => {
-        const { queue, get } = createQueueUtilsHarness();
-        get.mockResolvedValue(undefined);
+        const manager = new Hoshimi({ nodes: [{ host: "localhost", port: 2333, password: "pass" }] } as never);
+        const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
 
-        const utils = new QueueUtils(queue as never);
+        queue.utils.storage.get = vi.fn().mockResolvedValue(undefined);
 
-        await expect(utils.sync()).rejects.toThrow(StorageError);
+        await expect(queue.utils.sync()).rejects.toThrow(StorageError);
     });
 
     it("sync merges queue when override is false", async () => {
-        const { queue, get, set } = createQueueUtilsHarness();
+        const manager = new Hoshimi({ nodes: [{ host: "localhost", port: 2333, password: "pass" }] } as never);
+        const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
+        queue.utils.storage.get = vi.fn().mockResolvedValue(undefined);
+        queue.utils.storage.set = vi.fn();
 
-        // Crear instancias reales de Track para los datos guardados
-        const savedTrack = Structures.Track(
-            {
-                encoded: "s",
-                info: {
-                    identifier: "s",
-                    title: "saved",
-                    author: "author",
-                    length: 1000,
-                    artworkUrl: null,
-                    uri: "https://example.com/s",
-                    sourceName: SourceNames.Youtube,
-                    isSeekable: true,
-                    isStream: false,
-                    isrc: null,
-                    position: 0,
-                },
-                pluginInfo: {},
-                userData: {},
-            },
-            {},
-        );
-
-        const historyTrack = Structures.Track(
-            {
-                encoded: "h",
-                info: {
-                    identifier: "h",
-                    title: "history",
-                    author: "author",
-                    length: 1000,
-                    artworkUrl: null,
-                    uri: "https://example.com/h",
-                    sourceName: SourceNames.Youtube,
-                    isSeekable: true,
-                    isStream: false,
-                    isrc: null,
-                    position: 0,
-                },
-                pluginInfo: {},
-                userData: {},
-            },
-            {},
-        );
-
-        queue.tracks = [{ info: { title: "existing" }, encoded: "e" } as never];
-        get.mockResolvedValue({
-            tracks: [savedTrack],
-            history: [historyTrack],
+        queue.tracks = [mockedTrack("c")];
+        queue.utils.storage.get = vi.fn().mockResolvedValue({
+            tracks: [mockedTrack("s")],
+            history: [mockedTrack("h1"), mockedTrack("h2")],
             current: null,
         });
 
-        const utils = new QueueUtils(queue as never);
-
-        await utils.sync({ override: false });
+        await queue.utils.sync({ override: false });
 
         expect(queue.tracks.length).toBe(2);
-        expect(set).toHaveBeenCalled();
+        expect(queue.utils.storage.set).toHaveBeenCalled();
+    });
+    it("throws when json contains invalid tracks", () => {
+        const manager = new Hoshimi({ nodes: [{ host: "localhost", port: 2333, password: "pass" }] } as never);
+        const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
+
+        queue.tracks.push({ encoded: "track" } as TrackResolvableStructure);
+
+        expect(() => queue.toJSON()).toThrow(QueueError);
     });
 });

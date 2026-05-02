@@ -24,11 +24,10 @@ export class QueueUtils {
     /**
      * Queue storage adapter.
      * @type {QueueStorageAdapter}
-     * @private
      * @readonly
      * @internal
      */
-    private readonly storage: QueueStorageAdapter;
+    readonly storage: QueueStorageAdapter;
 
     /**
      * Options for the queue.

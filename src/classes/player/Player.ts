@@ -20,6 +20,7 @@ import {
     Structures,
     type TrackStructure,
 } from "../../types/Structures";
+import { LoopValues } from "../../util/constants";
 import { validatePlayerOptions } from "../../util/functions/utils";
 import { PlayerError } from "../Errors";
 import type { Hoshimi } from "../Hoshimi";
@@ -621,8 +622,7 @@ export class Player {
      * ```
      */
     public setLoop(mode: LoopMode): this {
-        const loopValues = Object.values(LoopMode).filter((v) => typeof v === "number");
-        if (!loopValues.includes(mode)) throw new PlayerError(`Invalid loop mode. Valid modes are: ${loopValues.join(", ")}`);
+        if (!LoopValues.includes(mode)) throw new PlayerError(`Invalid loop mode. Valid modes are: ${LoopValues.join(", ")}`);
 
         this.loop = mode;
         this.manager.emit(
@@ -679,8 +679,8 @@ export class Player {
      */
     public toJSON(): PlayerJSON {
         return {
-            volume: this.volume,
             loop: this.loop,
+            volume: this.volume,
             paused: this.paused,
             playing: this.playing,
             voiceId: this.voiceId,
@@ -688,13 +688,13 @@ export class Player {
             selfMute: this.selfMute,
             selfDeaf: this.selfDeaf,
             options: this.options,
-            voice: this.voice.toJSON(),
             textId: this.textId,
             lastPosition: this.lastPosition,
             lastPositionUpdate: this.lastPositionUpdate,
             position: this.position,
             createdTimestamp: this.createdTimestamp,
             ping: this.ping,
+            voice: this.voice.toJSON(),
             filters: this.filterManager.toJSON(),
             queue: this.queue.toJSON(),
             node: this.node.toJSON(),

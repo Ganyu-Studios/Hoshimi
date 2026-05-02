@@ -5,6 +5,7 @@ import type { ChannelMixSettings, FilterSettings } from "../types/Filters";
 import { AudioOutput } from "../types/Filters";
 import { type RequiredHoshimiOptions, SearchSources } from "../types/Manager";
 import { NodeSortTypes, type UserAgent } from "../types/Node";
+import { LoopMode } from "../types/Player";
 import { autoplayFn } from "./functions/autoplay";
 import { requesterFn } from "./functions/utils";
 
@@ -150,6 +151,12 @@ export const DefaultPlayerFilters: Readonly<FilterSettings> = Object.freeze<Filt
         tanScale: 1,
     },
 });
+
+/**
+ * The valid loop mode values.
+ * @type {LoopMode[]}
+ */
+export const LoopValues: LoopMode[] = Object.values(LoopMode).filter((v): v is LoopMode => typeof v === "number");
 
 /**
  * The default options for Hoshimi.

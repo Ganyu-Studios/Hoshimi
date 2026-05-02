@@ -75,6 +75,10 @@ export class MergeError extends Error {
     override name = "Hoshimi [MergeError]";
 }
 
+export class QueueError extends Error {
+    override name = "Hoshimi [QueueError]";
+}
+
 /**
  * The RestError class has been taken from Shoukaku library.
  * A cute and epic lavalink wrapper, made in typescript.
