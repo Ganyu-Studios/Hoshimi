@@ -74,18 +74,16 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
                             DebugLevels.Node,
                             `[PlayerMove] -> [${this.id}]: No connected nodes available to move players to.`,
                         );
+                    } else {
+                        const filterFn = moveOptions.filterBy;
 
-                        return;
+                        targetNode = nodes.reduce((best, current): NodeStructure => {
+                            const bestScore: number = filterFn(best);
+                            const currentScore: number = filterFn(current);
+
+                            return currentScore < bestScore ? current : best;
+                        });
                     }
-
-                    const filterFn = moveOptions.filterBy;
-
-                    targetNode = nodes.reduce((best, current): NodeStructure => {
-                        const bestScore: number = filterFn(best);
-                        const currentScore: number = filterFn(current);
-
-                        return currentScore < bestScore ? current : best;
-                    });
                 } else {
                     targetNode = this.nodeManager.getLeastUsed(moveOptions.filterBy);
                 }
@@ -96,22 +94,20 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
                         DebugLevels.Node,
                         `[PlayerMove] -> [${this.id}]: No valid target node available to move players to.`,
                     );
+                } else {
+                    const results: PromiseSettledResult<void>[] = await Promise.allSettled(
+                        players.map((player): Promise<void> => player.move(targetNode)),
+                    );
 
-                    return;
+                    const successful: number = results.filter((r) => r.status === "fulfilled").length;
+                    const failed: number = results.length - successful;
+
+                    this.nodeManager.manager.emit(
+                        EventNames.Debug,
+                        DebugLevels.Node,
+                        `[PlayerMove] -> [${this.id}]: Moved ${successful} players to ${targetNode.id} from disconnected node. Failed: ${failed}`,
+                    );
                 }
-
-                const results: PromiseSettledResult<void>[] = await Promise.allSettled(
-                    players.map((player): Promise<void> => player.move(targetNode)),
-                );
-
-                const successful: number = results.filter((r) => r.status === "fulfilled").length;
-                const failed: number = results.length - successful;
-
-                this.nodeManager.manager.emit(
-                    EventNames.Debug,
-                    DebugLevels.Node,
-                    `[PlayerMove] -> [${this.id}]: Moved ${successful} players to ${targetNode.id} from disconnected node. Failed: ${failed}`,
-                );
             } catch (error) {
                 this.nodeManager.manager.emit(
                     EventNames.Debug,
