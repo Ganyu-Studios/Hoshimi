@@ -982,7 +982,7 @@ export type RequiredHoshimiOptions = DeepRequired<HoshimiOptions>;
 /**
  * A node identifier can be either a string or a node structure.
  */
-export type NodeIdentifier = string | NodeStructure;
+export type NodeIdentifier = NodeStructure | string;
 
 /**
  * Custom structures for Hoshimi.

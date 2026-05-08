@@ -6,7 +6,7 @@ import type { TrackRequester, TrackResolvableStructure } from "../../classes/Tra
 import { Track, UnresolvedTrack } from "../../classes/Track";
 import type { TimescaleSettings } from "../../types/Filters";
 import { DebugLevels, type DeepRequired, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
-import type { LavalinkTrack, NodeInfo, NodeOptions, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
+import type { LavalinkTrack, NodeInfo, NodeOptions, PlayerMoveFilter, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { AnyLavalinkTrack, PlayerOptions } from "../../types/Player";
 import type { TrackJSON } from "../../types/Queue";
 import type { UpdatePlayerInfo } from "../../types/Rest";
@@ -71,15 +71,6 @@ export function validateManagerOptions(options: HoshimiOptions): void {
             throw new OptionError("The manager option 'options.playerOptions.storage' must be a valid storage manager.");
         if (typeof options.playerOptions.requesterFn !== "function")
             throw new OptionError("The manager option 'options.playerOptions.requesterFn' must be a valid function.");
-
-        if (typeof options.playerOptions.onError !== "undefined") {
-            if (typeof options.playerOptions.onError.autoDestroy !== "boolean")
-                throw new OptionError("The manager option 'options.playerOptions.onError.autoDestroy' must be a boolean.");
-            if (typeof options.playerOptions.onError.autoSkip !== "boolean")
-                throw new OptionError("The manager option 'options.playerOptions.onError.autoSkip' must be a boolean.");
-            if (typeof options.playerOptions.onError.autoStop !== "boolean")
-                throw new OptionError("The manager option 'options.playerOptions.onError.autoStop' must be a boolean.");
-        }
     }
 
     if (typeof options.client !== "undefined") {
@@ -114,7 +105,7 @@ export function validateManagerOptions(options: HoshimiOptions): void {
             if (typeof options.nodeOptions.moveOptions.move !== "undefined" && typeof options.nodeOptions.moveOptions.move !== "boolean")
                 throw new OptionError("The manager option 'options.nodeOptions.moveOptions.move' must be a boolean.");
             if (typeof options.nodeOptions.moveOptions.filterBy !== "undefined") {
-                const filterBy = options.nodeOptions.moveOptions.filterBy;
+                const filterBy: PlayerMoveFilter = options.nodeOptions.moveOptions.filterBy;
                 if (typeof filterBy !== "string" && typeof filterBy !== "function")
                     throw new OptionError(
                         "The manager option 'options.nodeOptions.moveOptions.filterBy' must be a valid NodeSortTypes string or a function.",

@@ -195,11 +195,6 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
             autoReconnect: false,
             autoQueue: false,
         },
-        onError: {
-            autoDestroy: false,
-            autoSkip: false,
-            autoStop: false,
-        },
     },
     client: {
         id: "0",

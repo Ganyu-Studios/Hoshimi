@@ -130,33 +130,15 @@ export enum TrackEndReason {
 }
 
 /**
- * The options for automatic player error handling.
+ * The options for error actions.
  */
-interface ErrorPlayerActions {
+interface DisconnectPlayerActions {
     /**
      * Whether to automatically destroy the player on disconnect or error.
      * @type {boolean | undefined}
      * @default false
      */
     autoDestroy?: boolean;
-    /**
-     * Whether to automatically skip the track on error
-     * @type {boolean | undefined}
-     * @default false
-     */
-    autoSkip?: boolean;
-    /**
-     * Whether to automatically stop the player on error.
-     * @type {boolean | undefined}
-     * @default false
-     */
-    autoStop?: boolean;
-}
-
-/**
- * The options for error actions.
- */
-interface DisconnectPlayerActions extends Pick<ErrorPlayerActions, "autoDestroy"> {
     /**
      * Whether to automatically reconnect on disconnect.
      * @type {boolean | undefined}
@@ -181,11 +163,6 @@ export interface HoshimiPlayerOptions {
      * @param {TrackRequester} requester The requester of the track.
      */
     requesterFn?<T>(requester: TrackRequester): T;
-    /**
-     * The options for handling errors.
-     * @type {ErrorPlayerActions | undefined}
-     */
-    onError?: ErrorPlayerActions;
     /**
      * The options for handling disconnects.
      * @type {DisconnectPlayerActions | undefined}
