@@ -6,7 +6,16 @@ import type { TrackRequester, TrackResolvableStructure } from "../../classes/Tra
 import { Track, UnresolvedTrack } from "../../classes/Track";
 import type { TimescaleSettings } from "../../types/Filters";
 import { DebugLevels, type DeepRequired, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
-import type { LavalinkTrack, NodeInfo, NodeOptions, PlayerMoveFilter, PluginNames, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
+import type {
+    LavalinkTrack,
+    NodeInfo,
+    NodeOptions,
+    PlayerMoveFilter,
+    PluginNames,
+    SearchQuery,
+    SourceName,
+    UnresolvedLavalinkTrack,
+} from "../../types/Node";
 import type { AnyLavalinkTrack, PlayerOptions } from "../../types/Player";
 import type { TrackJSON } from "../../types/Queue";
 import type { UpdatePlayerInfo } from "../../types/Rest";
