@@ -414,7 +414,8 @@ export class Player {
         const { to = 0, throwError = true } = options;
 
         if (typeof throwError !== "boolean") throw new PlayerError("Skip 'throwError' option must be a boolean.");
-        if (typeof to !== "number" || Number.isNaN(to) || to < 0) throw new PlayerError("Skip 'to' option must be a positive and valid number.");
+        if (typeof to !== "number" || Number.isNaN(to) || to < 0)
+            throw new PlayerError("Skip 'to' option must be a positive and valid number.");
 
         if (!this.queue.size) {
             this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Skip] No tracks to skip.");
