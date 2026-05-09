@@ -341,7 +341,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
                     `[Player] -> [Resume] Destroyed player for guild ${player.guildId} due to empty queue.`,
                 );
                 await player.destroy();
-                return;
+                continue;
             }
 
             const track: TrackStructure | null = player.queue.current;
