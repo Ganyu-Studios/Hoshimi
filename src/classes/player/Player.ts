@@ -421,7 +421,6 @@ export class Player {
 
         if (typeof to === "number" && to > 1) {
             if (to > this.queue.size) throw new PlayerError("Cannot skip to a track that doesn't exist.");
-            if (to < 0) throw new PlayerError("Cannot skip to a negative number.");
 
             await this.queue.splice(0, to - 1);
         }
