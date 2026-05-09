@@ -413,13 +413,16 @@ export class Player {
     public async skip(options: SkipOptions = {}): Promise<void> {
         const { to = 0, throwError = true } = options;
 
+        if (typeof throwError !== "boolean") throw new PlayerError("Skip 'throwError' option must be a boolean.");
+        if (typeof to !== "number" || Number.isNaN(to) || to < 0) throw new PlayerError("Skip 'to' option must be a positive and valid number.");
+
         if (!this.queue.size) {
             this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Skip] No tracks to skip.");
 
             if (throwError) throw new PlayerError("No tracks to skip.");
         }
 
-        if (typeof to === "number" && to > 1) {
+        if (to > 1) {
             if (to > this.queue.size) throw new PlayerError("Cannot skip to a track that doesn't exist.");
 
             await this.queue.splice(0, to - 1);
@@ -492,7 +495,7 @@ export class Player {
 
         const current: TrackStructure | null = this.queue.current;
 
-        const voice: LavalinkPlayerVoice | null = this.voice.toLavalink();
+        const voice: LavalinkPlayerVoice | null = this.voice.toNode();
         if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
 
         if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);

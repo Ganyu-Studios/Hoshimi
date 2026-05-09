@@ -142,12 +142,12 @@ export class PlayerVoiceState {
      * const player = manager.getPlayer("guildId");
      *
      * if (player) {
-     *   const voice = player.voice.toLavalink();
+     *   const voice = player.voice.toNode();
      *   if (!voice) console.log("Voice payload is incomplete");
      * }
      * ```
      */
-    public toLavalink(): LavalinkPlayerVoice | null {
+    public toNode(): LavalinkPlayerVoice | null {
         if (!this.endpoint || !this.sessionId || !this.token || !this.channelId) return null;
 
         return {

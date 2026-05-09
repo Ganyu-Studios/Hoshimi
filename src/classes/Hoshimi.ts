@@ -294,7 +294,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
                         player.voice.patch({ token: data.token, endpoint: data.endpoint });
 
-                        const voice: LavalinkPlayerVoice | null = player.voice.toLavalink();
+                        const voice: LavalinkPlayerVoice | null = player.voice.toNode();
                         if (!voice) {
                             this.emit(
                                 EventNames.Debug,

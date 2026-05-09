@@ -334,7 +334,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
 
     for (const player of players) {
         try {
-            if (!player.playing && !player.paused && !player.queue.totalSize) {
+            if (!player.isPlaying() && !player.queue.totalSize) {
                 this.nodeManager.manager.emit(
                     EventNames.Debug,
                     DebugLevels.Node,
@@ -346,7 +346,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
 
             const track: TrackStructure | null = player.queue.current;
 
-            const voice: LavalinkPlayerVoice | null = player.voice.toLavalink();
+            const voice: LavalinkPlayerVoice | null = player.voice.toNode();
             if (!voice) {
                 this.nodeManager.manager.emit(
                     EventNames.Debug,
