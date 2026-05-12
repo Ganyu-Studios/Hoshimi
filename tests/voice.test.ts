@@ -35,16 +35,16 @@ function createPlayer(): VoiceTestPlayer {
 }
 
 describe("PlayerVoiceState", () => {
-    it("patch/reset and toJSON/toLavalink behave as expected", () => {
+    it("patch/reset and toJSON/toNode behave as expected", () => {
         const voice = new PlayerVoiceState(createPlayer() as never);
 
         voice.patch({ endpoint: "endpoint", sessionId: "session", token: "token", channelId: "voice-1" });
 
         expect(voice.toJSON()).toEqual({ endpoint: "endpoint", sessionId: "session", token: "token", channelId: "voice-1" });
-        expect(voice.toLavalink()).toEqual({ endpoint: "endpoint", sessionId: "session", token: "token", channelId: "voice-1" });
+        expect(voice.toNode()).toEqual({ endpoint: "endpoint", sessionId: "session", token: "token", channelId: "voice-1" });
 
         voice.reset();
-        expect(voice.toLavalink()).toBeNull();
+        expect(voice.toNode()).toBeNull();
     });
 
     it("setState sends payload and updates player/voice fields", async () => {
