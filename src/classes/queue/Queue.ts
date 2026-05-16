@@ -192,9 +192,8 @@ export class Queue {
 
         if (typeof position === "number" && position >= 0 && position < this.tracks.length) {
             await this.splice(position, 0, ...tracks);
-            return this
+            return this;
         }
-            
 
         this.tracks.push(...tracks);
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
@@ -387,12 +386,16 @@ export class Queue {
      * console.log(queue.tracks); // [track, track2]
      * ```
      */
-    public async splice(start: number, deleteCount: number, tracks?: TrackResolvableStructure | TrackResolvableStructure[]): Promise<TrackResolvableStructure[]> {
+    public async splice(
+        start: number,
+        deleteCount: number,
+        tracks?: TrackResolvableStructure | TrackResolvableStructure[],
+    ): Promise<TrackResolvableStructure[]> {
         if (!this.size && tracks) await this.add(tracks);
 
-        const spliced = tracks ?
-        this.tracks.splice(start, deleteCount, ...(Array.isArray(tracks) ? tracks : [tracks]))
-        : this.tracks.splice(start, deleteCount)
+        const spliced = tracks
+            ? this.tracks.splice(start, deleteCount, ...(Array.isArray(tracks) ? tracks : [tracks]))
+            : this.tracks.splice(start, deleteCount);
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
         this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, `[Queue] -> [Splice] Removed ${deleteCount} tracks from the queue.`);
