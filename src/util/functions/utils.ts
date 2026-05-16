@@ -557,6 +557,17 @@ export function requesterFn<T>(requester: TrackRequester): T {
 
 /**
  *
+ * Flatten an item or an array of items into a single array.
+ * @param {T | T[]} items The item or array of items to flatten.
+ * @returns {T[]} The flattened array.
+ */
+export function flatten<T>(items: T | T[]): T[] {
+    const array: T[] = [];
+    return array.concat(items);
+}
+
+/**
+ *
  * Validate if the node options are correct.
  * @param {NodeOptions} options The node options to validate.
  * @returns {boolean} If the node options are correct.

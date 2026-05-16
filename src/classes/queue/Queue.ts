@@ -1,6 +1,7 @@
 import { DebugLevels, EventNames } from "../../types/Manager";
 import type { QueueJSON, TrackJSON } from "../../types/Queue";
 import type { PlayerStructure, TrackStructure } from "../../types/Structures";
+import { flatten } from "../../util/functions/utils";
 import { QueueError } from "../Errors";
 import { Track, type TrackResolvableStructure, UnresolvedTrack } from "../Track";
 import { QueueUtils } from "./Utils";
@@ -188,7 +189,7 @@ export class Queue {
      * ```
      */
     public async add(track: TrackResolvableStructure | TrackResolvableStructure[], position?: number): Promise<this> {
-        const tracks: TrackResolvableStructure[] = Array.isArray(track) ? track : [track];
+        const tracks: TrackResolvableStructure[] = flatten(track);
 
         if (typeof position === "number" && position >= 0 && position < this.tracks.length) {
             await this.splice(position, 0, ...tracks);
@@ -389,13 +390,11 @@ export class Queue {
     public async splice(
         start: number,
         deleteCount: number,
-        tracks?: TrackResolvableStructure | TrackResolvableStructure[],
+        tracks: TrackResolvableStructure | TrackResolvableStructure[] = [],
     ): Promise<TrackResolvableStructure[]> {
         if (!this.size && tracks) await this.add(tracks);
 
-        const spliced = tracks
-            ? this.tracks.splice(start, deleteCount, ...(Array.isArray(tracks) ? tracks : [tracks]))
-            : this.tracks.splice(start, deleteCount);
+        const spliced: TrackResolvableStructure[] = this.tracks.splice(start, deleteCount, ...flatten(tracks));
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
         this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, `[Queue] -> [Splice] Removed ${deleteCount} tracks from the queue.`);
