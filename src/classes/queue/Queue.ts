@@ -386,7 +386,7 @@ export class Queue {
     public async splice(start: number, deleteCount: number, tracks?: TrackResolvableStructure | TrackResolvableStructure[]): Promise<TrackResolvableStructure[]> {
         if (!this.size && tracks) await this.add(tracks);
 
-        const spliced = tracks ? 
+        const spliced: TrackResolvableStructure[] = tracks ? 
         this.tracks.splice(start, deleteCount, ...(Array.isArray(tracks) ? tracks : [tracks])) 
         : this.tracks.splice(start, deleteCount)
 
