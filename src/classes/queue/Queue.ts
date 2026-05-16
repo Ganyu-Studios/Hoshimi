@@ -190,7 +190,11 @@ export class Queue {
     public async add(track: TrackResolvableStructure | TrackResolvableStructure[], position?: number): Promise<this> {
         const tracks: TrackResolvableStructure[] = Array.isArray(track) ? track : [track];
 
-        if (typeof position === "number" && position >= 0 && position < this.tracks.length) return this.splice(position, 0, ...tracks);
+        if (typeof position === "number" && position >= 0 && position < this.tracks.length) {
+            await this.splice(position, 0, ...tracks);
+            return this
+        }
+            
 
         this.tracks.push(...tracks);
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
@@ -370,7 +374,7 @@ export class Queue {
      * @param {number} start The start index.
      * @param {number} deleteCount The number of tracks to delete.
      * @param {TrackResolvableStructure | TrackResolvableStructure[]} [tracks] The tracks to add.
-     * @returns {Promise<this>} The queue instance.
+     * @returns {Promise<TrackResolvableStructure[]>} The spliced tracks.
      * @example
      * ```ts
      * const queue = player.queue;
@@ -383,18 +387,19 @@ export class Queue {
      * console.log(queue.tracks); // [track, track2]
      * ```
      */
-    public async splice(start: number, deleteCount: number, tracks?: TrackResolvableStructure | TrackResolvableStructure[]): Promise<this> {
+    public async splice(start: number, deleteCount: number, tracks?: TrackResolvableStructure | TrackResolvableStructure[]): Promise<TrackResolvableStructure[]> {
         if (!this.size && tracks) await this.add(tracks);
 
-        if (tracks) this.tracks.splice(start, deleteCount, ...(Array.isArray(tracks) ? tracks : [tracks]));
-        else this.tracks.splice(start, deleteCount);
+        const spliced = tracks ?
+        this.tracks.splice(start, deleteCount, ...(Array.isArray(tracks) ? tracks : [tracks]))
+        : this.tracks.splice(start, deleteCount)
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
         this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, `[Queue] -> [Splice] Removed ${deleteCount} tracks from the queue.`);
 
         await this.utils.save();
 
-        return this;
+        return spliced;
     }
 
     /**
