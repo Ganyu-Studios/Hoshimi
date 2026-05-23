@@ -248,7 +248,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                         `[Player] -> [Voice] The channel ${data.id} was deleted, disconnecting the player.`,
                     );
 
-                    await player.destroy(DestroyReasons.VoiceChannelDeleted);
+                    await player.destroy({ reason: DestroyReasons.VoiceChannelDeleted });
                 } else {
                     this.emit(
                         EventNames.Debug,
@@ -273,6 +273,15 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     const player: PlayerStructure | undefined = this.getPlayer(data.guild_id);
                     if (!player) {
                         this.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Voice] The player is not found.");
+                        return;
+                    }
+
+                    if (await player.data.get("internal_playerDestroy")) {
+                        this.emit(
+                            EventNames.Debug,
+                            DebugLevels.Player,
+                            `[Player] -> [Voice] Player for guild: ${data.guild_id} is being destroyed, skipping voice state update handling.`,
+                        );
                         return;
                     }
 
@@ -357,7 +366,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                         const { autoDestroy, autoReconnect, autoQueue } = this.options.playerOptions.onDisconnect;
 
                         if (autoDestroy) {
-                            await player.destroy(DestroyReasons.VoiceChannelLeft);
+                            await player.destroy({ reason: DestroyReasons.VoiceChannelLeft });
                             return;
                         }
 
@@ -384,7 +393,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                                 );
                             } catch (error) {
                                 this.emit(EventNames.PlayerError, player, error);
-                                await player.destroy(DestroyReasons.ReconnectFailed);
+                                await player.destroy({ reason: DestroyReasons.ReconnectFailed });
                             }
                         }
 

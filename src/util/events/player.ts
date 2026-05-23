@@ -152,6 +152,15 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
 
     const reasons: TrackEndReason[] = [TrackEndReason.LoadFailed, TrackEndReason.Cleanup];
     if (reasons.includes(payload.reason)) {
+        if (await this.data.get("internal_playerDestroy")) {
+            this.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Player,
+                `[Player] -> [End] Player for guild: ${this.guildId} is being destroyed, skipping track end handling.`,
+            );
+            return;
+        }
+
         await onEnd.call(this);
 
         if (!this.queue.current) return queueEnd.call(this, current, payload);

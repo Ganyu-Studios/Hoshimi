@@ -2,6 +2,7 @@ import { DebugLevels, DestroyReasons, EventNames, type NodeIdentifier, type Quer
 import { type LyricsResult, type SourceName, State } from "../../types/Node";
 import {
     type AnyLavalinkTrack,
+    type DestroyOptions,
     type LavalinkPlayerVoice,
     type LavalinkPlayOptions,
     LoopMode,
@@ -386,7 +387,7 @@ export class Player {
         await this.node.stopPlayer(this.guildId);
         await this.data.set("internal_stopPlaying", true);
 
-        if (destroy) await this.destroy(DestroyReasons.Stop);
+        if (destroy) await this.destroy({ reason: DestroyReasons.Stop });
         if (leaveVoice) await this.voice.disconnect();
 
         this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Stop] Player stopped for guild: ${this.guildId}`);
@@ -541,8 +542,20 @@ export class Player {
      * player.destroy(DestroyReasons.Stop);
      * ```
      */
-    public async destroy(reason: DestroyReasons = DestroyReasons.Stop): Promise<boolean> {
-        await this.disconnect();
+    public async destroy(options: DestroyOptions = {}): Promise<boolean> {
+        const { reason = DestroyReasons.Stop, disconnect = true } = options;
+
+        if (await this.data.get("internal_playerDestroy")) {
+            this.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Player,
+                `[Player] -> [Destroy] Player for guild: ${this.guildId} is already being destroyed.`,
+            );
+            return false;
+        }
+
+        if (disconnect) await this.disconnect();
+
         await this.node.destroyPlayer(this.guildId);
         await this.queue.utils.destroy();
 

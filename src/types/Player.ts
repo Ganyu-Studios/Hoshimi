@@ -1,7 +1,7 @@
 import type { PlayerStorageAdapter } from "../classes/storage/adapters/PlayerAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../classes/Track";
 import type { FilterSettings } from "./Filters";
-import type { NodeIdentifier, Nullable, Prettify } from "./Manager";
+import type { DestroyReasons, NodeIdentifier, Nullable, Prettify } from "./Manager";
 import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, NodeJSON, OpCodes, UnresolvedLavalinkTrack } from "./Node";
 import type { QueueJSON } from "./Queue";
 import type { TrackStructure } from "./Structures";
@@ -663,6 +663,21 @@ export interface StopOptions {
      * @default false
      */
     leaveVoice?: boolean;
+}
+
+export interface DestroyOptions {
+    /**
+     * The reason for destroying the player.
+     * @type {DestroyReasons | undefined}
+     * @default DestroyReasons.Stop
+     */
+    reason?: DestroyReasons;
+    /**
+     * Whether to clear the queue after destroying.
+     * @type {boolean | undefined}
+     * @default true
+     */
+    disconnect?: boolean;
 }
 
 /**
