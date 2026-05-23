@@ -554,11 +554,12 @@ export class Player {
             return false;
         }
 
+        await this.data.set("internal_playerDestroy", true);
+
         if (disconnect) await this.disconnect();
 
         await this.node.destroyPlayer(this.guildId);
         await this.queue.utils.destroy();
-        await this.data.set("internal_playerDestroy", true);
 
         this.manager.emit(EventNames.PlayerDestroy, this, reason);
         this.manager.emit(

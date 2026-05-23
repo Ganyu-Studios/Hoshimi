@@ -241,6 +241,15 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     return;
                 }
 
+                if (await player.data.get("internal_playerDestroy")) {
+                    this.emit(
+                        EventNames.Debug,
+                        DebugLevels.Player,
+                        `[Player] -> [Voice] Player for guild: ${data.guild_id} is being destroyed, skipping voice state update handling.`,
+                    );
+                    return;
+                }
+
                 if (data.id === player.voiceId) {
                     this.emit(
                         EventNames.Debug,
