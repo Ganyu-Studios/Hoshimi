@@ -5,7 +5,7 @@
     "main": "./dist/index.cjs",
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.cts",
-    "packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499",
+    "packageManager": "pnpm@11.2.2+sha512.36e6621fad506178936455e70247b8808ef4ec25797a9f437a93281a020484e2607f6a469a22e982987c3dbb8866e3071514ab10a4a1749e06edcd1ec118436f",
     "exports": {
         ".": {
             "types": "./dist/index.d.cts",
@@ -50,16 +50,16 @@
     "devDependencies": {
         "@biomejs/biome": "^2.4.15",
         "@changesets/cli": "^2.31.0",
-        "@types/node": "^25.8.0",
+        "@types/node": "^25.9.1",
         "@types/ws": "^8.18.1",
         "husky": "^9.1.7",
         "lint-staged": "^17.0.5",
         "tsdown": "^0.22.0",
-        "tsx": "^4.22.0",
+        "tsx": "^4.22.3",
         "typescript": "^6.0.3",
-        "vitest": "^4.1.6"
+        "vitest": "^4.1.7"
     },
     "dependencies": {
-        "ws": "^8.20.1"
+        "ws": "^8.21.0"
     }
 }
