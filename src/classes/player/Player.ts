@@ -534,7 +534,7 @@ export class Player {
     /**
      *
      * Destroy and disconnect the player.
-     * @param {DestroyReasons} [reason] The reason for destroying the player.
+     * @param {DestroyOptions} options The options for destroying the player.
      * @returns {Promise<void>}
      * @example
      * ```ts

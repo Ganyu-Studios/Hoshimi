@@ -12,7 +12,7 @@ import { requesterFn } from "./functions/utils";
 /**
  * The auto output record type.
  */
-type AutoOutputRecord = Record<AudioOutput, Required<ChannelMixSettings>>;
+type AudioOutputRecord = Record<AudioOutput, Required<ChannelMixSettings>>;
 
 /**
  * The user agent for Hoshimi.
@@ -30,7 +30,7 @@ export const UrlRegex: RegExp = /^(https?:\/\/)?([a-zA-Z0-9\-_]+\.)+[a-zA-Z]{2,}
  * The audio output data for Hoshimi.
  * @type {Readonly<Record<AudioOutput, Required<ChannelMixSettings>>>}
  */
-export const AudioOutputData: Readonly<AutoOutputRecord> = Object.freeze<AutoOutputRecord>({
+export const AudioOutputData: Readonly<AudioOutputRecord> = Object.freeze<AudioOutputRecord>({
     [AudioOutput.Mono]: {
         leftToLeft: 0.5,
         leftToRight: 0.5,

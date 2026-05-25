@@ -298,7 +298,6 @@ export class Queue {
 
     /**
      * Clear the queue.
-     * @param {ClearOptions} [options] The options for clearing the queue.
      * @returns {Promise<this>} The queue instance.
      * @example
      * ```ts

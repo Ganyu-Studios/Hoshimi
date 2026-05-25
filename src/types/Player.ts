@@ -132,7 +132,7 @@ export enum TrackEndReason {
 /**
  * The options for error actions.
  */
-interface DisconnectPlayerActions {
+export interface DisconnectPlayerActions {
     /**
      * Whether to automatically destroy the player on disconnect or error.
      * @type {boolean | undefined}
