@@ -382,12 +382,11 @@ export class Node {
 
         if (this.options.sessionId) {
             headers["Session-Id"] = this.options.sessionId;
-            this.sessionId = this.options.sessionId;
 
             this.nodeManager.manager.emit(
                 EventNames.Debug,
                 DebugLevels.Node,
-                `[Socket] -> [${this.id}]: The session id is present. | Session: ${this.sessionId} | Resuming: ${this.session.resuming}`,
+                `[Socket] -> [${this.id}]: The session id is present. | Session: ${this.options.sessionId} | Resuming: ${this.session.resuming}`,
             );
         }
 
@@ -487,6 +486,8 @@ export class Node {
 
         this.state = State.Disconnected;
         this.retryAmount = this.options.retryAmount;
+        this.sessionId = null;
+        this.session.resuming = false;
 
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
@@ -516,6 +517,8 @@ export class Node {
 
         this.state = State.Destroyed;
         this.retryAmount = 0;
+        this.sessionId = null;
+        this.session.resuming = false;
 
         if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
