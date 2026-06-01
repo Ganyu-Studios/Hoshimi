@@ -382,6 +382,7 @@ export class Node {
 
         if (this.options.sessionId) {
             headers["Session-Id"] = this.options.sessionId;
+            this.sessionId = this.options.sessionId;
 
             this.nodeManager.manager.emit(
                 EventNames.Debug,
