@@ -406,6 +406,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                             }
                         }
 
+                        player.connected = false;
                         player.voiceId = undefined;
                         player.voice.reset();
 

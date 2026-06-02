@@ -204,7 +204,6 @@ export class PlayerVoiceState {
 
     /**
      * Connect the player to its configured voice channel.
-     * @returns {Promise<PlayerStructure>} The player structure after connecting.
      * @example
      * ```ts
      * const player = manager.getPlayer("guildId");
@@ -214,9 +213,9 @@ export class PlayerVoiceState {
      * }
      * ```
      */
-    public async connect(): Promise<PlayerStructure> {
-        if (this.player.connected) return this.player;
-        if (!this.player.voiceId) return this.player;
+    public async connect(): Promise<void> {
+        if (this.player.connected) return;
+        if (!this.player.voiceId) return;
 
         await this.setState();
 
@@ -227,8 +226,6 @@ export class PlayerVoiceState {
         );
 
         this.player.connected = true;
-
-        return this.player;
     }
 
     /**
@@ -243,8 +240,8 @@ export class PlayerVoiceState {
      * }
      * ```
      */
-    public async disconnect(): Promise<PlayerStructure> {
-        if (!this.player.voiceId) return this.player;
+    public async disconnect(): Promise<void> {
+        if (!this.player.voiceId) return;
 
         this.player.voiceId = undefined;
 
@@ -259,8 +256,6 @@ export class PlayerVoiceState {
         this.player.manager.emit(EventNames.PlayerDisconnect, this.player);
 
         this.player.connected = false;
-
-        return this.player;
     }
 
     /**

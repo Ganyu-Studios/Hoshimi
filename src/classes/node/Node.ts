@@ -565,6 +565,7 @@ export class Node {
         if (this.state === State.Disconnected || this.state === State.Destroyed || this.reconnectTimeout) return;
 
         this.state = State.Idle;
+        this.sessionId = null;
 
         this.nodeManager.manager.emit(EventNames.NodeReconnecting, this, this.retryAmount, this.retryDelay);
 

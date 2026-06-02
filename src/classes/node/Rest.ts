@@ -91,10 +91,10 @@ export class Rest {
 
     /**
      * The session id of the node.
-     * @type {string}
+     * @type {string | null}
      */
-    public get sessionId(): string {
-        return this.node.sessionId!;
+    public get sessionId(): string | null {
+        return this.node.sessionId;
     }
 
     /**

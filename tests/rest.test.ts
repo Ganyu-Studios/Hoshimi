@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RestError } from "../src/classes/Errors";
 import { Rest } from "../src/classes/node/Rest";
+import { State } from "../src/types/Node";
 import { HttpMethods, HttpStatusCodes, RestPathType, RestRoutes } from "../src/types/Rest";
 
 function createNode(sessionId: string | null = "session-1") {
@@ -9,6 +10,7 @@ function createNode(sessionId: string | null = "session-1") {
     const node = {
         id: "node-1",
         sessionId,
+        state: State.Connected,
         options: {
             secure: false,
             host: "localhost",
