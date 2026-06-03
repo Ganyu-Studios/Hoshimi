@@ -557,8 +557,9 @@ export class Player {
 
         if (disconnect) await this.disconnect();
 
-        await this.node.destroyPlayer(this.guildId);
         await this.queue.utils.destroy();
+        this.manager.deletePlayer(this.guildId);
+        await this.node.destroyPlayer(this.guildId);
 
         this.manager.emit(EventNames.PlayerDestroy, this, reason);
         this.manager.emit(
@@ -566,8 +567,6 @@ export class Player {
             DebugLevels.Player,
             `[Player] -> [Destroy] Destroyed player for guild: ${this.guildId} | Reason: ${reason}`,
         );
-
-        this.manager.deletePlayer(this.guildId);
     }
 
     /**
