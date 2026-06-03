@@ -568,8 +568,6 @@ export class Player {
         );
 
         this.manager.deletePlayer(this.guildId);
-
-        await this.data.destroy();
     }
 
     /**
