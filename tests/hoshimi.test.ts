@@ -20,7 +20,6 @@ describe("Hoshimi", () => {
         const manager = new Hoshimi(createOptions());
 
         expect(manager.options.defaultSearchSource).toBeDefined();
-        expect(manager.options.playerOptions.storage).toBeDefined();
         expect(manager.options.queueOptions.storage).toBeDefined();
     });
 

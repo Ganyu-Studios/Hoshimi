@@ -1,5 +1,4 @@
 import PackageJson from "../../package.json";
-import { PlayerMemoryStorage } from "../classes/storage/PlayerMemory";
 import { QueueMemoryStorage } from "../classes/storage/QueueMemory";
 import type { ChannelMixSettings, FilterSettings } from "../types/Filters";
 import { AudioOutput } from "../types/Filters";
@@ -189,7 +188,6 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
     },
     playerOptions: {
         requesterFn,
-        storage: new PlayerMemoryStorage(),
         onDisconnect: {
             autoDestroy: false,
             autoReconnect: false,

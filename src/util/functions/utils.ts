@@ -1,6 +1,5 @@
 import { MergeError, NodeError, OptionError } from "../../classes/Errors";
 import type { Node } from "../../classes/node/Node";
-import { PlayerStorageAdapter } from "../../classes/storage/adapters/PlayerAdapter";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../../classes/Track";
 import { Track, UnresolvedTrack } from "../../classes/Track";
@@ -76,8 +75,6 @@ export function validateManagerOptions(options: HoshimiOptions): void {
     }
 
     if (typeof options.playerOptions !== "undefined") {
-        if (!(options.playerOptions.storage instanceof PlayerStorageAdapter))
-            throw new OptionError("The manager option 'options.playerOptions.storage' must be a valid storage manager.");
         if (typeof options.playerOptions.requesterFn !== "function")
             throw new OptionError("The manager option 'options.playerOptions.requesterFn' must be a valid function.");
     }

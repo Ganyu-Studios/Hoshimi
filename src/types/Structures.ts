@@ -6,6 +6,8 @@ import { FilterManager } from "../classes/player/filters/Manager";
 import { Player } from "../classes/player/Player";
 import { PlayerVoiceState } from "../classes/player/Voice";
 import { Queue } from "../classes/queue/Queue";
+import { PlayerStorageAdapter } from "../classes/storage/adapters/PlayerAdapter";
+import { PlayerMemoryStorage } from "../classes/storage/PlayerMemory";
 import { Track, UnresolvedTrack } from "../classes/Track";
 import type { CustomizableStructures } from "./Manager";
 
@@ -60,6 +62,11 @@ export type UnresolvedTrackStructure = InferCustomStructure<UnresolvedTrack, "Un
 export type PlayerVoiceStateStructure = InferCustomStructure<PlayerVoiceState, "PlayerVoiceState">;
 
 /**
+ * The structure for the PlayerStorageAdapter class.
+ */
+export type PlayerStorageAdapterStructure = InferCustomStructure<PlayerStorageAdapter, "PlayerStorageAdapter">;
+
+/**
  * Factory signatures for all overridable structures.
  */
 interface StructureFactories {
@@ -73,6 +80,7 @@ interface StructureFactories {
     Track(...args: ConstructorParameters<typeof Track>): TrackStructure;
     UnresolvedTrack(...args: ConstructorParameters<typeof UnresolvedTrack>): UnresolvedTrackStructure;
     PlayerVoiceState(...args: ConstructorParameters<typeof PlayerVoiceState>): PlayerVoiceStateStructure;
+    PlayerStorageAdapter(...args: ConstructorParameters<typeof PlayerStorageAdapter>): PlayerStorageAdapterStructure;
 }
 
 /**
@@ -108,6 +116,9 @@ export const Structures: StructureFactories = {
     },
     PlayerVoiceState(...args): PlayerVoiceStateStructure {
         return new PlayerVoiceState(...args);
+    },
+    PlayerStorageAdapter(...args): PlayerStorageAdapterStructure {
+        return new PlayerMemoryStorage(...args);
     },
 };
 

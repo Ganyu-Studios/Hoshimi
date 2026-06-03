@@ -46,7 +46,6 @@ export class QueueMemoryStorage<T extends QueueJSON = QueueJSON> extends QueueSt
     }
 
     public buildKey(...parts: RestOrArray<string>): string {
-        const flattern = parts.flat();
-        return flattern.join(":");
+        return parts.flat().join(":");
     }
 }

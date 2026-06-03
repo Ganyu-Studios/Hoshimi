@@ -216,10 +216,9 @@ export class Player {
             (typeof this.options.node === "string" ? this.manager.nodeManager.get(this.options.node) : this.options.node) ??
             this.manager.nodeManager.getLeastUsed();
 
-        this.data = this.manager.options.playerOptions.storage;
-
         validatePlayerOptions(this.options);
 
+        this.data = Structures.PlayerStorageAdapter();
         this.queue = Structures.Queue(this);
         this.filterManager = Structures.FilterManager(this);
         this.voice = Structures.PlayerVoiceState(this);
@@ -542,7 +541,7 @@ export class Player {
      * player.destroy(DestroyReasons.Stop);
      * ```
      */
-    public async destroy(options: DestroyOptions = {}): Promise<boolean> {
+    public async destroy(options: DestroyOptions = {}): Promise<void> {
         const { reason = DestroyReasons.Stop, disconnect = true } = options;
 
         if (await this.data.get("internal_playerDestroy")) {
@@ -551,14 +550,13 @@ export class Player {
                 DebugLevels.Player,
                 `[Player] -> [Destroy] Player for guild: ${this.guildId} is already being destroyed.`,
             );
-            return false;
+            return;
         }
 
         await this.data.set("internal_playerDestroy", true);
 
         if (disconnect) await this.disconnect();
 
-        await this.data.destroy();
         await this.node.destroyPlayer(this.guildId);
         await this.queue.utils.destroy();
 
@@ -569,7 +567,9 @@ export class Player {
             `[Player] -> [Destroy] Destroyed player for guild: ${this.guildId} | Reason: ${reason}`,
         );
 
-        return this.manager.deletePlayer(this.guildId);
+        this.manager.deletePlayer(this.guildId);
+
+        await this.data.destroy();
     }
 
     /**
