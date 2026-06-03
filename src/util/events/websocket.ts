@@ -57,7 +57,7 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
 
     // Invalidate session immediately to prevent stale REST calls
     this.sessionId = null;
-    this.state = State.Disconnected;
+    this.state = State.Idle;
 
     const { moveOptions } = this.nodeManager.manager.options.nodeOptions;
 
