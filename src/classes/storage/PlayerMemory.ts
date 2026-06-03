@@ -59,6 +59,10 @@ export class PlayerMemoryStorage<
         return this.internal.size;
     }
 
+    public destroy(): Awaitable<void> {
+        this.internal.clear();
+    }
+
     public buildKey(...parts: RestOrArray<string>): string {
         return parts.flat().join(":");
     }

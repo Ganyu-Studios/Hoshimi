@@ -156,6 +156,16 @@ export abstract class PlayerStorageAdapter {
     abstract size(): Awaitable<number>;
 
     /**
+     * Destroy the storage. This is called when the player is destroyed.
+     * @returns {Awaitable<void>} Did you know this can be async?
+     * @example
+     * ```ts
+     * await storage.destroy();
+     * ```
+     */
+    abstract destroy(): Awaitable<void>;
+
+    /**
      *
      * Build a key from the given parts.
      * @param {string[]} parts The parts to build the key from.

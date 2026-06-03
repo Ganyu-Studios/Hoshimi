@@ -558,6 +558,7 @@ export class Player {
 
         if (disconnect) await this.disconnect();
 
+        await this.data.destroy();
         await this.node.destroyPlayer(this.guildId);
         await this.queue.utils.destroy();
 
