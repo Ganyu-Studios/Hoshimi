@@ -35,7 +35,7 @@ describe("storage", () => {
     });
 
     it("PlayerMemoryStorage CRUD and helpers work correctly", () => {
-        const storage = new PlayerMemoryStorage();
+        const storage = new PlayerMemoryStorage("guild-1");
 
         storage.set("volume" as never, 100 as never);
 
@@ -43,10 +43,10 @@ describe("storage", () => {
         expect(storage.get("volume" as never)).toBe(100);
         expect(storage.size()).toBe(1);
 
-        expect(storage.keys()).toEqual(["hoshimiplayer:volume"]);
+        expect(storage.keys()).toEqual(["volume"]);
         expect(storage.values()).toEqual([100]);
-        expect(storage.entries()).toEqual([["hoshimiplayer:volume", 100]]);
-        expect(storage.all()).toEqual({ "hoshimiplayer:volume": 100 });
+        expect(storage.entries()).toEqual([["volume", 100]]);
+        expect(storage.all()).toEqual({ volume: 100 });
 
         expect(storage.delete("volume" as never)).toBe(true);
         expect(storage.has("volume" as never)).toBe(false);

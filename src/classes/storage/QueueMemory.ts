@@ -1,4 +1,3 @@
-import type { RestOrArray } from "../../types/Manager";
 import type { QueueJSON } from "../../types/Queue";
 import { QueueStorageAdapter } from "./adapters/QueueAdapter";
 
@@ -43,9 +42,5 @@ export class QueueMemoryStorage<T extends QueueJSON = QueueJSON> extends QueueSt
 
     public stringify<R = string>(value: unknown): R {
         return value as R;
-    }
-
-    public buildKey(...parts: RestOrArray<string>): string {
-        return parts.flat().join(":");
     }
 }

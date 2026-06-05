@@ -39,6 +39,84 @@ export abstract class PlayerStorageAdapter {
      * ```
      */
     public namespace: string = "hoshimiplayer";
+
+    /**
+     * the guild id of the player storage adapter. This is used to identify the player storage adapter.
+     * @type {string}
+     * @example
+     * ```ts
+     * console.log(storage.guildId); // "123456789012345678"
+     * ```
+     */
+    readonly guildId: string;
+
+    /**
+     *
+     * Create a new player storage adapter.
+     * @param {string} guildId The guild id of the player storage adapter.
+     * @example
+     * ```ts
+     * const storage = new MyPlayerStorageAdapter("123456789012345678");
+     * console.log(storage.guildId); // "123456789012345678"
+     * ```
+     */
+    public constructor(guildId: string) {
+        this.guildId = guildId;
+    }
+
+    /**
+     * Get the prefix for the storage keys. This is used to prevent key collisions between different player storage adapters.
+     * @type {string}
+     * @example
+     * ```ts
+     * console.log(storage.prefix); // "hoshimiplayer:123456789012345678"
+     *
+     * const key = storage.buildKey("key");
+     * console.log(key); // "hoshimiplayer:123456789012345678:key"
+     * ```
+     */
+    public get prefix(): string {
+        return this.buildKey(this.namespace, this.guildId);
+    }
+
+    /**
+     * Strip the prefix from the key. This is used to get the original key from the stored key.
+     * @param {string} key The key to strip the prefix from.
+     * @returns {string} The original key without the prefix.
+     * @example
+     * ```ts
+     * const key = storage.buildKey("key");
+     * console.log(key); // "hoshimiplayer:123456789012345678:key"
+     *
+     * const originalKey = storage.strip(key);
+     * console.log(originalKey); // "key"
+     * ```
+     */
+    public strip(key: string): string {
+        const prefix: string = this.prefix + ":";
+
+        if (key.startsWith(prefix)) return key.slice(prefix.length);
+
+        return key;
+    }
+
+    /**
+     * Check if the key is an internal key. Internal keys are used to store internal data for the player storage adapter and should not be exposed to the user.
+     * @param {string} key The key to check.
+     * @returns {boolean} Return true if the key is an internal key.
+     * @example
+     * ```ts
+     * const internalKey = "internal_key";
+     * console.log(storage.isInternal(internalKey)); // true
+     *
+     * const userKey = "user_key";
+     * console.log(storage.isInternal(userKey)); // false
+     * ```
+     */
+    public isInternal(key: string): boolean {
+        return key.startsWith("internal_");
+    }
+
     /**
      *
      * Get the value using the key.
@@ -175,5 +253,7 @@ export abstract class PlayerStorageAdapter {
      * const key = storage.buildKey("part1", "part2", "part3");
      * ```
      */
-    abstract buildKey(...parts: RestOrArray<string>): string;
+    public buildKey(...parts: RestOrArray<string>): string {
+        return parts.flat().join(":");
+    }
 }

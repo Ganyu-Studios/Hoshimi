@@ -218,7 +218,7 @@ export class Player {
 
         validatePlayerOptions(this.options);
 
-        this.data = Structures.PlayerStorageAdapter();
+        this.data = Structures.PlayerStorageAdapter(this.guildId);
         this.queue = Structures.Queue(this);
         this.filterManager = Structures.FilterManager(this);
         this.voice = Structures.PlayerVoiceState(this);

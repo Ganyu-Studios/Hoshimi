@@ -125,5 +125,7 @@ export abstract class QueueStorageAdapter<T extends QueueJSON = QueueJSON> {
      * const key = storage.buildKey("part1", "part2", "part3");
      * ```
      */
-    abstract buildKey(...parts: RestOrArray<string>): string;
+    public buildKey(...parts: RestOrArray<string>): string {
+        return parts.flat().join(":");
+    }
 }
