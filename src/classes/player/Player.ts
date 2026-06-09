@@ -611,16 +611,17 @@ export class Player {
      * ```
      */
     public async setVolume(volume: number): Promise<void> {
-        if (typeof volume !== "number" || Number.isNaN(volume) || volume < 0 || volume > 100)
-            throw new PlayerError("Volume must be a number between 0 and 100.");
+        if (typeof volume !== "number" || Number.isNaN(volume) || volume < 0)
+            throw new PlayerError("Volume must be a number greater than or equal to 0.");
 
-        await this.updatePlayer({ playerOptions: { volume } });
+        this.volume = Math.round(Math.max(Math.min(volume, 1000), 0));
 
-        this.volume = volume;
+        await this.updatePlayer({ playerOptions: { volume: this.volume } });
+
         this.manager.emit(
             EventNames.Debug,
             DebugLevels.Player,
-            `[Player] -> [Volume] Player volume set to ${volume}% for guild: ${this.guildId}`,
+            `[Player] -> [Volume] Player volume set to ${this.volume}% for guild: ${this.guildId}`,
         );
 
         return;
