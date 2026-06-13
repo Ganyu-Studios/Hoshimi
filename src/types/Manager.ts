@@ -980,6 +980,11 @@ export type DeepRequired<T> = T extends (...args: any[]) => any
 export type RequiredHoshimiOptions = DeepRequired<HoshimiOptions>;
 
 /**
+ * The required options for the node.
+ */
+export type RequiredHoshimiNodeOptions = DeepRequired<NodeOptions>;
+
+/**
  * A node identifier can be either a string or a node structure.
  */
 export type NodeIdentifier = NodeStructure | string;
