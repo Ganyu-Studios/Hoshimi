@@ -366,6 +366,11 @@ export function startHeartbeat(this: NodeStructure): void {
  */
 export function onPong(this: NodeStructure): void {
     this.isAlive = true;
+    this.nodeManager.manager.emit(
+        EventNames.Debug,
+        DebugLevels.Node,
+        `[Socket] -> [${this.id}]: Received pong from ${this.address}. Marking socket as alive.`,
+    );
 }
 
 /**
