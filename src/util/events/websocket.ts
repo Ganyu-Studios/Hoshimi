@@ -326,7 +326,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
 export function startHeartbeat(this: NodeStructure): void {
     if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
 
-    const interval: number = this.options.heartbeat.interval ?? this.nodeManager.manager.options.nodeOptions.heartbeatOptions.interval;
+    const interval: number = this.options.heartbeat.interval;
     if (!interval || interval <= 0) return;
 
     this.isAlive = true;
@@ -376,7 +376,7 @@ export function onPong(this: NodeStructure): void {
 export function resetStatsTimeout(this: NodeStructure): void {
     if (this.statsTimeout) clearTimeout(this.statsTimeout);
 
-    const ms: number = this.options.heartbeat.statsTimeout ?? this.nodeManager.manager.options.nodeOptions.heartbeatOptions.statsTimeout;
+    const ms: number = this.options.heartbeat.statsTimeout;
     if (!ms || ms <= 0) return;
 
     this.statsTimeout = setTimeout((): void => {

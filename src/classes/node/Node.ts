@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { type Awaitable, DebugLevels, EventNames } from "../../types/Manager";
+import { type Awaitable, DebugLevels, DeepRequired, EventNames } from "../../types/Manager";
 import {
     type LavalinkSearchResponse,
     type LavalinkTrack,
@@ -46,7 +46,7 @@ export class Node {
      * The options for the node.
      * @type {Required<NodeOptions>}
      */
-    readonly options: Required<NodeOptions>;
+    readonly options: DeepRequired<NodeOptions>;
 
     /**
      * The REST for the node.
