@@ -1106,6 +1106,17 @@ export interface NodeOptions {
      * @type {string}
      */
     sessionId?: string;
+    /**
+     * Heartbeat options for this node. Overrides the manager-level defaults.
+     * @type {NodeHeartbeatOptions | undefined}
+     */
+    heartbeat?: NodeHeartbeatOptions;
+    /**
+     * Whether to close (and reconnect) the socket on a WebSocket error.
+     * Overrides the manager-level default.
+     * @default true
+     */
+    closeOnError?: boolean;
 }
 
 /**
@@ -1209,6 +1220,12 @@ export interface HoshimiNodeOptions {
      */
     userAgent?: UserAgent;
     /**
+     * Whether to close (and reconnect) the socket on a WebSocket error.
+     * Overrides the manager-level default.
+     * @default true
+     */
+    closeOnError?: boolean;
+    /**
      * The session options for the node.
      * @type {NodeSessionOptions | undefined}
      */
@@ -1218,6 +1235,32 @@ export interface HoshimiNodeOptions {
      * @type {NodePlayerMoveOptions | undefined}
      */
     moveOptions?: NodePlayerMoveOptions;
+    /**
+     * The heartbeat options for liveness detection.
+     * @type {NodeHeartbeatOptions | undefined}
+     */
+    heartbeatOptions?: NodeHeartbeatOptions;
+}
+
+/**
+ * The heartbeat options for liveness detection.
+ */
+export interface NodeHeartbeatOptions {
+    /**
+     * Interval in milliseconds between WebSocket pings. Detects dead sockets
+     * where TCP looks alive but the remote stopped responding.
+     * Set to 0 to disable.
+     * @default 30000
+     */
+    interval?: number;
+
+    /**
+     * Maximum time in milliseconds between Lavalink `stats` messages before
+     * the socket is considered dead. Stats are sent every 60s, so 65000
+     * leaves a 5s buffer. Set to 0 to disable.
+     * @default 65000
+     */
+    statsTimeout?: number;
 }
 
 /**

@@ -31,6 +31,11 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
 
     this.retryAmount = this.options.retryAmount;
 
+    if (this.ws) this.ws.on("pong", onPong.bind(this));
+
+    startHeartbeat.call(this);
+    resetStatsTimeout.call(this);
+
     this.nodeManager.manager.emit(
         EventNames.Debug,
         DebugLevels.Node,
@@ -47,6 +52,8 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
  * @returns {void}
  */
 export async function onClose(this: NodeStructure, code: number, reason: string): Promise<void> {
+    clearLivenessTimers.call(this);
+
     this.nodeManager.manager.emit(
         EventNames.Debug,
         DebugLevels.Node,
@@ -135,17 +142,21 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
  * @returns {void}
  */
 export function onError(this: NodeStructure, error?: Error): void {
-    if (this.reconnectTimeout) {
-        clearInterval(this.reconnectTimeout);
-        this.reconnectTimeout = null;
-    }
-
+    this.nodeManager.manager.emit(EventNames.NodeError, this, error);
     this.nodeManager.manager.emit(
         EventNames.Debug,
         DebugLevels.Node,
         `[Socket] -> [${this.id}]: Connection error with ${this.address}. | Error: ${error?.message ?? "Unknown error"}`,
     );
-    this.nodeManager.manager.emit(EventNames.NodeError, this, error);
+
+    if (this.options.closeOnError && this.ws) {
+        this.ws.close(WebsocketCloseCodes.AbnormalClosure, "Node-Error - Force Reconnect");
+        this.nodeManager.manager.emit(
+            EventNames.Debug,
+            DebugLevels.Node,
+            `[Socket] -> [${this.id}]: closeOnError is enabled. Closing socket to force reconnect.`,
+        );
+    }
 }
 
 /**
@@ -171,6 +182,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
             case OpCodes.Stats:
                 {
                     this.stats = payload;
+                    resetStatsTimeout.call(this);
                     this.nodeManager.manager.emit(
                         EventNames.Debug,
                         DebugLevels.Node,
@@ -303,5 +315,92 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
         );
     } catch (error) {
         this.nodeManager.manager.emit(EventNames.NodeError, this, error);
+    }
+}
+
+/**
+ * Start the heartbeat ping/pong cycle for the node socket.
+ * @param {NodeStructure} this The node that owns the socket.
+ * @returns {void}
+ */
+export function startHeartbeat(this: NodeStructure): void {
+    if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+
+    const interval: number = this.options.heartbeat.interval ?? this.nodeManager.manager.options.nodeOptions.heartbeatOptions.interval;
+    if (!interval || interval <= 0) return;
+
+    this.isAlive = true;
+
+    this.heartbeatInterval = setInterval((): void => {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+        if (!this.isAlive) {
+            this.nodeManager.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Node,
+                `[Socket] -> [${this.id}]: No pong received within ${interval}ms. Terminating socket.`,
+            );
+            this.ws.terminate();
+            return;
+        }
+
+        this.isAlive = false;
+
+        try {
+            this.ws.ping();
+        } catch (error) {
+            this.nodeManager.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Node,
+                `[Socket] -> [${this.id}]: Ping failed. Terminating socket. | Error: ${(error as Error).message}`,
+            );
+            this.ws.terminate();
+        }
+    }, interval);
+}
+
+/**
+ * Handle the WebSocket pong event. Marks the socket as alive.
+ * @param {NodeStructure} this The node that owns the socket.
+ * @returns {void}
+ */
+export function onPong(this: NodeStructure): void {
+    this.isAlive = true;
+}
+
+/**
+ * Reset the stats watchdog. Called every time a `stats` payload arrives.
+ * @param {NodeStructure} this The node that owns the socket.
+ * @returns {void}
+ */
+export function resetStatsTimeout(this: NodeStructure): void {
+    if (this.statsTimeout) clearTimeout(this.statsTimeout);
+
+    const ms: number = this.options.heartbeat.statsTimeout ?? this.nodeManager.manager.options.nodeOptions.heartbeatOptions.statsTimeout;
+    if (!ms || ms <= 0) return;
+
+    this.statsTimeout = setTimeout((): void => {
+        this.nodeManager.manager.emit(
+            EventNames.Debug,
+            DebugLevels.Node,
+            `[Socket] -> [${this.id}]: No stats message received in ${ms}ms. Terminating socket.`,
+        );
+        this.ws?.terminate();
+    }, ms);
+}
+
+/**
+ * Clear all liveness timers. Called on close/disconnect/destroy.
+ * @param {NodeStructure} this The node that owns the socket.
+ * @returns {void}
+ */
+export function clearLivenessTimers(this: NodeStructure): void {
+    if (this.heartbeatInterval) {
+        clearInterval(this.heartbeatInterval);
+        this.heartbeatInterval = null;
+    }
+    if (this.statsTimeout) {
+        clearTimeout(this.statsTimeout);
+        this.statsTimeout = null;
     }
 }
