@@ -596,6 +596,11 @@ function isNode(options: NodeOptions): boolean {
         (typeof options.secure === "boolean" || typeof options.secure === "undefined") &&
         (typeof options.sessionId === "string" || typeof options.sessionId === "undefined") &&
         (typeof options.retryAmount === "number" || typeof options.retryAmount === "undefined") &&
-        (typeof options.retryDelay === "number" || typeof options.retryDelay === "undefined")
+        (typeof options.retryDelay === "number" || typeof options.retryDelay === "undefined") &&
+        (typeof options.restTimeout === "number" || typeof options.restTimeout === "undefined") &&
+        (typeof options.heartbeat === "object" || typeof options.heartbeat === "undefined") &&
+        (typeof options.closeOnError === "boolean" || typeof options.closeOnError === "undefined") &&
+        (typeof options.heartbeat?.interval === "number" || typeof options.heartbeat?.interval === "undefined") &&
+        (typeof options.heartbeat?.statsTimeout === "number" || typeof options.heartbeat?.statsTimeout === "undefined")
     );
 }

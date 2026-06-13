@@ -6,7 +6,7 @@ import { FilterManager } from "../classes/player/filters/Manager";
 import { Player } from "../classes/player/Player";
 import { PlayerVoiceState } from "../classes/player/Voice";
 import { Queue } from "../classes/queue/Queue";
-import { PlayerStorageAdapter } from "../classes/storage/adapters/PlayerAdapter";
+import type { PlayerStorageAdapter } from "../classes/storage/adapters/PlayerAdapter";
 import { PlayerMemoryStorage } from "../classes/storage/PlayerMemory";
 import { Track, UnresolvedTrack } from "../classes/Track";
 import type { CustomizableStructures } from "./Manager";

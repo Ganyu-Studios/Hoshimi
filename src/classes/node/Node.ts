@@ -1,12 +1,12 @@
 import { WebSocket } from "ws";
-import { type Awaitable, DebugLevels, EventNames, RequiredHoshimiNodeOptions } from "../../types/Manager";
+import { type Awaitable, DebugLevels, EventNames, type RequiredHoshimiNodeOptions } from "../../types/Manager";
 import {
     type LavalinkSearchResponse,
     type LavalinkTrack,
     type NodeDestroyInfo,
     NodeDestroyReasons,
     type NodeDisconnectInfo,
-    NodeHeartbeatOptions,
+    type NodeHeartbeatOptions,
     type NodeInfo,
     type NodeJSON,
     type NodeOptions,
