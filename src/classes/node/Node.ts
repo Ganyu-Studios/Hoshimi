@@ -170,7 +170,13 @@ export class Node {
      */
     constructor(nodeManager: NodeManagerStructure, options: NodeOptions) {
         const closeOnError: boolean = options.closeOnError ?? nodeManager.manager.options.nodeOptions.closeOnError;
-        const heartbeat: NodeHeartbeatOptions = options.heartbeat ?? nodeManager.manager.options.nodeOptions.heartbeatOptions;
+        const managerHeartbeat: Required<NodeHeartbeatOptions> = nodeManager.manager.options.nodeOptions.heartbeatOptions;
+        const nodeHeartbeat: Partial<NodeHeartbeatOptions> = options.heartbeat ?? {};
+
+        const heartbeat: Required<NodeHeartbeatOptions> = {
+            interval: nodeHeartbeat.interval ?? managerHeartbeat.interval,
+            statsTimeout: nodeHeartbeat.statsTimeout ?? managerHeartbeat.statsTimeout,
+        };
 
         this.options = {
             ...options,
@@ -537,6 +543,8 @@ export class Node {
      */
     public destroy(destroy: NodeDestroyInfo = {}): void {
         if (this.state === State.Destroyed) return;
+
+        clearLivenessTimers.call(this);
 
         if (this.ws) {
             this.ws.close(destroy.code, destroy.reason);

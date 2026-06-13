@@ -124,9 +124,6 @@ export function validateManagerOptions(options: HoshimiOptions): void {
         }
 
         if (isPlainObject(options.nodeOptions.heartbeatOptions)) {
-            if (!isPlainObject(options.nodeOptions.heartbeatOptions))
-                throw new OptionError("The manager option 'options.nodeOptions.heartbeatOptions' must be a valid object.");
-
             if (
                 typeof options.nodeOptions.heartbeatOptions.interval !== "undefined" &&
                 typeof options.nodeOptions.heartbeatOptions.interval !== "number"
@@ -139,10 +136,8 @@ export function validateManagerOptions(options: HoshimiOptions): void {
                 throw new OptionError("The manager option 'options.nodeOptions.heartbeatOptions.statsTimeout' must be a number.");
         }
 
-        if (isPlainObject(options.nodeOptions.userAgent)) {
-            if (typeof options.nodeOptions.userAgent !== "string")
-                throw new OptionError("The manager option 'options.nodeOptions.userAgent' must be a string.");
-        }
+        if (typeof options.nodeOptions.userAgent !== "undefined" && typeof options.nodeOptions.userAgent !== "string")
+            throw new OptionError("The manager option 'options.nodeOptions.userAgent' must be a string.");
     }
 
     if (isPlainObject(options.restOptions)) {

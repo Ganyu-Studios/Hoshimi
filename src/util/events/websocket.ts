@@ -150,12 +150,12 @@ export function onError(this: NodeStructure, error?: Error): void {
     );
 
     if (this.options.closeOnError && this.ws) {
-        this.ws.close(WebsocketCloseCodes.AbnormalClosure, "Node-Error - Force Reconnect");
         this.nodeManager.manager.emit(
             EventNames.Debug,
             DebugLevels.Node,
             `[Socket] -> [${this.id}]: closeOnError is enabled. Closing socket to force reconnect.`,
         );
+        this.ws.close(WebsocketCloseCodes.NormalClosure, "Node-Error - Force Reconnect");
     }
 }
 
