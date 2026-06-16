@@ -93,7 +93,7 @@ export abstract class PlayerStorageAdapter {
      * ```
      */
     public strip(key: string): string {
-        const prefix: string = this.prefix + ":";
+        const prefix: string = `${this.prefix}:`;
 
         if (key.startsWith(prefix)) return key.slice(prefix.length);
 

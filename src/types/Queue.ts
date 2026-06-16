@@ -1,7 +1,7 @@
 import type { QueueStorageAdapter } from "../classes/storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../classes/Track";
 import type { Awaitable } from "./Manager";
-import { LavalinkTrack } from "./Node";
+import type { LavalinkTrack } from "./Node";
 import type { PlayerStructure } from "./Structures";
 
 /**

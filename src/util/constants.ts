@@ -170,6 +170,7 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
     },
     nodeOptions: {
         userAgent: HoshimiAgent,
+        closeOnError: true,
         sessionOptions: {
             resumable: false,
             timeout: 60,
@@ -178,6 +179,10 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
         moveOptions: {
             filterBy: NodeSortTypes.Penalties,
             move: false,
+        },
+        heartbeatOptions: {
+            interval: 30000,
+            statsTimeout: 65000,
         },
     },
     queueOptions: {

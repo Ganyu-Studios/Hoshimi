@@ -63,7 +63,7 @@ export function validateManagerOptions(options: HoshimiOptions): void {
     if (typeof options.defaultSearchSource !== "undefined" && !SourceRegistry.isRegistered(options.defaultSearchSource))
         throw new OptionError("The manager option 'options.defaultSearchSource' Must be a valid search source.");
 
-    if (typeof options.queueOptions !== "undefined") {
+    if (isPlainObject(options.queueOptions)) {
         if (typeof options.queueOptions.maxHistory !== "number")
             throw new OptionError("The manager option 'options.queueOptions.maxPreviousTracks' must be a number.");
         if (typeof options.queueOptions.autoplayFn !== "function")
@@ -74,12 +74,12 @@ export function validateManagerOptions(options: HoshimiOptions): void {
             throw new OptionError("The manager option 'options.queueOptions.autoPlay' must be a boolean.");
     }
 
-    if (typeof options.playerOptions !== "undefined") {
+    if (isPlainObject(options.playerOptions)) {
         if (typeof options.playerOptions.requesterFn !== "function")
             throw new OptionError("The manager option 'options.playerOptions.requesterFn' must be a valid function.");
     }
 
-    if (typeof options.client !== "undefined") {
+    if (isPlainObject(options.client)) {
         if (typeof options.client !== "object") throw new OptionError("The manager option 'options.client' Must be a valid object.");
         if (typeof options.client.id !== "undefined" && typeof options.client.id !== "string")
             throw new OptionError("The manager option 'options.client.id' Must be a valid string.");
@@ -87,8 +87,11 @@ export function validateManagerOptions(options: HoshimiOptions): void {
             throw new OptionError("The manager option 'options.client.username' must be a valid string.");
     }
 
-    if (typeof options.nodeOptions !== "undefined") {
-        if (typeof options.nodeOptions.sessionOptions !== "undefined") {
+    if (isPlainObject(options.nodeOptions)) {
+        if (typeof options.nodeOptions.closeOnError !== "undefined" && typeof options.nodeOptions.closeOnError !== "boolean")
+            throw new OptionError("The manager option 'options.nodeOptions.closeOnError' must be a boolean.");
+
+        if (isPlainObject(options.nodeOptions.sessionOptions)) {
             if (
                 typeof options.nodeOptions.sessionOptions.resumable !== "undefined" &&
                 typeof options.nodeOptions.sessionOptions.resumable !== "boolean"
@@ -105,7 +108,8 @@ export function validateManagerOptions(options: HoshimiOptions): void {
             )
                 throw new OptionError("The manager option 'options.nodeOptions.resumeByLibrary' must be a boolean.");
         }
-        if (typeof options.nodeOptions.moveOptions !== "undefined") {
+
+        if (isPlainObject(options.nodeOptions.moveOptions)) {
             if (typeof options.nodeOptions.moveOptions !== "object")
                 throw new OptionError("The manager option 'options.nodeOptions.moveOptions' must be a valid object.");
             if (typeof options.nodeOptions.moveOptions.move !== "undefined" && typeof options.nodeOptions.moveOptions.move !== "boolean")
@@ -118,11 +122,25 @@ export function validateManagerOptions(options: HoshimiOptions): void {
                     );
             }
         }
+
+        if (isPlainObject(options.nodeOptions.heartbeatOptions)) {
+            if (
+                typeof options.nodeOptions.heartbeatOptions.interval !== "undefined" &&
+                typeof options.nodeOptions.heartbeatOptions.interval !== "number"
+            )
+                throw new OptionError("The manager option 'options.nodeOptions.heartbeatOptions.interval' must be a number.");
+            if (
+                typeof options.nodeOptions.heartbeatOptions.statsTimeout !== "undefined" &&
+                typeof options.nodeOptions.heartbeatOptions.statsTimeout !== "number"
+            )
+                throw new OptionError("The manager option 'options.nodeOptions.heartbeatOptions.statsTimeout' must be a number.");
+        }
+
         if (typeof options.nodeOptions.userAgent !== "undefined" && typeof options.nodeOptions.userAgent !== "string")
             throw new OptionError("The manager option 'options.nodeOptions.userAgent' must be a string.");
     }
 
-    if (typeof options.restOptions !== "undefined") {
+    if (isPlainObject(options.restOptions)) {
         if (typeof options.restOptions.resumeTimeout !== "undefined" && typeof options.restOptions.resumeTimeout !== "number")
             throw new OptionError("The manager option 'options.restOptions.resumeTimeout' must be a number.");
     }
@@ -578,6 +596,11 @@ function isNode(options: NodeOptions): boolean {
         (typeof options.secure === "boolean" || typeof options.secure === "undefined") &&
         (typeof options.sessionId === "string" || typeof options.sessionId === "undefined") &&
         (typeof options.retryAmount === "number" || typeof options.retryAmount === "undefined") &&
-        (typeof options.retryDelay === "number" || typeof options.retryDelay === "undefined")
+        (typeof options.retryDelay === "number" || typeof options.retryDelay === "undefined") &&
+        (typeof options.restTimeout === "number" || typeof options.restTimeout === "undefined") &&
+        (typeof options.heartbeat === "object" || typeof options.heartbeat === "undefined") &&
+        (typeof options.closeOnError === "boolean" || typeof options.closeOnError === "undefined") &&
+        (typeof options.heartbeat?.interval === "number" || typeof options.heartbeat?.interval === "undefined") &&
+        (typeof options.heartbeat?.statsTimeout === "number" || typeof options.heartbeat?.statsTimeout === "undefined")
     );
 }

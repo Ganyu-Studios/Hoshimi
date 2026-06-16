@@ -1,11 +1,12 @@
 import { WebSocket } from "ws";
-import { type Awaitable, DebugLevels, EventNames } from "../../types/Manager";
+import { type Awaitable, DebugLevels, EventNames, type RequiredHoshimiNodeOptions } from "../../types/Manager";
 import {
     type LavalinkSearchResponse,
     type LavalinkTrack,
     type NodeDestroyInfo,
     NodeDestroyReasons,
     type NodeDisconnectInfo,
+    type NodeHeartbeatOptions,
     type NodeInfo,
     type NodeJSON,
     type NodeOptions,
@@ -32,7 +33,7 @@ import {
     Structures,
     type TrackStructure,
 } from "../../types/Structures";
-import { onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
+import { clearLivenessTimers, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
 import { stringify, validateQuery } from "../../util/functions/utils";
 import { NodeError } from "../Errors";
 
@@ -43,9 +44,9 @@ import { NodeError } from "../Errors";
 export class Node {
     /**
      * The options for the node.
-     * @type {Required<NodeOptions>}
+     * @type {RequiredHoshimiNodeOptions}
      */
-    readonly options: Required<NodeOptions>;
+    readonly options: RequiredHoshimiNodeOptions;
 
     /**
      * The REST for the node.
@@ -113,6 +114,26 @@ export class Node {
     public info: NodeInfo | null = null;
 
     /**
+     * Interval handle for the heartbeat ping.
+     * @type {NodeJS.Timeout | null}
+     */
+    public heartbeatInterval: NodeJS.Timeout | null = null;
+
+    /**
+     * Timeout handle for the stats watchdog.
+     * @type {NodeJS.Timeout | null}
+     */
+    public statsTimeout: NodeJS.Timeout | null = null;
+
+    /**
+     * Whether the socket responded to the last ping. Set to false when a ping
+     * is sent, back to true when a pong arrives. If still false at the next
+     * ping, the socket is terminated.
+     * @type {boolean}
+     */
+    public isAlive: boolean = true;
+
+    /**
      * The session of the node.
      * @type {NullableLavalinkSession}
      */
@@ -148,6 +169,15 @@ export class Node {
      * ```
      */
     constructor(nodeManager: NodeManagerStructure, options: NodeOptions) {
+        const closeOnError: boolean = options.closeOnError ?? nodeManager.manager.options.nodeOptions.closeOnError;
+        const managerHeartbeat: Required<NodeHeartbeatOptions> = nodeManager.manager.options.nodeOptions.heartbeatOptions;
+        const nodeHeartbeat: Partial<NodeHeartbeatOptions> = options.heartbeat ?? {};
+
+        const heartbeat: Required<NodeHeartbeatOptions> = {
+            interval: nodeHeartbeat.interval ?? managerHeartbeat.interval,
+            statsTimeout: nodeHeartbeat.statsTimeout ?? managerHeartbeat.statsTimeout,
+        };
+
         this.options = {
             ...options,
             sessionId: options.sessionId ?? "",
@@ -156,6 +186,8 @@ export class Node {
             secure: options.secure ?? false,
             retryAmount: options.retryAmount ?? 5,
             retryDelay: options.retryDelay ?? 20000,
+            closeOnError,
+            heartbeat,
         };
 
         this.retryAmount = this.options.retryAmount;
@@ -479,6 +511,8 @@ export class Node {
     public disconnect(disconnect: NodeDisconnectInfo = {}): void {
         if (this.state === State.Disconnected || this.state === State.Destroyed) return;
 
+        clearLivenessTimers.call(this);
+
         if (this.ws) {
             this.ws.close(disconnect.code, disconnect.reason);
             this.ws.removeAllListeners();
@@ -509,6 +543,8 @@ export class Node {
      */
     public destroy(destroy: NodeDestroyInfo = {}): void {
         if (this.state === State.Destroyed) return;
+
+        clearLivenessTimers.call(this);
 
         if (this.ws) {
             this.ws.close(destroy.code, destroy.reason);
