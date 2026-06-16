@@ -59,6 +59,13 @@ export class PlayerMemoryStorage<
         ) as never as Record<K[number], V>;
     }
 
+    public setIfAbsent<K extends StorageKeys, V extends StorageValues<K>>(key: K, value: V): boolean {
+        const fullKey = this.buildKey(this.namespace, this.guildId, key) as never;
+        if (this.internal.has(fullKey)) return false;
+        this.internal.set(fullKey, value as never);
+        return true;
+    }
+
     public clear(): Awaitable<void> {
         this.internal.clear();
     }

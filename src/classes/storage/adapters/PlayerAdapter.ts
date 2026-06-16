@@ -245,24 +245,10 @@ export abstract class PlayerStorageAdapter {
 
     /**
      *
-     * Build a key from the given parts.
-     * @param {string[]} parts The parts to build the key from.
-     * @returns {string} The built key.
-     * @example
-     * ```ts
-     * const key = storage.buildKey("part1", "part2", "part3");
-     * ```
-     */
-    public buildKey(...parts: RestOrArray<string>): string {
-        return parts.flat().join(":");
-    }
-
-    /**
-     *
      * Set the value if the key does not exist in the storage.
      * @param {K} key The key to set the value to if it does not exist.
      * @param {V} value The value to set if the key does not exist.
-     * @returns {Promise<boolean>} Returns true if the value was set, false if the key already exists.
+     * @returns {Awaitable<boolean>} Returns true if the value was set, false if the key already exists.
      * @example
      * ```ts
      * const success = await storage.setIfAbsent("key", "value");
@@ -275,9 +261,19 @@ export abstract class PlayerStorageAdapter {
      * console.log(value); // "value"
      * ```
      */
-    public async setIfAbsent<K extends StorageKeys, V extends StorageValues<K>>(key: K, value: V): Promise<boolean> {
-        if (await this.has(key)) return false;
-        await this.set(key, value);
-        return true;
+    abstract setIfAbsent<K extends StorageKeys, V extends StorageValues<K>>(key: K, value: V): Awaitable<boolean>;
+
+    /**
+     *
+     * Build a key from the given parts.
+     * @param {string[]} parts The parts to build the key from.
+     * @returns {string} The built key.
+     * @example
+     * ```ts
+     * const key = storage.buildKey("part1", "part2", "part3");
+     * ```
+     */
+    public buildKey(...parts: RestOrArray<string>): string {
+        return parts.flat().join(":");
     }
 }
