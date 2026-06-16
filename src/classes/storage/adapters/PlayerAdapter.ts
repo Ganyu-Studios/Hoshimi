@@ -256,4 +256,28 @@ export abstract class PlayerStorageAdapter {
     public buildKey(...parts: RestOrArray<string>): string {
         return parts.flat().join(":");
     }
+
+    /**
+     *
+     * Set the value if the key does not exist in the storage.
+     * @param {K} key The key to set the value to if it does not exist.
+     * @param {V} value The value to set if the key does not exist.
+     * @returns {Promise<boolean>} Returns true if the value was set, false if the key already exists.
+     * @example
+     * ```ts
+     * const success = await storage.setIfAbsent("key", "value");
+     * console.log(success); // true
+     *
+     * const success2 = await storage.setIfAbsent("key", "newValue");
+     * console.log(success2); // false
+     *
+     * const value = await storage.get("key");
+     * console.log(value); // "value"
+     * ```
+     */
+    public async setIfAbsent<K extends StorageKeys, V extends StorageValues<K>>(key: K, value: V): Promise<boolean> {
+        if (await this.has(key)) return false;
+        await this.set(key, value);
+        return true;
+    }
 }

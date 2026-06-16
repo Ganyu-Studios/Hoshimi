@@ -544,7 +544,8 @@ export class Player {
     public async destroy(options: DestroyOptions = {}): Promise<void> {
         const { reason = DestroyReasons.Stop, disconnect = true } = options;
 
-        if (await this.data.get("internal_playerDestroy")) {
+        const claimed: boolean = await this.data.setIfAbsent("internal_playerDestroy", true);
+        if (!claimed) {
             this.manager.emit(
                 EventNames.Debug,
                 DebugLevels.Player,
@@ -552,8 +553,6 @@ export class Player {
             );
             return;
         }
-
-        await this.data.set("internal_playerDestroy", true);
 
         try {
             if (disconnect) await this.disconnect();
