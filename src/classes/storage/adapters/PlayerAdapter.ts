@@ -245,23 +245,6 @@ export abstract class PlayerStorageAdapter {
 
     /**
      *
-     * Set the value using the key if the key does not exist. This is useful for setting default values.
-     * @param {K} key The key to set the value to if it does not exist.
-     * @param {V} value The value to set if the key does not exist.
-     * @returns {Awaitable<boolean>} Returns true if the key was set, false if the key already exists.
-     * @example
-     * ```ts
-     * const wasSet = await storage.setIfAbsent("key", "value");
-     * console.log(wasSet); // true
-     *
-     * const wasSetAgain = await storage.setIfAbsent("key", "newValue");
-     * console.log(wasSetAgain); // false
-     * ```
-     */
-    abstract setIfAbsent<K extends StorageKeys, V extends StorageValues<K>>(key: K, value: V): Awaitable<boolean>;
-
-    /**
-     *
      * Build a key from the given parts.
      * @param {string[]} parts The parts to build the key from.
      * @returns {string} The built key.
