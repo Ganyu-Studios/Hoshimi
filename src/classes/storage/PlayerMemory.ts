@@ -19,7 +19,7 @@ export class PlayerMemoryStorage<
      */
     private readonly internal: Map<K, V> = new Map<K, V>();
 
-    public override get<K extends StorageKeys, V extends StorageValues<K>>(key: K): Awaitable<V | undefined> {
+    public get<K extends StorageKeys, V extends StorageValues<K>>(key: K): Awaitable<V | undefined> {
         return this.internal.get(this.buildKey(this.namespace, this.guildId, key) as never) as V | undefined;
     }
 
@@ -57,6 +57,13 @@ export class PlayerMemoryStorage<
                 .map(([k, v]) => [this.strip(k as string), v])
                 .filter(([k]): boolean => !this.isInternal(k as string)),
         ) as never as Record<K[number], V>;
+    }
+
+    public setIfAbsent<K extends StorageKeys, V extends StorageValues<K>>(key: K, value: V): Awaitable<boolean> {
+        const fullKey = this.buildKey(this.namespace, this.guildId, key) as never;
+        if (this.internal.has(fullKey)) return false;
+        this.internal.set(fullKey, value as never);
+        return true;
     }
 
     public clear(): Awaitable<void> {

@@ -3,14 +3,6 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - ws@8.21.0
-  - '@vitest/expect@4.1.8'
-  - '@vitest/mocker@4.1.8'
-  - '@vitest/pretty-format@4.1.8'
-  - '@vitest/runner@4.1.8'
-  - '@vitest/snapshot@4.1.8'
-  - '@vitest/spy@4.1.8'
-  - '@vitest/utils@4.1.8'
-  - vitest@4.1.8
   - '@biomejs/biome@2.5.0'
   - '@biomejs/cli-darwin-arm64@2.5.0'
   - '@biomejs/cli-darwin-x64@2.5.0'
@@ -20,5 +12,13 @@ minimumReleaseAgeExclude:
   - '@biomejs/cli-linux-x64@2.5.0'
   - '@biomejs/cli-win32-arm64@2.5.0'
   - '@biomejs/cli-win32-x64@2.5.0'
+  - '@vitest/expect@4.1.9'
+  - '@vitest/mocker@4.1.9'
+  - '@vitest/pretty-format@4.1.9'
+  - '@vitest/runner@4.1.9'
+  - '@vitest/snapshot@4.1.9'
+  - '@vitest/spy@4.1.9'
+  - '@vitest/utils@4.1.9'
+  - vitest@4.1.9
 
 packages: []

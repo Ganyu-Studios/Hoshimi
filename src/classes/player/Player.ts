@@ -555,18 +555,26 @@ export class Player {
 
         await this.data.set("internal_playerDestroy", true);
 
-        if (disconnect) await this.disconnect();
+        try {
+            if (disconnect) await this.disconnect();
 
-        await this.queue.utils.destroy();
-        this.manager.deletePlayer(this.guildId);
-        await this.node.destroyPlayer(this.guildId);
-
-        this.manager.emit(EventNames.PlayerDestroy, this, reason);
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Destroy] Destroyed player for guild: ${this.guildId} | Reason: ${reason}`,
-        );
+            await this.queue.utils.destroy();
+            await this.node.destroyPlayer(this.guildId);
+        } catch (error) {
+            this.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Player,
+                `[Player] -> [Destroy] Error during destroy for guild: ${this.guildId} | Error: ${(error as Error).message}`,
+            );
+        } finally {
+            this.manager.deletePlayer(this.guildId);
+            this.manager.emit(EventNames.PlayerDestroy, this, reason);
+            this.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Player,
+                `[Player] -> [Destroy] Destroyed player for guild: ${this.guildId} | Reason: ${reason}`,
+            );
+        }
     }
 
     /**
