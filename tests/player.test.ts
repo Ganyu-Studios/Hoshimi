@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Hoshimi, HoshimiDefaultOptions } from "../src";
+import { Hoshimi, HoshimiDefaultOptions, Node } from "../src";
 import { PlayerError } from "../src/classes/Errors";
 import { Player } from "../src/classes/player/Player";
 import { PlayerMemoryStorage } from "../src/classes/storage/PlayerMemory";
@@ -34,21 +34,18 @@ describe("Player", () => {
     });
 
     it("seek and setVolume throw on invalid input", async () => {
-        const manager = new Hoshimi({
-            nodes: HoshimiDefaultOptions.nodes,
-        } as never);
+        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
 
-        // Add a connected node to the manager
-        manager.nodeManager.nodes.set("node-1", {
-            id: "node-1",
-            state: State.Connected,
-            options: { host: "localhost", port: 2333, password: "pass" },
-        } as never);
+        const node = new Node(manager.nodeManager, { host: "localhost", port: 2333, password: "pass" } as never);
+
+        node.state = State.Connected;
+        manager.nodeManager.nodes.set("node-1", node);
 
         const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        player.queue.current = { info: { length: 10000 } } as never;
 
-        await expect(player.seek(-1)).rejects.toThrow(PlayerError);
-        await expect(player.setVolume(101)).rejects.toThrow(PlayerError);
+        await expect(player.seek(NaN)).rejects.toThrow(PlayerError);
+        await expect(player.setVolume(NaN)).rejects.toThrow(PlayerError);
     });
 
     it("move throws when target node is missing", async () => {

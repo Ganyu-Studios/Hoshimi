@@ -193,8 +193,8 @@ export const PluginRegistry = {
             const capabilityKey: string = normalize(canonicalCapability);
             const pluginKey: string = normalize(canonicalPlugin);
 
-            if (!canonicalCapabilities.includes(canonicalCapability)) canonicalCapabilities.push(canonicalCapability);
-            if (!canonicalPlugins.includes(canonicalPlugin)) canonicalPlugins.push(canonicalPlugin);
+            if (!canonicalCapabilities.some((c) => normalize(c) === capabilityKey)) canonicalCapabilities.push(canonicalCapability);
+            if (!canonicalPlugins.some((p) => normalize(p) === pluginKey)) canonicalPlugins.push(canonicalPlugin);
 
             if (!capabilityToPlugins.has(capabilityKey)) capabilityToPlugins.set(capabilityKey, new Set());
             capabilityToPlugins.get(capabilityKey)!.add(pluginKey);
@@ -212,6 +212,14 @@ export const PluginRegistry = {
      * @param {RegistryPluginName} name The plugin name to unregister.
      * @param {RegistryCapability} [capability] The capability to unregister the plugin from.
      * @returns {void}
+     * @example
+     * ```ts
+     * // Drop only the Lyrics binding, keep ExtraSources
+     * PluginRegistry.unregister("lavasrc-fork-plugin", PluginCapabilities.Lyrics);
+     *
+     * // Drop the plugin from every capability it was bound to
+     * PluginRegistry.unregister("lavasrc-fork-plugin");
+     * ```
      */
     unregister(name: RegistryPluginName, capability?: RegistryCapability): void {
         const pluginKey: string = normalize(String(name));
@@ -230,6 +238,13 @@ export const PluginRegistry = {
                     if (idx !== -1) canonicalPlugins.splice(idx, 1);
                 }
             }
+
+            if (!capabilityToPlugins.get(capabilityKey)?.size) {
+                capabilityToPlugins.delete(capabilityKey);
+                const cidx = canonicalCapabilities.findIndex((c) => normalize(c) === capabilityKey);
+                if (cidx !== -1) canonicalCapabilities.splice(cidx, 1);
+            }
+
             return;
         }
 
@@ -339,6 +354,14 @@ export const PluginRegistry = {
      * Checks whether plugin validation is currently skipped, either globally or for a specific capability.
      * @param {RegistryCapability} [capability] The capability to check; if omitted, only the global flag is checked.
      * @returns {boolean} Whether validation is currently skipped.
+     * @example
+     * ```ts
+     * // Check if all validation is skipped
+     * PluginRegistry.isValidationSkipped();
+     *
+     * // Check if a specific capability is skipped
+     * PluginRegistry.isValidationSkipped(PluginCapabilities.Filters);
+     * ```
      */
     isValidationSkipped(capability?: RegistryCapability): boolean {
         if (skipAll) return true;
@@ -388,15 +411,22 @@ export const PluginRegistry = {
             (capability): boolean => !skippedCapabilities.has(normalize(String(capability))),
         );
 
+        const requestedCount: number = (options.required?.length ?? 0) + (options.any?.length ?? 0);
+        if (requestedCount > 0 && !required.length && !any.length) {
+            options.node.nodeManager.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Node,
+                `[Node] Skipping plugin validation for node ${options.node.id}: all requested capabilities are individually skipped.`,
+            );
+            return;
+        }
+
         if (required.length) {
             const missing: RegistryCapability[] = required.filter((capability): boolean => !this.hasCapability(info.plugins, capability));
             if (missing.length) {
                 throw new NodeError({
                     id: options.node.id,
-                    message:
-                        `The node does not provide the following plugin capabilities: ${missing.join(", ")}. ` +
-                        "Install a plugin that provides them, register your fork with PluginRegistry.register({ capability, name }), " +
-                        "or call PluginRegistry.skipValidation(...) to bypass this check.",
+                    message: `The node does not provide the following plugin capabilities: ${missing.join(", ")}.`,
                 });
             }
         }

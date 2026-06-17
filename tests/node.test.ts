@@ -40,7 +40,7 @@ import { WebSocket } from "ws";
 import { NodeError, OptionError } from "../src/classes/Errors";
 import { LyricsManager } from "../src/classes/node/Lyrics";
 import { Node } from "../src/classes/node/Node";
-import { EventNames, SearchSources } from "../src/types/Manager";
+import { EventNames, type HoshimiOptions, SearchSources } from "../src/types/Manager";
 import { NodeDestroyReasons, PluginNames, State, WebsocketCloseCodes } from "../src/types/Node";
 import { HttpMethods, RestRoutes } from "../src/types/Rest";
 
@@ -51,20 +51,29 @@ function createNode(client?: { id?: string; username?: string }) {
             emit,
             options: {
                 client,
+                sendPayload: vi.fn(),
+                nodes: [],
                 defaultSearchSource: SearchSources.Youtube,
                 playerOptions: {
                     requesterFn: <T>(requester: unknown) => requester as T,
                 },
                 nodeOptions: {
                     userAgent: "hoshimi-test/v1 (https://example.com)",
-                    resumable: false,
-                    resumeTimeout: 120,
-                    resumeByLibrary: false,
+                    closeOnError: true,
+                    sessionOptions: {
+                        resumable: false,
+                        timeout: 120,
+                        byLibrary: false,
+                    },
+                    heartbeatOptions: {
+                        interval: 30000,
+                        statsTimeout: 65000,
+                    },
                 },
                 restOptions: {
                     resumeTimeout: 120,
                 },
-            },
+            } satisfies HoshimiOptions,
         },
         delete: vi.fn(),
     };

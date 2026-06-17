@@ -449,8 +449,12 @@ export class Player {
      * ```
      */
     public async seek(position: number): Promise<void> {
-        if (typeof position !== "number" || Number.isNaN(position) || position < 0)
-            throw new PlayerError("Position must be a positive number.");
+        if (!this.queue.current) throw new PlayerError("No track is currently playing.");
+
+        if (typeof position !== "number" || Number.isNaN(position)) throw new PlayerError("Position must be a number.");
+
+        if (position < 0 || position > this.queue.current.info.length)
+            position = Math.max(0, Math.min(position, this.queue.current.info.length));
 
         this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Seek] Seeking to ${position} for guild: ${this.guildId}`);
 
