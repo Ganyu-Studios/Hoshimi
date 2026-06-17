@@ -1,53 +1,16 @@
-import { MergeError, NodeError, OptionError } from "../../classes/Errors";
-import type { Node } from "../../classes/node/Node";
+import { MergeError, OptionError } from "../../classes/Errors";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../../classes/Track";
 import { Track, UnresolvedTrack } from "../../classes/Track";
+import { type ParsedQuery, SourceRegistry } from "../../registry/SourceRegistry";
 import type { TimescaleSettings } from "../../types/Filters";
-import { DebugLevels, type DeepRequired, EventNames, type HoshimiOptions, type SearchSource } from "../../types/Manager";
-import type {
-    LavalinkTrack,
-    NodeInfo,
-    NodeOptions,
-    PlayerMoveFilter,
-    PluginNames,
-    SearchQuery,
-    SourceName,
-    UnresolvedLavalinkTrack,
-} from "../../types/Node";
+import type { DeepRequired, HoshimiOptions, RestOrArray, SearchSource } from "../../types/Manager";
+import type { LavalinkTrack, NodeOptions, PlayerMoveFilter, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { AnyLavalinkTrack, PlayerOptions } from "../../types/Player";
 import type { TrackJSON } from "../../types/Queue";
 import type { UpdatePlayerInfo } from "../../types/Rest";
-import { type ParsedQuery, SourceRegistry } from "../../types/Sources";
 import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
 import { UrlRegex } from "../constants";
-
-interface ValidateNodePluginsOptions {
-    /**
-     * The node to validate the plugins for.
-     * @type {Node}
-     */
-    node: Node;
-    /**
-     * Array of required plugins that must all be present.
-     * @type {PluginNames[]}
-     * @default []
-     */
-    required?: PluginNames[];
-    /**
-     * Array of optional plugins where at least one must be present (when atleastOne is true).
-     * @type {PluginNames[]}
-     * @default []
-     */
-    optional?: PluginNames[];
-    /**
-     * Whether to validate that at least one optional plugin is available.
-     * If false, validates that all required plugins are available.
-     * @type {boolean}
-     * @default false
-     */
-    atleastOne?: boolean;
-}
 
 /**
  *
@@ -232,114 +195,6 @@ export function updatePlayerData(node: NodeStructure, data: Partial<UpdatePlayer
             Object.assign(player.filterManager.data, data.playerOptions.filters);
             player.filterManager.check(timescale);
         }
-    }
-}
-
-/**
- * Validates that all required plugins are present in the node.
- * @param {NodeInfo} info The node information containing plugin list.
- * @param {PluginNames[]} required Array of required plugin names.
- * @param {string} nodeId The node ID for error reporting.
- * @throws {NodeError} If any required plugin is missing.
- * @example
- * ```ts
- * validateRequiredPlugins(node.info, [PluginNames.LavaLyrics], node.id);
- * ```
- */
-function validateRequiredPlugins(info: NodeInfo, required: PluginNames[], nodeId: string): void {
-    const missings: PluginNames[] = required.filter((name): boolean => !info.plugins.some((p): boolean => p.name === name));
-
-    if (missings.length) {
-        throw new NodeError({
-            id: nodeId,
-            message: `The node does not support the following plugins: ${missings.join(", ")}.`,
-        });
-    }
-}
-
-/**
- * Validates that at least one optional plugin is present in the node.
- * @param {NodeInfo} info The node information containing plugin list.
- * @param {PluginNames[]} optional Array of optional plugin names (at least one must be present).
- * @param {string} nodeId The node ID for error reporting.
- * @throws {NodeError} If none of the optional plugins are available.
- * @example
- * ```ts
- * validateOptionalPlugins(node.info, [PluginNames.LavaLyrics, PluginNames.JavaLyrics], node.id);
- * ```
- */
-function validateOptionalPlugins(info: NodeInfo, optional: PluginNames[], nodeId: string): void {
-    const isAnyPluginActive: boolean = optional.some((name): boolean => info.plugins.some((p): boolean => p.name === name));
-    if (!isAnyPluginActive) {
-        throw new NodeError({
-            id: nodeId,
-            message: `The node does not support at least one of the following plugins: ${optional.join(", ")}.`,
-        });
-    }
-}
-
-/**
- * Validate the plugins in the node based on required and optional specifications.
- * Ensures the node supports the necessary plugins for operation.
- * @param {ValidateNodePluginsOptions} options The options to validate the node plugins.
- * @throws {NodeError} If the node is not ready, has no plugins, or validation fails.
- * @returns {void}
- * @example
- * ```ts
- * // Validate that all required plugins are present
- * validateNodePlugins({
- *   node,
- *   required: [PluginNames.LavaLyrics]
- * });
- *
- * // Validate that at least one optional plugin is present
- * validateNodePlugins({
- *   node,
- *   optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
- *   atleastOne: true
- * });
- *
- * // Validate both required and optional plugins
- * validateNodePlugins({
- *   node,
- *   required: [PluginNames.LavaLyrics],
- *   optional: [PluginNames.JavaLyrics],
- *   atleastOne: true
- * });
- * ```
- */
-export function validateNodePlugins(options: ValidateNodePluginsOptions): void {
-    // Check if node information is available
-    const info: NodeInfo | null = options.node.info;
-    if (!info) throw new NodeError({ id: options.node.id, message: "Node is not ready yet." });
-
-    // Skip plugin validation for Nodelink nodes (they handle plugins differently)
-    if (options.node.isNodelink()) {
-        options.node.nodeManager.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Node,
-            `[Node] Skipping plugin validation for node ${options.node.id} because it is a Nodelink node.`,
-        );
-
-        return;
-    }
-
-    // Ensure the node has at least one plugin available
-    if (!info.plugins.length) {
-        throw new NodeError({
-            id: options.node.id,
-            message: "No plugins found in the node.",
-        });
-    }
-
-    // Validate required plugins (must all be present)
-    if (options.required?.length) {
-        validateRequiredPlugins(info, options.required, options.node.id);
-    }
-
-    // Validate optional plugins (at least one must be present when atleastOne is true)
-    if (options.atleastOne && options.optional?.length) {
-        validateOptionalPlugins(info, options.optional, options.node.id);
     }
 }
 
@@ -579,6 +434,28 @@ export function requesterFn<T>(requester: TrackRequester): T {
 export function flatten<T>(items: T | T[]): T[] {
     const array: T[] = [];
     return array.concat(items);
+}
+
+/**
+ *
+ * Converts a rest or array input into a flat array.
+ * @template T The type of elements in the input.
+ * @param {RestOrArray<T>} input The input to convert.
+ * @returns {T[]} The flattened array of elements.
+ */
+export function toArray<T>(input: RestOrArray<T>): T[] {
+    if (!input.length) return [];
+    return input.flat() as T[];
+}
+
+/**
+ *
+ * Normalizes a string by trimming whitespace and converting to lowercase.
+ * @param {string} input The string to normalize.
+ * @returns {string} The normalized string.
+ */
+export function normalize(input: string): string {
+    return input.trim().toLowerCase();
 }
 
 /**

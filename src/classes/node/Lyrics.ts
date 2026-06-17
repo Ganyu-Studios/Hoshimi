@@ -1,7 +1,7 @@
-import { type LyricsResult, PluginNames } from "../../types/Node";
+import { PluginCapabilities, PluginRegistry } from "../../registry/PluginRegistry";
+import type { LyricsResult } from "../../types/Node";
 import { HttpMethods, RestRoutes } from "../../types/Rest";
 import type { NodeStructure, TrackStructure } from "../../types/Structures";
-import { validateNodePlugins } from "../../util/functions/utils";
 
 /**
  * Class representing a LyricsManager.
@@ -42,12 +42,7 @@ export class LyricsManager {
     public async current(guildId: string, skipSource: boolean = false): Promise<LyricsResult | null> {
         if (!this.node.sessionId) return null;
 
-        validateNodePlugins({
-            node: this.node,
-            required: [PluginNames.LavaSrc],
-            optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
-            atleastOne: true,
-        });
+        PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
         return this.node.rest.request<LyricsResult>({
             endpoint: RestRoutes.CurrentLyrics(this.node.sessionId, guildId),
@@ -72,12 +67,7 @@ export class LyricsManager {
     public async get(track: TrackStructure, skipSource: boolean = false): Promise<LyricsResult | null> {
         if (!this.node.sessionId) return null;
 
-        validateNodePlugins({
-            node: this.node,
-            required: [PluginNames.LavaSrc],
-            optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
-            atleastOne: true,
-        });
+        PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
         return this.node.rest.request<LyricsResult>({
             endpoint: RestRoutes.GetLyrics,
@@ -103,12 +93,7 @@ export class LyricsManager {
     public async subscribe(guildId: string, skipSource: boolean = false): Promise<void> {
         if (!this.node.sessionId) return;
 
-        validateNodePlugins({
-            node: this.node,
-            required: [PluginNames.LavaSrc],
-            optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
-            atleastOne: true,
-        });
+        PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
         await this.node.rest.request({
             endpoint: RestRoutes.SubscribeLyrics(this.node.sessionId, guildId),
@@ -133,12 +118,7 @@ export class LyricsManager {
     public async unsubscribe(guildId: string): Promise<void> {
         if (!this.node.sessionId) return;
 
-        validateNodePlugins({
-            node: this.node,
-            required: [PluginNames.LavaSrc],
-            optional: [PluginNames.LavaLyrics, PluginNames.JavaLyrics],
-            atleastOne: true,
-        });
+        PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
         await this.node.rest.request({
             endpoint: RestRoutes.SubscribeLyrics(this.node.sessionId, guildId),

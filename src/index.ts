@@ -29,6 +29,10 @@ export * from "./classes/storage/QueueMemory";
 // Exports related to tracks.
 export * from "./classes/Track";
 
+// Exports related to the registry.
+export * from "./registry/PluginRegistry";
+export * from "./registry/SourceRegistry";
+
 // Exports related to types.
 export * from "./types/Filters";
 export * from "./types/Manager";
@@ -36,7 +40,6 @@ export * from "./types/Node";
 export * from "./types/Player";
 export * from "./types/Queue";
 export * from "./types/Rest";
-export * from "./types/Sources";
 export * from "./types/Structures";
 
 // Exports related to constants.

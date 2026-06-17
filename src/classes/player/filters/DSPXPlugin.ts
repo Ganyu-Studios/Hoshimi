@@ -1,8 +1,7 @@
+import { PluginCapabilities, PluginRegistry } from "../../../registry/PluginRegistry";
 import { type EchoSettings, type FilterPluginPassSettings, FilterType, type NormalizationSettings } from "../../../types/Filters";
-import { PluginNames } from "../../../types/Node";
 import type { FilterManagerStructure } from "../../../types/Structures";
 import { DefaultFilterPreset } from "../../../util/constants";
-import { validateNodePlugins } from "../../../util/functions/utils";
 import { PlayerError } from "../../Errors";
 
 /**
@@ -40,7 +39,7 @@ export class DSPXPluginFilter {
      * ```
      */
     public async setLowPass(settings: Partial<FilterPluginPassSettings> = DefaultFilterPreset.DSPXLowPass): Promise<this> {
-        validateNodePlugins({ node: this.manager.player.node, required: [PluginNames.LavaDspx] });
+        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Dspx] });
 
         if (!this.manager.player.node.info?.filters?.includes(FilterType.DSPXLowpass))
             throw new PlayerError("Node filters does not include the 'low-pass' filter. (Or the node doesn't have it enabled)");
@@ -76,7 +75,7 @@ export class DSPXPluginFilter {
      * ```
      */
     public async setHighPass(settings: Partial<FilterPluginPassSettings> = DefaultFilterPreset.DSPXHighPass): Promise<this> {
-        validateNodePlugins({ node: this.manager.player.node, required: [PluginNames.LavaDspx] });
+        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Dspx] });
 
         if (this.manager.player.node.info && !this.manager.player.node.info?.filters?.includes(FilterType.DSPXHighpass))
             throw new PlayerError("Node filters does not include the 'high-pass' filter. (Or the node doesn't have it enabled)");
@@ -113,7 +112,7 @@ export class DSPXPluginFilter {
      * ```
      */
     public async setNormalization(settings: Partial<NormalizationSettings> = DefaultFilterPreset.DSPXNormalization): Promise<this> {
-        validateNodePlugins({ node: this.manager.player.node, required: [PluginNames.LavaDspx] });
+        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Dspx] });
 
         if (!this.manager.player.node.info?.filters?.includes(FilterType.DSPXNormalization))
             throw new PlayerError("Node filters does not include the 'normalization' filter. (Or the node doesn't have it enabled)");
@@ -150,7 +149,7 @@ export class DSPXPluginFilter {
      * ```
      */
     public async setEcho(settings: Partial<EchoSettings> = DefaultFilterPreset.DSPXEcho): Promise<this> {
-        validateNodePlugins({ node: this.manager.player.node, required: [PluginNames.LavaDspx] });
+        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Dspx] });
 
         if (!this.manager.player.node.info?.filters?.includes(FilterType.DSPXEcho))
             throw new PlayerError("Node filters does not include the 'echo' filter. (Or the node doesn't have it enabled)");

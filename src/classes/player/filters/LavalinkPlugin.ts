@@ -1,9 +1,8 @@
+import { PluginCapabilities, PluginRegistry } from "../../../registry/PluginRegistry";
 import { type EchoSettings, FilterType, type LavalinkFilterPluginReverbSettings } from "../../../types/Filters";
 import type { Omit } from "../../../types/Manager";
-import { PluginNames } from "../../../types/Node";
 import type { FilterManagerStructure } from "../../../types/Structures";
 import { DefaultFilterPreset } from "../../../util/constants";
-import { validateNodePlugins } from "../../../util/functions/utils";
 import { PlayerError } from "../../Errors";
 
 type NonLengthEchoSettings = Omit<EchoSettings, "echoLength">;
@@ -44,7 +43,7 @@ export class LavalinkPluginFilter {
      * ```
      */
     public async setEcho(settings: Partial<NonLengthEchoSettings> = DefaultFilterPreset.PluginEcho): Promise<this> {
-        validateNodePlugins({ node: this.manager.player.node, required: [PluginNames.FilterPlugin] });
+        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Filters] });
 
         if (!this.manager.player.node.info?.filters?.includes(FilterType.Echo))
             throw new PlayerError("Node filters does not include the 'echo' filter. (Or the node doesn't have it enabled)");
@@ -85,7 +84,7 @@ export class LavalinkPluginFilter {
      * ```
      */
     public async setReverb(settings: Partial<LavalinkFilterPluginReverbSettings> = DefaultFilterPreset.PluginReverb): Promise<this> {
-        validateNodePlugins({ node: this.manager.player.node, required: [PluginNames.FilterPlugin] });
+        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Filters] });
 
         if (!this.manager.player.node.info?.filters?.includes(FilterType.Reverb))
             throw new PlayerError("Node filters does not include the 'reverb' filter. (Or the node doesn't have it enabled)");

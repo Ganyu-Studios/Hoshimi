@@ -12,7 +12,7 @@ import type {
     TrackStuckEvent,
     WebSocketClosedEvent,
 } from "./Player";
-import type { CustomizableSources } from "./Sources";
+import type { CustomizableSources } from "../registry/SourceRegistry";
 import type { NodeStructure } from "./Structures";
 
 /**
