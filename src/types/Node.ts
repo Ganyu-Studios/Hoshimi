@@ -1,4 +1,5 @@
 import type { TrackUserData } from "../classes/Track";
+import type { CustomizableSources } from "../registry/SourceRegistry";
 import type { FilterType } from "./Filters";
 import type { Hint, PickRequired, Prettify, SearchSource } from "./Manager";
 import type {
@@ -12,7 +13,6 @@ import type {
     TrackStuckEvent,
     WebSocketClosedEvent,
 } from "./Player";
-import type { CustomizableSources } from "../registry/SourceRegistry";
 import type { NodeStructure } from "./Structures";
 
 /**
