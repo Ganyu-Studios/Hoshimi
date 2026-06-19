@@ -33,7 +33,7 @@ import {
     Structures,
     type TrackStructure,
 } from "../../types/Structures";
-import { clearLivenessTimers, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
+import { clearHeartbeatTimer, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
 import { stringify, validateQuery } from "../../util/functions/utils";
 import { NodeError } from "../Errors";
 
@@ -426,9 +426,9 @@ export class Node {
         this.ws = new WebSocket(this.address, { headers: { ...headers } });
 
         this.ws.on("upgrade", onOpen.bind(this));
-        this.ws.on("close", onClose.bind(this));
-        this.ws.on("error", onError.bind(this));
         this.ws.on("message", onMessage.bind(this));
+        this.ws.on("error", onError.bind(this));
+        this.ws.on("close", onClose.bind(this));
 
         this.nodeManager.manager.emit(
             EventNames.Debug,
@@ -511,7 +511,7 @@ export class Node {
     public disconnect(disconnect: NodeDisconnectInfo = {}): void {
         if (this.state === State.Disconnected || this.state === State.Destroyed) return;
 
-        clearLivenessTimers.call(this);
+        clearHeartbeatTimer.call(this);
 
         if (this.ws) {
             this.ws.close(disconnect.code, disconnect.reason);
@@ -544,7 +544,7 @@ export class Node {
     public destroy(destroy: NodeDestroyInfo = {}): void {
         if (this.state === State.Destroyed) return;
 
-        clearLivenessTimers.call(this);
+        clearHeartbeatTimer.call(this);
 
         if (this.ws) {
             this.ws.close(destroy.code, destroy.reason);
