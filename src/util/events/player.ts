@@ -342,6 +342,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
     this.nodeManager.manager.emit(EventNames.Debug, DebugLevels.Node, `[Socket] -> [${this.id}]: Resuming session by library...`);
 
     for (const player of players) {
+        if (await player.data.get("internal_nodeChange")) continue;
         try {
             if (!player.isPlaying() && !player.queue.totalSize) {
                 this.nodeManager.manager.emit(

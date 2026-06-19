@@ -34,7 +34,6 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
     if (this.ws) this.ws.on("pong", onPong.bind(this));
 
     startHeartbeat.call(this);
-    resetStatsTimeout.call(this);
 
     this.nodeManager.manager.emit(
         EventNames.Debug,
@@ -52,7 +51,11 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
  * @returns {void}
  */
 export async function onClose(this: NodeStructure, code: number, reason: string): Promise<void> {
-    clearLivenessTimers.call(this);
+    clearHeartbeatTimer.call(this);
+
+    // Invalidate session immediately to prevent stale REST calls
+    this.sessionId = null;
+    this.state = State.Idle;
 
     this.nodeManager.manager.emit(
         EventNames.Debug,
@@ -62,75 +65,70 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
 
     this.nodeManager.manager.emit(EventNames.NodeDisconnect, this);
 
-    // Invalidate session immediately to prevent stale REST calls
-    this.sessionId = null;
-    this.state = State.Idle;
+    if (code !== WebsocketCloseCodes.NormalClosure || reason !== NodeDestroyReasons.Destroy) {
+        if (this.nodeManager.nodes.has(this.id)) this.reconnect();
+    }
 
     const { moveOptions } = this.nodeManager.manager.options.nodeOptions;
+    if (!moveOptions.move) return;
 
-    if (moveOptions.move) {
-        const players: PlayerStructure[] = this.nodeManager.manager.players.filter((player): boolean => player.node.id === this.id);
-        if (players.length) {
-            try {
-                let targetNode: NodeStructure | null = null;
+    const players: PlayerStructure[] = this.nodeManager.manager.players.filter((player): boolean => player.node.id === this.id);
+    if (!players.length) return;
 
-                if (typeof moveOptions.filterBy === "function") {
-                    const nodes: NodeStructure[] = this.nodeManager.nodes.filter(
-                        (node): boolean => node.state === State.Connected && node.id !== this.id,
-                    );
+    try {
+        let targetNode: NodeStructure | null = null;
 
-                    if (!nodes.length) {
-                        this.nodeManager.manager.emit(
-                            EventNames.Debug,
-                            DebugLevels.Node,
-                            `[PlayerMove] -> [${this.id}]: No connected nodes available to move players to.`,
-                        );
-                    } else {
-                        const filterFn = moveOptions.filterBy;
+        if (typeof moveOptions.filterBy === "function") {
+            const nodes: NodeStructure[] = this.nodeManager.nodes.filter(
+                (node): boolean => node.state === State.Connected && node.id !== this.id,
+            );
 
-                        targetNode = nodes.reduce((best, current): NodeStructure => {
-                            const bestScore: number = filterFn(best);
-                            const currentScore: number = filterFn(current);
-
-                            return currentScore < bestScore ? current : best;
-                        });
-                    }
-                } else {
-                    targetNode = this.nodeManager.getLeastUsed(moveOptions.filterBy);
-                }
-
-                if (!targetNode || targetNode.id === this.id) {
-                    this.nodeManager.manager.emit(
-                        EventNames.Debug,
-                        DebugLevels.Node,
-                        `[PlayerMove] -> [${this.id}]: No valid target node available to move players to.`,
-                    );
-                } else {
-                    const results: PromiseSettledResult<void>[] = await Promise.allSettled(
-                        players.map((player): Promise<void> => player.move(targetNode)),
-                    );
-
-                    const successful: number = results.filter((r) => r.status === "fulfilled").length;
-                    const failed: number = results.length - successful;
-
-                    this.nodeManager.manager.emit(
-                        EventNames.Debug,
-                        DebugLevels.Node,
-                        `[PlayerMove] -> [${this.id}]: Moved ${successful} players to ${targetNode.id} from disconnected node. Failed: ${failed}`,
-                    );
-                }
-            } catch (error) {
+            if (!nodes.length) {
                 this.nodeManager.manager.emit(
                     EventNames.Debug,
                     DebugLevels.Node,
-                    `[PlayerMove] -> [${this.id}]: Error while moving players. Error: ${error}`,
+                    `[PlayerMove] -> [${this.id}]: No connected nodes available to move players to.`,
                 );
-            }
-        }
-    }
+            } else {
+                const filterFn = moveOptions.filterBy;
 
-    if (code !== WebsocketCloseCodes.NormalClosure || reason !== NodeDestroyReasons.Destroy) {
-        if (this.nodeManager.nodes.has(this.id)) this.reconnect();
+                targetNode = nodes.reduce((best, current): NodeStructure => {
+                    const bestScore: number = filterFn(best);
+                    const currentScore: number = filterFn(current);
+
+                    return currentScore < bestScore ? current : best;
+                });
+            }
+        } else {
+            targetNode = this.nodeManager.getLeastUsed(moveOptions.filterBy);
+        }
+
+        if (!targetNode || targetNode.id === this.id) {
+            this.nodeManager.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Node,
+                `[PlayerMove] -> [${this.id}]: No valid target node available to move players to.`,
+            );
+        } else {
+            const results: PromiseSettledResult<void>[] = await Promise.allSettled(
+                players.map((player): Promise<void> => player.move(targetNode)),
+            );
+
+            const successful: number = results.filter((r) => r.status === "fulfilled").length;
+            const failed: number = results.length - successful;
+
+            this.nodeManager.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Node,
+                `[PlayerMove] -> [${this.id}]: Moved ${successful} players to ${targetNode.id} from disconnected node. Failed: ${failed}`,
+            );
+        }
+    } catch (error) {
+        this.nodeManager.manager.emit(
+            EventNames.Debug,
+            DebugLevels.Node,
+            `[PlayerMove] -> [${this.id}]: Error while moving players. Error: ${error}`,
+        );
     }
 }
 
@@ -182,7 +180,6 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
             case OpCodes.Stats:
                 {
                     this.stats = payload;
-                    resetStatsTimeout.call(this);
                     this.nodeManager.manager.emit(
                         EventNames.Debug,
                         DebugLevels.Node,
@@ -374,38 +371,12 @@ export function onPong(this: NodeStructure): void {
 }
 
 /**
- * Reset the stats watchdog. Called every time a `stats` payload arrives.
+ * Clear heartbeat timer. Called on close/disconnect/destroy.
  * @param {NodeStructure} this The node that owns the socket.
  * @returns {void}
  */
-export function resetStatsTimeout(this: NodeStructure): void {
-    if (this.statsTimeout) clearTimeout(this.statsTimeout);
-
-    const ms: number = this.options.heartbeat.statsTimeout;
-    if (!ms || ms <= 0) return;
-
-    this.statsTimeout = setTimeout((): void => {
-        this.nodeManager.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Node,
-            `[Socket] -> [${this.id}]: No stats message received in ${ms}ms. Terminating socket.`,
-        );
-        this.ws?.terminate();
-    }, ms);
-}
-
-/**
- * Clear all liveness timers. Called on close/disconnect/destroy.
- * @param {NodeStructure} this The node that owns the socket.
- * @returns {void}
- */
-export function clearLivenessTimers(this: NodeStructure): void {
-    if (this.heartbeatInterval) {
-        clearInterval(this.heartbeatInterval);
-        this.heartbeatInterval = null;
-    }
-    if (this.statsTimeout) {
-        clearTimeout(this.statsTimeout);
-        this.statsTimeout = null;
-    }
+export function clearHeartbeatTimer(this: NodeStructure): void {
+    if (!this.heartbeatInterval) return;
+    clearInterval(this.heartbeatInterval);
+    this.heartbeatInterval = null;
 }
