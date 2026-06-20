@@ -2,31 +2,6 @@ allowBuilds:
   esbuild: true
 
 minimumReleaseAgeExclude:
-  - ws@8.21.0
-  - '@biomejs/biome@2.5.0'
-  - '@biomejs/cli-darwin-arm64@2.5.0'
-  - '@biomejs/cli-darwin-x64@2.5.0'
-  - '@biomejs/cli-linux-arm64-musl@2.5.0'
-  - '@biomejs/cli-linux-arm64@2.5.0'
-  - '@biomejs/cli-linux-x64-musl@2.5.0'
-  - '@biomejs/cli-linux-x64@2.5.0'
-  - '@biomejs/cli-win32-arm64@2.5.0'
-  - '@biomejs/cli-win32-x64@2.5.0'
-  - '@vitest/expect@4.1.9'
-  - '@vitest/mocker@4.1.9'
-  - '@vitest/pretty-format@4.1.9'
-  - '@vitest/runner@4.1.9'
-  - '@vitest/snapshot@4.1.9'
-  - '@vitest/spy@4.1.9'
-  - '@vitest/utils@4.1.9'
-  - vitest@4.1.9
-  - '@babel/generator@8.0.0'
-  - '@babel/helper-string-parser@8.0.0'
-  - '@babel/helper-validator-identifier@8.0.0'
-  - '@babel/parser@8.0.0'
-  - '@babel/types@8.0.0'
-  - ast-kit@3.0.0
-  - rolldown-plugin-dts@0.26.0
-  - tsdown@0.22.3
+  - '@types/node@26.0.0'
 
 packages: []
