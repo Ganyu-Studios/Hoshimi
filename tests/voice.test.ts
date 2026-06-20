@@ -1,42 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { PlayerVoiceState } from "../src/classes/player/Voice";
-
-type VoiceTestPlayer = {
-    guildId: string;
-    voiceId: string | undefined;
-    selfDeaf: boolean;
-    selfMute: boolean;
-    connected: boolean;
-    options: { voiceId: string | undefined };
-    manager: {
-        options: {
-            sendPayload: ReturnType<typeof vi.fn>;
-        };
-        emit: ReturnType<typeof vi.fn>;
-    };
-};
-
-function createPlayer(): VoiceTestPlayer {
-    return {
-        guildId: "guild-1",
-        voiceId: "voice-1",
-        selfDeaf: true,
-        selfMute: false,
-        connected: false,
-        options: { voiceId: "voice-1" },
-        manager: {
-            options: {
-                sendPayload: vi.fn().mockResolvedValue(undefined),
-            },
-            emit: vi.fn(),
-        },
-    };
-}
+import { createMockPlayer } from "./helpers";
 
 describe("PlayerVoiceState", () => {
     it("patch/reset and toJSON/toNode behave as expected", () => {
-        const voice = new PlayerVoiceState(createPlayer() as never);
+        const voice = new PlayerVoiceState(createMockPlayer() as never);
 
         voice.patch({ endpoint: "endpoint", sessionId: "session", token: "token", channelId: "voice-1" });
 
@@ -48,7 +17,7 @@ describe("PlayerVoiceState", () => {
     });
 
     it("setState sends payload and updates player/voice fields", async () => {
-        const player = createPlayer();
+        const player = createMockPlayer();
         const voice = new PlayerVoiceState(player as never);
 
         await voice.setState({ voiceId: "voice-2", selfMute: true, selfDeaf: false });
@@ -68,15 +37,13 @@ describe("PlayerVoiceState", () => {
     });
 
     it("connect returns early when already connected or no voice channel", async () => {
-        const playerA = createPlayer();
-        playerA.connected = true;
+        const playerA = createMockPlayer({ connected: true });
 
         const voiceA = new PlayerVoiceState(playerA as never);
         await voiceA.connect();
         expect(playerA.manager.options.sendPayload).not.toHaveBeenCalled();
 
-        const playerB = createPlayer();
-        playerB.voiceId = undefined;
+        const playerB = createMockPlayer({ voiceId: undefined, options: { voiceId: undefined } });
 
         const voiceB = new PlayerVoiceState(playerB as never);
         await voiceB.connect();
@@ -84,7 +51,7 @@ describe("PlayerVoiceState", () => {
     });
 
     it("disconnect/move/mute/deaf paths update state", async () => {
-        const player = createPlayer();
+        const player = createMockPlayer();
         const voice = new PlayerVoiceState(player as never);
 
         await voice.disconnect();
@@ -101,7 +68,7 @@ describe("PlayerVoiceState", () => {
     });
 
     it("setState propagates sendPayload failures", async () => {
-        const player = createPlayer();
+        const player = createMockPlayer();
         player.manager.options.sendPayload.mockRejectedValueOnce(new Error("gateway unavailable"));
 
         const voice = new PlayerVoiceState(player as never);
@@ -110,7 +77,7 @@ describe("PlayerVoiceState", () => {
     });
 
     it("connect rejects when state update fails", async () => {
-        const player = createPlayer();
+        const player = createMockPlayer();
         player.manager.options.sendPayload.mockRejectedValueOnce(new Error("cannot send payload"));
 
         const voice = new PlayerVoiceState(player as never);

@@ -4,44 +4,14 @@ import { NodeManager } from "../src/classes/node/Manager";
 import { EventNames } from "../src/types/Manager";
 import { NodeSortTypes, State } from "../src/types/Node";
 import { Structures } from "../src/types/Structures";
-
-function createManager() {
-    return {
-        emit: vi.fn(),
-    };
-}
-
-function createNode(id: string, state: State, penalties = 0, overrides?: Record<string, unknown>) {
-    return {
-        id,
-        state,
-        penalties,
-        stats: {
-            players: 0,
-            playingPlayers: 0,
-            cpu: {
-                systemLoad: 0,
-                lavalinkLoad: 0,
-            },
-            memory: {
-                used: 1,
-                allocated: 1,
-            },
-        },
-        connect: vi.fn(),
-        disconnect: vi.fn(),
-        reconnect: vi.fn(),
-        destroy: vi.fn(),
-        ...overrides,
-    };
-}
+import { createMockManager, createMockNode } from "./helpers";
 
 describe("NodeManager", () => {
     it("create returns existing node when id already exists", () => {
-        const manager = createManager();
+        const manager = createMockManager();
         const nodeManager = new NodeManager(manager as never);
 
-        const existing = createNode("node-1", State.Connected);
+        const existing = createMockNode({ id: "node-1", state: State.Connected });
         nodeManager.nodes.set("node-1", existing as never);
 
         const result = nodeManager.create({
@@ -55,9 +25,9 @@ describe("NodeManager", () => {
     });
 
     it("create builds and stores a new node and emits NodeCreate", () => {
-        const manager = createManager();
+        const manager = createMockManager();
         const nodeManager = new NodeManager(manager as never);
-        const mockedNode = createNode("node-2", State.Idle);
+        const mockedNode = createMockNode({ id: "node-2", state: State.Idle });
 
         const nodeFactorySpy = vi.spyOn(Structures, "Node").mockReturnValue(mockedNode as never);
 
@@ -75,9 +45,9 @@ describe("NodeManager", () => {
     });
 
     it("delete and get work with id and node reference", () => {
-        const manager = createManager();
+        const manager = createMockManager();
         const nodeManager = new NodeManager(manager as never);
-        const node = createNode("node-x", State.Connected);
+        const node = createMockNode({ id: "node-x", state: State.Connected });
 
         nodeManager.nodes.set(node.id, node as never);
 
@@ -89,9 +59,9 @@ describe("NodeManager", () => {
     });
 
     it("connect/disconnect/reconnect/destroy delegate to target node", () => {
-        const manager = createManager();
+        const manager = createMockManager();
         const nodeManager = new NodeManager(manager as never);
-        const node = createNode("node-op", State.Connected);
+        const node = createMockNode({ id: "node-op", state: State.Connected });
 
         nodeManager.nodes.set(node.id, node as never);
 
@@ -107,19 +77,19 @@ describe("NodeManager", () => {
     });
 
     it("getLeastUsed throws when there are no connected nodes", () => {
-        const manager = createManager();
+        const manager = createMockManager();
         const nodeManager = new NodeManager(manager as never);
 
         expect(() => nodeManager.getLeastUsed()).toThrow(NodeManagerError);
     });
 
     it("getLeastUsed selects the lowest penalty connected node", () => {
-        const manager = createManager();
+        const manager = createMockManager();
         const nodeManager = new NodeManager(manager as never);
 
-        const n1 = createNode("n1", State.Connected, 8);
-        const n2 = createNode("n2", State.Connected, 2);
-        const n3 = createNode("n3", State.Disconnected, 0);
+        const n1 = createMockNode({ id: "n1", state: State.Connected, penalties: 8 });
+        const n2 = createMockNode({ id: "n2", state: State.Connected, penalties: 2 });
+        const n3 = createMockNode({ id: "n3", state: State.Disconnected, penalties: 0 });
 
         nodeManager.nodes.set(n1.id, n1 as never);
         nodeManager.nodes.set(n2.id, n2 as never);
@@ -129,13 +99,19 @@ describe("NodeManager", () => {
     });
 
     it("getLeastUsed supports players sort", () => {
-        const manager = createManager();
+        const manager = createMockManager();
         const nodeManager = new NodeManager(manager as never);
 
-        const n1 = createNode("n1", State.Connected, 0, {
+        const n1 = createMockNode({
+            id: "n1",
+            state: State.Connected,
+            penalties: 0,
             stats: { players: 10, playingPlayers: 2, cpu: { systemLoad: 0.2, lavalinkLoad: 0.2 }, memory: { used: 1, allocated: 2 } },
         });
-        const n2 = createNode("n2", State.Connected, 0, {
+        const n2 = createMockNode({
+            id: "n2",
+            state: State.Connected,
+            penalties: 0,
             stats: { players: 2, playingPlayers: 1, cpu: { systemLoad: 0.1, lavalinkLoad: 0.1 }, memory: { used: 1, allocated: 2 } },
         });
 
@@ -146,12 +122,12 @@ describe("NodeManager", () => {
     });
 
     it("connectAll/disconnectAll/reconnectAll/destroyAll operate over matching nodes", () => {
-        const manager = createManager();
+        const manager = createMockManager();
         const nodeManager = new NodeManager(manager as never);
 
-        const connected = createNode("connected", State.Connected);
-        const disconnected = createNode("disconnected", State.Disconnected);
-        const idle = createNode("idle", State.Idle);
+        const connected = createMockNode({ id: "connected", state: State.Connected });
+        const disconnected = createMockNode({ id: "disconnected", state: State.Disconnected });
+        const idle = createMockNode({ id: "idle", state: State.Idle });
 
         nodeManager.nodes.set(connected.id, connected as never);
         nodeManager.nodes.set(disconnected.id, disconnected as never);

@@ -1,41 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RestError } from "../src/classes/Errors";
 import { Rest } from "../src/classes/node/Rest";
-import { State } from "../src/types/Node";
 import { HttpMethods, HttpStatusCodes, RestPathType, RestRoutes } from "../src/types/Rest";
-
-function createNode(sessionId: string | null = "session-1") {
-    const emit = vi.fn();
-
-    const node = {
-        id: "node-1",
-        sessionId,
-        state: State.Connected,
-        options: {
-            secure: false,
-            host: "localhost",
-            port: 2333,
-            restTimeout: 500,
-            password: "pass",
-        },
-        nodeManager: {
-            manager: {
-                emit,
-                getPlayer: vi.fn().mockReturnValue(undefined),
-                options: {
-                    restOptions: {
-                        resumeTimeout: 500,
-                    },
-                    nodeOptions: {
-                        userAgent: "hoshimi-test/v1 (https://example.com)",
-                    },
-                },
-            },
-        },
-    };
-
-    return { node, emit };
-}
+import { createMockNode } from "./helpers";
 
 describe("Rest", () => {
     afterEach(() => {
@@ -44,16 +11,16 @@ describe("Rest", () => {
     });
 
     it("builds base url and exposes restUrl/sessionId", () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         expect(rest.restUrl).toBe("http://localhost:2333");
         expect(rest.sessionId).toBe("sess-123");
     });
 
     it("request performs GET and appends params + trace", async () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: true,
@@ -81,8 +48,8 @@ describe("Rest", () => {
     });
 
     it("request sends POST body as string", async () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: true,
@@ -103,8 +70,8 @@ describe("Rest", () => {
     });
 
     it("request returns null on NoContent", async () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: true,
@@ -119,8 +86,8 @@ describe("Rest", () => {
     });
 
     it("request throws RestError when response is not ok", async () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: false,
@@ -139,8 +106,8 @@ describe("Rest", () => {
     });
 
     it("request throws fallback RestError when error payload cannot be parsed", async () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: false,
@@ -153,8 +120,8 @@ describe("Rest", () => {
     });
 
     it("request propagates fetch rejection", async () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         const fetchSpy = vi.fn().mockRejectedValue(new Error("network down"));
         vi.stubGlobal("fetch", fetchSpy);
@@ -163,8 +130,8 @@ describe("Rest", () => {
     });
 
     it("updatePlayer returns null when there is no session", async () => {
-        const { node } = createNode(null);
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: null });
+        const rest = new Rest(mock as never);
 
         const result = await rest.updatePlayer({ guildId: "guild-1", playerOptions: { paused: true } });
 
@@ -172,8 +139,8 @@ describe("Rest", () => {
     });
 
     it("stopPlayer delegates to updatePlayer with encoded null", async () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         const updateSpy = vi.spyOn(rest, "updatePlayer").mockResolvedValue(null);
 
@@ -189,8 +156,8 @@ describe("Rest", () => {
     });
 
     it("destroyPlayer no-ops when there is no session", async () => {
-        const { node } = createNode(null);
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: null });
+        const rest = new Rest(mock as never);
 
         const reqSpy = vi.spyOn(rest, "request").mockResolvedValue(null);
 
@@ -200,8 +167,8 @@ describe("Rest", () => {
     });
 
     it("destroyPlayer calls DELETE endpoint when session exists", async () => {
-        const { node } = createNode("sess-123");
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: "sess-123" });
+        const rest = new Rest(mock as never);
 
         const reqSpy = vi.spyOn(rest, "request").mockResolvedValue(null);
 
@@ -214,8 +181,8 @@ describe("Rest", () => {
     });
 
     it("getPlayers returns empty array when there is no session", async () => {
-        const { node } = createNode(null);
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: null });
+        const rest = new Rest(mock as never);
 
         const result = await rest.getPlayers();
 
@@ -223,8 +190,8 @@ describe("Rest", () => {
     });
 
     it("updateSession returns null when there is no session", async () => {
-        const { node } = createNode(null);
-        const rest = new Rest(node as never);
+        const mock = createMockNode({ sessionId: null });
+        const rest = new Rest(mock as never);
 
         const result = await rest.updateSession({ resuming: true, timeout: 1000 });
 

@@ -1,25 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { Hoshimi, HoshimiDefaultOptions, Node } from "../src";
+import { Hoshimi, HoshimiDefaultOptions } from "../src";
 import { PlayerError } from "../src/classes/Errors";
 import { Player } from "../src/classes/player/Player";
 import { PlayerMemoryStorage } from "../src/classes/storage/PlayerMemory";
 import { State } from "../src/types/Node";
 import { LoopMode } from "../src/types/Player";
+import { createMockHoshimi } from "./helpers";
 
 describe("Player", () => {
     it("validates loop mode and basic play state", () => {
-        const manager = new Hoshimi({
-            nodes: HoshimiDefaultOptions.nodes,
-        } as never);
+        const manager = createMockHoshimi();
 
-        // Add a connected node to the manager
-        manager.nodeManager.nodes.set("node-1", {
-            id: "node-1",
-            state: State.Connected,
-            options: { host: "localhost", port: 2333, password: "pass" },
-        } as never);
-
-        const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
 
         expect(player.isPlaying()).toBe(false);
 
@@ -34,14 +26,9 @@ describe("Player", () => {
     });
 
     it("seek and setVolume throw on invalid input", async () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = createMockHoshimi();
 
-        const node = new Node(manager.nodeManager, { host: "localhost", port: 2333, password: "pass" } as never);
-
-        node.state = State.Connected;
-        manager.nodeManager.nodes.set("node-1", node);
-
-        const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
         player.queue.current = { info: { length: 10000 } } as never;
 
         await expect(player.seek(NaN)).rejects.toThrow(PlayerError);
@@ -49,41 +36,21 @@ describe("Player", () => {
     });
 
     it("move throws when target node is missing", async () => {
-        const manager = new Hoshimi({
-            nodes: HoshimiDefaultOptions.nodes,
-        } as never);
-
-        // Add a connected node to the manager
-        manager.nodeManager.nodes.set("node-1", {
-            id: "node-1",
-            state: State.Connected,
-            options: { host: "localhost", port: 2333, password: "pass" },
-        } as never);
+        const manager = createMockHoshimi();
 
         manager.nodeManager.get = vi.fn().mockReturnValue(undefined);
 
-        const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
 
         await expect(player.move("missing-node")).rejects.toThrow(PlayerError);
     });
 
     it("search delegates to manager.search", async () => {
-        const manager = new Hoshimi({
-            nodes: HoshimiDefaultOptions.nodes,
-        } as never);
+        const manager = createMockHoshimi();
 
-        // Add a connected node to the manager
-        manager.nodeManager.nodes.set("node-1", {
-            id: "node-1",
-            state: State.Connected,
-            options: { host: "localhost", port: 2333, password: "pass" },
-            search: vi.fn(),
-        } as never);
-
-        // Spy on manager.search before creating the player
         const searchSpy = vi.spyOn(manager, "search");
 
-        const player = new Player(manager, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
 
         await player.search({ query: "hello", requester: {} });
 
@@ -91,9 +58,7 @@ describe("Player", () => {
     });
 
     it("data is isolated between players and destroyed on destroy", async () => {
-        const manager = new Hoshimi({
-            nodes: HoshimiDefaultOptions.nodes,
-        } as never);
+        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
 
         const nodeMock = {
             id: "node-1",
@@ -108,21 +73,17 @@ describe("Player", () => {
         const playerA = manager.createPlayer({ guildId: "guild-a", voiceId: "voice-a" } as never);
         const playerB = manager.createPlayer({ guildId: "guild-b", voiceId: "voice-b" } as never);
 
-        // each player has its own storage instance
         expect(playerA.data).not.toBe(playerB.data);
         expect(playerA.data).toBeInstanceOf(PlayerMemoryStorage);
         expect(playerB.data).toBeInstanceOf(PlayerMemoryStorage);
 
-        // data isolation: set a custom key on A, B should not see it
         await playerA.data.set("test_key", "secret");
         expect(await playerA.data.get("test_key")).toBe("secret");
         expect(await playerB.data.get("test_key")).toBeUndefined();
 
-        // destroy A - data persists in memory but player is gone from manager
         await playerA.destroy({ disconnect: false });
         expect(manager.getPlayer("guild-a")).toBeUndefined();
 
-        // B's data is untouched and player still exists
         expect(await playerB.data.get("test_key")).toBeUndefined();
         expect(manager.getPlayer("guild-b")).toBe(playerB);
     });

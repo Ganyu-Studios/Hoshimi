@@ -4,29 +4,7 @@ import { ResolveError } from "../src/classes/Errors";
 import { Track, UnresolvedTrack } from "../src/classes/Track";
 import { SearchSources } from "../src/types/Manager";
 import { SourceNames } from "../src/types/Node";
-
-function createTrack(overrides?: Record<string, unknown>): Record<string, unknown> {
-    return {
-        encoded: "encoded-track",
-        info: {
-            identifier: "track-id",
-            title: "Track Title",
-            author: "Artist",
-            length: 180000,
-            artworkUrl: null,
-            uri: "https://example.com/track",
-            sourceName: SourceNames.Youtube,
-            isSeekable: true,
-            isStream: false,
-            isrc: null,
-            position: 0,
-            ...(overrides?.info as Record<string, unknown> | undefined),
-        },
-        pluginInfo: {},
-        userData: {},
-        ...overrides,
-    };
-}
+import { createMockTrackData } from "./helpers";
 
 describe("Track", () => {
     it("throws ResolveError when constructing Track with null", () => {
@@ -34,7 +12,7 @@ describe("Track", () => {
     });
 
     it("builds hyperlink in embeddable and non-embeddable formats", () => {
-        const track = new Track(createTrack() as never, {});
+        const track = new Track(createMockTrackData() as never, {});
 
         expect(track.toHyperlink()).toBe("[Track Title](https://example.com/track)");
         expect(track.toHyperlink(false)).toBe("[Track Title](<https://example.com/track>)");
@@ -49,7 +27,7 @@ describe("UnresolvedTrack", () => {
     });
 
     it("resolves using node.decode.single when encoded is present", async () => {
-        const decodedTrack = createTrack({ encoded: "decoded" });
+        const decodedTrack = createMockTrackData({ encoded: "decoded" });
         const decodeSingle = vi.fn().mockResolvedValue(decodedTrack);
 
         const player = {
@@ -109,7 +87,7 @@ describe("UnresolvedTrack", () => {
     });
 
     it("resolves through search query using default source when sourceName is excluded", async () => {
-        const foundTrack = createTrack({ info: { identifier: "found-id", title: "Found", author: "Other" } });
+        const foundTrack = createMockTrackData({ info: { identifier: "found-id", title: "Found", author: "Other" } });
         const search = vi.fn().mockResolvedValue({ tracks: [foundTrack] });
 
         const player = {

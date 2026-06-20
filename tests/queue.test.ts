@@ -1,34 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { Hoshimi, HoshimiDefaultOptions, type LavalinkTrack, SourceNames, type TrackResolvableStructure } from "../src";
+import type { LavalinkTrack, TrackResolvableStructure } from "../src";
 import { QueueError, StorageError } from "../src/classes/Errors";
 import { Structures } from "../src/types/Structures";
+import { createMockHoshimi, createMockTrackData } from "./helpers";
 
 function mockedTrack(id: string) {
     return Structures.Track(
-        {
+        createMockTrackData({
             encoded: id,
-            info: {
-                identifier: id,
-                title: id,
-                author: "author",
-                length: 1000,
-                artworkUrl: null,
-                uri: `https://example.com/${id}`,
-                sourceName: SourceNames.Youtube,
-                isSeekable: true,
-                isStream: false,
-                isrc: null,
-                position: 0,
-            },
-        } as LavalinkTrack,
+            info: { identifier: id, title: id, author: "author", length: 1000 },
+        }) as LavalinkTrack,
         {},
     );
 }
 
 describe("Queue", () => {
     it("adds and shifts tracks", async () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = createMockHoshimi();
         const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
         vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
 
@@ -43,7 +32,7 @@ describe("Queue", () => {
     });
 
     it("shuffle handles small and larger queues", async () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = createMockHoshimi();
         const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
         vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
         vi.spyOn(Math, "random").mockReturnValue(0);
@@ -58,7 +47,7 @@ describe("Queue", () => {
     });
 
     it("move does nothing when track is not present", async () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = createMockHoshimi();
         const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
         vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
 
@@ -71,10 +60,8 @@ describe("Queue", () => {
     });
 
     it("toJSON trims history to maxHistory", () => {
-        const manager = new Hoshimi({
-            nodes: HoshimiDefaultOptions.nodes,
-            queueOptions: { maxHistory: 2 },
-        } as never);
+        const manager = createMockHoshimi();
+        manager.options.queueOptions.maxHistory = 2;
 
         const queue = Structures.Queue({
             guildId: "guild-1",
@@ -90,10 +77,8 @@ describe("Queue", () => {
 
 describe("QueueUtils", () => {
     it("save trims history and persists queue", async () => {
-        const manager = new Hoshimi({
-            nodes: HoshimiDefaultOptions.nodes,
-            queueOptions: { maxHistory: 2 },
-        } as never);
+        const manager = createMockHoshimi();
+        manager.options.queueOptions.maxHistory = 2;
 
         const queue = Structures.Queue({
             guildId: "guild-1",
@@ -112,7 +97,7 @@ describe("QueueUtils", () => {
     });
 
     it("destroy delegates to storage delete", async () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = createMockHoshimi();
         const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
         queue.utils.storage.delete = vi.fn().mockResolvedValue(true);
 
@@ -122,7 +107,7 @@ describe("QueueUtils", () => {
     });
 
     it("sync throws StorageError when no saved data exists", async () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = createMockHoshimi();
         const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
 
         queue.utils.storage.get = vi.fn().mockResolvedValue(undefined);
@@ -131,7 +116,7 @@ describe("QueueUtils", () => {
     });
 
     it("sync merges queue when override is false", async () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = createMockHoshimi();
         const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
         queue.utils.storage.get = vi.fn().mockResolvedValue(undefined);
         queue.utils.storage.set = vi.fn();
@@ -148,8 +133,9 @@ describe("QueueUtils", () => {
         expect(queue.tracks.length).toBe(2);
         expect(queue.utils.storage.set).toHaveBeenCalled();
     });
+
     it("throws when json contains invalid tracks", () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = createMockHoshimi();
         const queue = Structures.Queue({ guildId: "guild-1", manager } as never);
 
         queue.tracks.push({ encoded: "track" } as TrackResolvableStructure);

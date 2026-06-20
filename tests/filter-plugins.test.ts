@@ -4,24 +4,16 @@ import { DSPXPluginFilter } from "../src/classes/player/filters/DSPXPlugin";
 import { LavalinkPluginFilter } from "../src/classes/player/filters/LavalinkPlugin";
 import { FilterType } from "../src/types/Filters";
 import { PluginNames } from "../src/types/Node";
+import { createMockNode } from "./helpers";
 
 function createFilterManager(filters: string[], plugins: string[]) {
-    const manager = {
-        player: {
-            node: {
-                id: "node-1",
-                info: {
-                    filters,
-                    plugins: plugins.map((name) => ({ name })),
-                },
-                isNodelink: () => false,
-                nodeManager: {
-                    manager: {
-                        emit: vi.fn(),
-                    },
-                },
-            },
-        },
+    const node = createMockNode({
+        info: { filters, plugins: plugins.map((name) => ({ name })) },
+        isNodelink: () => false,
+    });
+
+    return {
+        player: { node },
         data: {
             pluginFilters: {},
         },
@@ -39,8 +31,6 @@ function createFilterManager(filters: string[], plugins: string[]) {
         },
         apply: vi.fn().mockResolvedValue(undefined),
     };
-
-    return manager;
 }
 
 describe("Filter plugins", () => {
