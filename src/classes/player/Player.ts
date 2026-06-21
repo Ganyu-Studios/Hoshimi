@@ -22,9 +22,10 @@ import {
     type TrackStructure,
 } from "../../types/Structures";
 import { LoopValues } from "../../util/constants";
-import { validatePlayerOptions } from "../../util/functions/utils";
+import { createResolver, validatePlayerOptions } from "../../util/functions/utils";
 import { PlayerError } from "../Errors";
 import type { Hoshimi } from "../Hoshimi";
+import type { PromiseWithResolvers } from "../../types/Utility";
 import type { PlayerStorageAdapter } from "../storage/adapters/PlayerAdapter";
 import type { TrackResolvableStructure } from "../Track";
 import type { FilterManager } from "./filters/Manager";
@@ -35,6 +36,8 @@ import type { NullableVoiceChannelUpdate } from "./Voice";
  * @class Player
  */
 export class Player {
+    private destroyPromise: PromiseWithResolvers<void>["promise"] | null = null;
+
     /**
      * The data for the player.
      * @type {PlayerStorageAdapter}
@@ -546,17 +549,12 @@ export class Player {
      * ```
      */
     public async destroy(options: DestroyOptions = {}): Promise<void> {
-        const { reason = DestroyReasons.Stop, disconnect = true } = options;
+        if (this.destroyPromise) return this.destroyPromise;
 
-        const claimed: boolean = await this.data.setIfAbsent("internal_playerDestroy", true);
-        if (!claimed) {
-            this.manager.emit(
-                EventNames.Debug,
-                DebugLevels.Player,
-                `[Player] -> [Destroy] Player for guild: ${this.guildId} is already being destroyed.`,
-            );
-            return;
-        }
+        const { reason = DestroyReasons.Stop, disconnect = true } = options;
+        const resolver = createResolver<void>();
+
+        this.destroyPromise = resolver.promise;
 
         try {
             if (disconnect) await this.disconnect();
@@ -577,6 +575,8 @@ export class Player {
                 DebugLevels.Player,
                 `[Player] -> [Destroy] Destroyed player for guild: ${this.guildId} | Reason: ${reason}`,
             );
+            resolver.resolve();
+            this.destroyPromise = null;
         }
     }
 

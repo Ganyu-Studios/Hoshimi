@@ -10,6 +10,7 @@ import type { AnyLavalinkTrack, PlayerOptions } from "../../types/Player";
 import type { TrackJSON } from "../../types/Queue";
 import type { UpdatePlayerInfo } from "../../types/Rest";
 import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
+import type { PromiseWithResolvers } from "../../types/Utility";
 import { UrlRegex } from "../constants";
 
 /**
@@ -480,4 +481,16 @@ function isNode(options: NodeOptions): boolean {
         (typeof options.heartbeat?.interval === "number" || typeof options.heartbeat?.interval === "undefined") &&
         (typeof options.heartbeat?.statsTimeout === "number" || typeof options.heartbeat?.statsTimeout === "undefined")
     );
+}
+
+/**
+ * Create a promise with resolvers.
+ */
+export function createResolver<T>() {
+    const resolver = {} as PromiseWithResolvers<T>;
+    resolver.promise = new Promise<T>((resolve, reject) => {
+        resolver.reject = reject;
+        resolver.resolve = resolve;
+    });
+    return resolver;
 }
