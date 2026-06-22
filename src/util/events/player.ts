@@ -152,7 +152,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
 
     const reasons: TrackEndReason[] = [TrackEndReason.LoadFailed, TrackEndReason.Cleanup];
     if (reasons.includes(payload.reason)) {
-        if (await this.data.get("internal_playerDestroy")) {
+        if (this.destroyed) {
             this.manager.emit(
                 EventNames.Debug,
                 DebugLevels.Player,

@@ -241,7 +241,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     return;
                 }
 
-                if (await player.data.get("internal_playerDestroy")) {
+                if (player.destroyed) {
                     this.emit(
                         EventNames.Debug,
                         DebugLevels.Player,
@@ -285,7 +285,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                         return;
                     }
 
-                    if (await player.data.get("internal_playerDestroy")) {
+                    if (player.destroyed) {
                         this.emit(
                             EventNames.Debug,
                             DebugLevels.Player,

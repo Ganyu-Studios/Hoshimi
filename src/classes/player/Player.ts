@@ -36,6 +36,10 @@ import type { NullableVoiceChannelUpdate } from "./Voice";
  * @class Player
  */
 export class Player {
+    /**
+     * Promise of the destroying player.
+     * @type {PromiseWithResolvers<void>["promise"] | null}
+     */
     private destroyPromise: PromiseWithResolvers<void>["promise"] | null = null;
 
     /**
@@ -118,6 +122,14 @@ export class Player {
      * @default false
      */
     public connected: boolean = false;
+
+    /**
+     * Check if the player is destroyed.
+     * @type {boolean}
+     */
+    public get destroyed(): boolean {
+        return this.destroyPromise != null || this.manager.players.get(this.guildId) !== this;
+    }
 
     /**
      * Volume of the player.
@@ -549,7 +561,14 @@ export class Player {
      * ```
      */
     public async destroy(options: DestroyOptions = {}): Promise<void> {
-        if (this.destroyPromise) return this.destroyPromise;
+        if (this.destroyPromise) {
+            this.manager.emit(
+                EventNames.Debug,
+                DebugLevels.Player,
+                `[Player] -> [Destroy] Player for guild: ${this.guildId} is already being destroyed.`,
+            );
+            return this.destroyPromise;
+        }
 
         const { reason = DestroyReasons.Stop, disconnect = true } = options;
         const resolver = createResolver<void>();
