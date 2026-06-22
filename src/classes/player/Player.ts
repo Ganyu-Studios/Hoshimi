@@ -21,11 +21,11 @@ import {
     Structures,
     type TrackStructure,
 } from "../../types/Structures";
+import type { PromiseWithResolvers } from "../../types/Utility";
 import { LoopValues } from "../../util/constants";
 import { createResolver, validatePlayerOptions } from "../../util/functions/utils";
 import { PlayerError } from "../Errors";
 import type { Hoshimi } from "../Hoshimi";
-import type { PromiseWithResolvers } from "../../types/Utility";
 import type { PlayerStorageAdapter } from "../storage/adapters/PlayerAdapter";
 import type { TrackResolvableStructure } from "../Track";
 import type { FilterManager } from "./filters/Manager";
@@ -128,7 +128,7 @@ export class Player {
      * @type {boolean}
      */
     public get destroyed(): boolean {
-        return this.destroyPromise != null || this.manager.players.get(this.guildId) !== this;
+        return this.destroyPromise != null || this.manager.getPlayer(this.guildId) !== this;
     }
 
     /**
@@ -561,12 +561,15 @@ export class Player {
      * ```
      */
     public async destroy(options: DestroyOptions = {}): Promise<void> {
-        if (this.destroyPromise) {
+        if (this.destroyed) {
             this.manager.emit(
                 EventNames.Debug,
                 DebugLevels.Player,
                 `[Player] -> [Destroy] Player for guild: ${this.guildId} is already being destroyed.`,
             );
+
+            if (!this.destroyPromise) return;
+
             return this.destroyPromise;
         }
 
