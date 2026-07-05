@@ -107,6 +107,7 @@ client.events.values.RAW = {
 - **[Stelle](https://github.com/Ganyu-Studios/stelle-music)**: by [Ganyu Studios](https://github.com/Ganyu-Studios/stelle-music)
 - **[Miyu](https://ptb.discord.com/oauth2/authorize?client_id=1277180179273482280)**: by [Kenver](https://github.com/Kenver123)
 - **[GoTTY](https://discord.com/oauth2/authorize?client_id=1352131392993230869)**: by [Void](https://github.com/voidemx)
+- **[Flixo](https://discord.com/oauth2/authorize?client_id=1380994881731952741&permissions=7107797346413761&integration_type=0&scope=bot)**: by [Ansh](https://github.com/titanxdevz)
 
 ## 📝 Additional Notes
 I am currently working on this package.</br> This package takes some ideas provided from libraries like:
