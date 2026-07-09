@@ -104,13 +104,18 @@ client.events.values.RAW = {
 
 ## 💖 Used By
 
-- **[Stelle](https://github.com/Ganyu-Studios/stelle-music)**: by [Ganyu Studios](https://github.com/Ganyu-Studios/stelle-music)
-- **[Miyu](https://ptb.discord.com/oauth2/authorize?client_id=1277180179273482280)**: by [Kenver](https://github.com/Kenver123)
-- **[GoTTY](https://discord.com/oauth2/authorize?client_id=1352131392993230869)**: by [Void](https://github.com/voidemx)
-- **[Flixo](https://discord.com/oauth2/authorize?client_id=1380994881731952741&permissions=7107797346413761&integration_type=0&scope=bot)**: by [Ansh](https://github.com/titanxdevz)
+Hoshimi powers these bots:
+
+- **Official Bots**:
+    - **[Stelle](https://github.com/Ganyu-Studios/stelle-music)**: by [Ganyu Studios](https://github.com/Ganyu-Studios/stelle-music)
+
+- **Community Bots**:
+    - **[Miyu](https://ptb.discord.com/oauth2/authorize?client_id=1277180179273482280)**: by [Kenver](https://github.com/Kenver123)
+    - **[GoTTY](https://discord.com/oauth2/authorize?client_id=1352131392993230869)**: by [Void](https://github.com/voidemx)
+    - **[Flixo](https://discord.com/oauth2/authorize?client_id=1380994881731952741&permissions=7107797346413761&integration_type=0&scope=bot)**: by [Ansh](https://github.com/titanxdevz)
 
 ## 📝 Additional Notes
-I am currently working on this package.</br> This package takes some ideas provided from libraries like:
+I'm currently working on this package.</br> This package takes some ideas provided from libraries like:
 
 - 📦 [`lavalink-client`](https://github.com/Tomato6966/lavalink-client/)
 - 📦 [`kazagumo`](https://github.com/Takiyo0/Kazagumo)
@@ -126,7 +131,7 @@ But made with my code style and my knowledge and of course up-to-date.
 
 ## 📝 License
 
-Copyright © 2025 [Ganyu Studios](https://github.com/Ganyu-Studios).
+Copyright © 2026 [Ganyu Studios](https://github.com/Ganyu-Studios).
 
 This project is [MIT](LICENSE) licensed.
 
