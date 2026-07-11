@@ -218,7 +218,7 @@ export function validateSource(type: SearchSource | SourceName | string): Search
  * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
  * @returns {boolean} True when the track is a local resolved Track instance.
  */
-export function isResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackStructure {
+function isResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackStructure {
     if (!track) return false;
     // Use instanceof to ensure it's a Track class instance, not just a LavalinkTrack object
     // A resolved track has encoded and info, and no resolve function
@@ -239,7 +239,7 @@ export function isResolved(track: TrackResolvableStructure | AnyLavalinkTrack): 
  * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
  * @returns {boolean} True when the track is a local unresolved UnresolvedTrack instance.
  */
-export function isUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedTrack {
+function isUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedTrack {
     if (!track) return false;
     // Use instanceof to ensure it's an UnresolvedTrack class instance
     return (
@@ -259,7 +259,7 @@ export function isUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack)
  * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
  * @returns {boolean} True when the track is a Lavalink resolved track (not a local Track).
  */
-export function isLavalinkResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is LavalinkTrack {
+function isLavalinkResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is LavalinkTrack {
     if (!track || typeof track !== "object") return false;
     // Must have encoded and info, and NOT be a Track instance, and NOT have resolve
     return (
@@ -277,7 +277,7 @@ export function isLavalinkResolved(track: TrackResolvableStructure | AnyLavalink
  * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
  * @returns {boolean} True when the track is a Lavalink unresolved track (not a local UnresolvedTrack).
  */
-export function isLavalinkUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedLavalinkTrack {
+function isLavalinkUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedLavalinkTrack {
     if (!track || typeof track !== "object") return false;
     // Must have info and NOT be an UnresolvedTrack instance, and should not have the resolve function
     return (
@@ -295,7 +295,7 @@ export function isLavalinkUnresolved(track: TrackResolvableStructure | AnyLavali
  * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
  * @returns {boolean} True when the track is a stored track (TrackJSON structure).
  */
-export function isStoredTrack(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackJSON {
+function isStoredTrack(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackJSON {
     if (!track || typeof track !== "object") return false;
     return (
         typeof track.encoded === "string" &&
@@ -305,6 +305,19 @@ export function isStoredTrack(track: TrackResolvableStructure | AnyLavalinkTrack
         typeof track.requester !== "undefined"
     );
 }
+
+/**
+ *
+ * A collection of utility functions for track resolution and type checking.
+ * @constant
+ */
+export const TrackResolution = {
+    isResolved,
+    isUnresolved,
+    isLavalinkResolved,
+    isLavalinkUnresolved,
+    isStoredTrack,
+} as const;
 
 /**
  *

@@ -2,7 +2,7 @@ import { type Awaitable, DebugLevels, EventNames } from "../../types/Manager";
 import type { AnyLavalinkTrack } from "../../types/Player";
 import type { HoshimiQueueOptions, QueueJSON, SyncOptions, TrackJSON } from "../../types/Queue";
 import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
-import { isLavalinkResolved, isLavalinkUnresolved, isResolved, isStoredTrack, isUnresolved, stringify } from "../../util/functions/utils";
+import { TrackResolution, stringify } from "../../util/functions/utils";
 import { ResolveError, StorageError } from "../Errors";
 import type { QueueStorageAdapter } from "../storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../Track";
@@ -73,10 +73,11 @@ export class QueueUtils {
             `[Queue] -> [Utils] Building track for ${this.queue.player.guildId} | Input: ${stringify(track)} | Requester: ${stringify(trackRequester)}`,
         );
 
-        if (isResolved(track)) return track;
-        if (isUnresolved(track)) return track.resolve(this.queue.player);
-        if (isLavalinkResolved(track)) return Structures.Track(track, trackRequester);
-        if (isLavalinkUnresolved(track)) return Structures.UnresolvedTrack(track, trackRequester).resolve(this.queue.player);
+        if (TrackResolution.isResolved(track)) return track;
+        if (TrackResolution.isUnresolved(track)) return track.resolve(this.queue.player);
+        if (TrackResolution.isLavalinkResolved(track)) return Structures.Track(track, trackRequester);
+        if (TrackResolution.isLavalinkUnresolved(track))
+            return Structures.UnresolvedTrack(track, trackRequester).resolve(this.queue.player);
 
         throw new ResolveError(`Unable to build track from input: ${stringify(track)}`); // This should never happen, but just in case.
     }
@@ -140,15 +141,15 @@ export class QueueUtils {
         const storedQueue: QueueJSON | undefined = await this.storage.get(this.queue.player.guildId);
         if (!storedQueue) throw new StorageError(`No data found to sync for guildId: ${this.queue.player.guildId}`);
 
-        if (syncCurrent && storedQueue.current && !this.queue.current && isStoredTrack(storedQueue.current))
+        if (syncCurrent && storedQueue.current && !this.queue.current && TrackResolution.isStoredTrack(storedQueue.current))
             this.queue.current = Structures.Track(storedQueue.current, storedQueue.current.requester);
 
         const tracks: TrackStructure[] = storedQueue.tracks
-            .filter((track): track is TrackJSON => isStoredTrack(track))
+            .filter((track): track is TrackJSON => TrackResolution.isStoredTrack(track))
             .map((track): TrackStructure => Structures.Track(track, track.requester));
 
         const history: TrackStructure[] = storedQueue.history
-            .filter((track): track is TrackJSON => isStoredTrack(track))
+            .filter((track): track is TrackJSON => TrackResolution.isStoredTrack(track))
             .map((track): TrackStructure => Structures.Track(track, track.requester));
 
         const length: number = this.queue.tracks.length;
