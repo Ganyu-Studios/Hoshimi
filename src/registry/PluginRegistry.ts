@@ -1,6 +1,6 @@
 import { NodeError } from "../classes/Errors";
 import type { Node } from "../classes/node/Node";
-import { DebugLevels, EventNames, type Hint, type RestOrArray } from "../types/Manager";
+import { DebugLevels, type Hint, type RestOrArray } from "../types/Manager";
 import { PluginNames } from "../types/Node";
 import { normalize, toArray } from "../util/functions/utils";
 
@@ -387,8 +387,7 @@ export const PluginRegistry = {
         if (!info) throw new NodeError({ id: options.node.id, message: "Node is not ready yet." });
 
         if (options.node.isNodelink()) {
-            options.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            options.node.nodeManager.manager.debug(
                 DebugLevels.Node,
                 `[Node] Skipping plugin validation for node ${options.node.id} because it is a Nodelink node.`,
             );
@@ -396,8 +395,7 @@ export const PluginRegistry = {
         }
 
         if (skipAll) {
-            options.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            options.node.nodeManager.manager.debug(
                 DebugLevels.Node,
                 `[Node] Skipping plugin validation for node ${options.node.id} because skipValidation(true) is active.`,
             );
@@ -413,8 +411,7 @@ export const PluginRegistry = {
 
         const requestedCount: number = (options.required?.length ?? 0) + (options.any?.length ?? 0);
         if (requestedCount > 0 && !required.length && !any.length) {
-            options.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            options.node.nodeManager.manager.debug(
                 DebugLevels.Node,
                 `[Node] Skipping plugin validation for node ${options.node.id}: all requested capabilities are individually skipped.`,
             );

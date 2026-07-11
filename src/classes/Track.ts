@@ -1,4 +1,4 @@
-import { DebugLevels, EventNames, type Inferable, type SearchSource } from "../types/Manager";
+import { DebugLevels, type Inferable, type SearchSource } from "../types/Manager";
 import {
     type LavalinkTrack,
     type PluginInfo,
@@ -221,11 +221,7 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
                 .then((result): TrackStructure | undefined => result.tracks.at(0));
             if (!track) throw new ResolveError("Track could not be resolved from URI.");
 
-            player.manager.emit(
-                EventNames.Debug,
-                DebugLevels.Player,
-                `[Unresolved] -> [Track] Resolved the track from URI: ${this.info.uri}`,
-            );
+            player.manager.debug(DebugLevels.Player, `[Unresolved] -> [Track] Resolved the track from URI: ${this.info.uri}`);
 
             return track;
         }
@@ -238,8 +234,7 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
                 ? validateSource(this.info.sourceName)
                 : player.manager.options.defaultSearchSource;
 
-        player.manager.emit(
-            EventNames.Debug,
+        player.manager.debug(
             DebugLevels.Player,
             `[Unresolved] -> [Track] Searching for track with query: ${query} using source: ${source}`,
         );
@@ -269,8 +264,7 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
 
             if (!track) throw new ResolveError("Track could not be resolved from search query.");
 
-            player.manager.emit(
-                EventNames.Debug,
+            player.manager.debug(
                 DebugLevels.Player,
                 `[Unresolved] -> [Track] Resolved the track ${track.info.title} from search query: ${query}`,
             );

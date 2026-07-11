@@ -99,7 +99,7 @@ export enum FilterType {
      * DSPX echo filter.
      * @type {string}
      */
-    DSPXEcho = "echo",
+    DSPXEcho = FilterType.Echo,
     /**
      * DSPX normalization filter.
      * @type {string}

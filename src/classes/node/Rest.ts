@@ -1,5 +1,5 @@
 import type { Hoshimi } from "../..";
-import { DebugLevels, EventNames } from "../../types/Manager";
+import { DebugLevels } from "../../types/Manager";
 import type { UserAgent } from "../../types/Node";
 import { State } from "../../types/Node";
 import {
@@ -140,8 +140,7 @@ export class Rest {
             else fetchOptions.body = stringify(options.body);
         }
 
-        this.node.nodeManager.manager.emit(
-            EventNames.Debug,
+        this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
             `[Rest] -> [${this.node.id} : ${options.method}]: Url: ${this.restUrl} | Endpoint: ${options.endpoint} | Params: ${url.search} | Body: ${options.body ? stringify(options.body) : "None"} | Headers: ${stringify(headers)}`,
         );
@@ -187,16 +186,14 @@ export class Rest {
      */
     public updatePlayer(data: Partial<UpdatePlayerInfo>): Promise<LavalinkPlayer | null> {
         if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.node.nodeManager.manager.debug(
                 DebugLevels.Rest,
                 `[Rest] -> [${this.node.id}]: Skipped updatePlayer because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
             );
             return Promise.resolve(null);
         }
 
-        this.node.nodeManager.manager.emit(
-            EventNames.Debug,
+        this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
             `[Rest] -> [${this.node.id}]: Updated player data for guild: ${data.guildId} | Payload: ${stringify(data)}`,
         );
@@ -224,19 +221,14 @@ export class Rest {
      */
     public stopPlayer(guildId: string): Promise<LavalinkPlayer | null> {
         if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.node.nodeManager.manager.debug(
                 DebugLevels.Rest,
                 `[Rest] -> [${this.node.id}]: Skipped stopPlayer because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
             );
             return Promise.resolve(null);
         }
 
-        this.node.nodeManager.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Rest,
-            `[Rest] -> [${this.node.id}]: Stopped player for guild: ${guildId}`,
-        );
+        this.node.nodeManager.manager.debug(DebugLevels.Rest, `[Rest] -> [${this.node.id}]: Stopped player for guild: ${guildId}`);
 
         return this.updatePlayer({
             guildId,
@@ -260,19 +252,14 @@ export class Rest {
      */
     public async destroyPlayer(guildId: string): Promise<void> {
         if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.node.nodeManager.manager.debug(
                 DebugLevels.Rest,
                 `[Rest] -> [${this.node.id}]: Skipped destroyPlayer because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
             );
             return;
         }
 
-        this.node.nodeManager.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Rest,
-            `[Rest] -> [${this.node.id}]: Destroyed player for guild: ${guildId}`,
-        );
+        this.node.nodeManager.manager.debug(DebugLevels.Rest, `[Rest] -> [${this.node.id}]: Destroyed player for guild: ${guildId}`);
 
         await this.request({
             method: HttpMethods.Delete,
@@ -293,8 +280,7 @@ export class Rest {
      */
     public updateSession(options: SessionResumingOptions): Promise<LavalinkSession | null> {
         if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.node.nodeManager.manager.debug(
                 DebugLevels.Rest,
                 `[Rest] -> [${this.node.id}]: Skipped updateSession because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
             );
@@ -303,8 +289,7 @@ export class Rest {
 
         const { resuming, timeout } = options;
 
-        this.node.nodeManager.manager.emit(
-            EventNames.Debug,
+        this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
             `[Rest] -> [${this.node.id}]: Updated session for resumed: ${resuming} | Timeout: ${timeout ?? "None"}`,
         );
@@ -328,16 +313,14 @@ export class Rest {
      */
     public async getPlayers(): Promise<LavalinkPlayer[]> {
         if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.node.nodeManager.manager.debug(
                 DebugLevels.Rest,
                 `[Rest] -> [${this.node.id}]: Skipped getPlayers because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
             );
             return [];
         }
 
-        this.node.nodeManager.manager.emit(
-            EventNames.Debug,
+        this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
             `[Rest] -> [${this.node.id}]: Fetching all players for session id: ${this.sessionId}`,
         );
@@ -348,8 +331,7 @@ export class Rest {
             })) ?? [];
 
         if (!players.length) {
-            this.node.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.node.nodeManager.manager.debug(
                 DebugLevels.Rest,
                 `[Rest] <- [${this.node.id}]: No players found for session id: ${this.sessionId}`,
             );

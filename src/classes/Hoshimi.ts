@@ -257,8 +257,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                 }
 
                 if (player.destroyed) {
-                    this.emit(
-                        EventNames.Debug,
+                    this.debug(
                         DebugLevels.Player,
                         `[Player] -> [Voice] Player for guild: ${data.guild_id} is being destroyed, skipping voice state update handling.`,
                     );
@@ -266,16 +265,11 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                 }
 
                 if (data.id === player.voiceId) {
-                    this.emit(
-                        EventNames.Debug,
-                        DebugLevels.Player,
-                        `[Player] -> [Voice] The channel ${data.id} was deleted, disconnecting the player.`,
-                    );
+                    this.debug(DebugLevels.Player, `[Player] -> [Voice] The channel ${data.id} was deleted, disconnecting the player.`);
 
                     await player.destroy({ reason: DestroyReasons.VoiceChannelDeleted });
                 } else {
-                    this.emit(
-                        EventNames.Debug,
+                    this.debug(
                         DebugLevels.Player,
                         `[Player] -> [Voice] The channel ${data.id} was deleted, but it is not the player's channel.`,
                     );
@@ -301,8 +295,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     }
 
                     if (player.destroyed) {
-                        this.emit(
-                            EventNames.Debug,
+                        this.debug(
                             DebugLevels.Player,
                             `[Player] -> [Voice] Player for guild: ${data.guild_id} is being destroyed, skipping voice state update handling.`,
                         );
@@ -316,11 +309,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     // And also includes some abstract code.
                     if ("token" in data && "endpoint" in data) {
                         if (!player.voice.sessionId) {
-                            this.emit(
-                                EventNames.Debug,
-                                DebugLevels.Player,
-                                `[Player] -> [Voice] The session id is missing for: ${data.guild_id}`,
-                            );
+                            this.debug(DebugLevels.Player, `[Player] -> [Voice] The session id is missing for: ${data.guild_id}`);
 
                             return;
                         }
@@ -329,19 +318,14 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
                         const voice: LavalinkPlayerVoice | null = player.voice.toNode();
                         if (!voice) {
-                            this.emit(
-                                EventNames.Debug,
-                                DebugLevels.Player,
-                                `[Player] -> [Voice] Voice data is incomplete for: ${data.guild_id}`,
-                            );
+                            this.debug(DebugLevels.Player, `[Player] -> [Voice] Voice data is incomplete for: ${data.guild_id}`);
 
                             return;
                         }
 
                         await player.updatePlayer({ playerOptions: { voice } });
 
-                        this.emit(
-                            EventNames.Debug,
+                        this.debug(
                             DebugLevels.Player,
                             `[Player] -> [Voice] Updated the player voice for: ${data.guild_id} | Session: ${player.voice.sessionId} | Token: ${data.token} | Endpoint: ${data.endpoint}`,
                         );
@@ -357,8 +341,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     if (data.channel_id !== null) {
                         const voiceId: string = player.voiceId ?? player.options.voiceId;
                         if (data.channel_id !== voiceId) {
-                            this.emit(
-                                EventNames.Debug,
+                            this.debug(
                                 DebugLevels.Player,
                                 `[Player] -> [Voice] Updating the voice channel for: ${data.guild_id} | Old: ${voiceId} | New: ${data.channel_id}`,
                             );
@@ -370,8 +353,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
                             if (!player.connected) await player.connect();
 
-                            this.emit(
-                                EventNames.Debug,
+                            this.debug(
                                 DebugLevels.Player,
                                 `[Player] -> [VoiceMove] Player moved from channel: ${voiceId} to: ${data.channel_id} for guild: ${data.guild_id}`,
                             );
@@ -381,11 +363,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                             return;
                         }
                     } else {
-                        this.emit(
-                            EventNames.Debug,
-                            DebugLevels.Player,
-                            `[Player] -> [Voice] The channel id is missing for: ${data.guild_id}`,
-                        );
+                        this.debug(DebugLevels.Player, `[Player] -> [Voice] The channel id is missing for: ${data.guild_id}`);
 
                         const { autoDestroy, autoReconnect, autoQueue } = this.options.playerOptions.onDisconnect;
 
@@ -399,8 +377,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                                 const position: number = player.position;
                                 const paused: boolean = player.paused;
 
-                                this.emit(
-                                    EventNames.Debug,
+                                this.debug(
                                     DebugLevels.Player,
                                     `[Player] -> [Voice] Attempting to reconnect the player for: ${data.guild_id}`,
                                 );
@@ -410,8 +387,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                                 if (player.queue.current) return player.play({ track: player.queue.current, paused, position });
                                 if (!player.queue.isEmpty()) return player.play({ paused });
 
-                                this.emit(
-                                    EventNames.Debug,
+                                this.debug(
                                     DebugLevels.Player,
                                     `[Player] -> [Voice] No tracks to play after reconnect for: ${data.guild_id}`,
                                 );
@@ -470,8 +446,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
         }
 
         this.ready = amount > 0;
-        this.emit(
-            EventNames.Debug,
+        this.debug(
             DebugLevels.Player,
             `[Manager] -> [Init] The manager is ready: ${this.ready} | Nodes: ${amount} of ${this.nodeManager.nodes.size}`,
         );
@@ -545,8 +520,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                 tracks: [],
             };
 
-        this.emit(
-            EventNames.Debug,
+        this.debug(
             DebugLevels.Manager,
             `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Result: ${stringify(search)}`,
         );

@@ -38,8 +38,7 @@ async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Prom
 
         await this.queue.utils.save();
 
-        this.manager.emit(
-            EventNames.Debug,
+        this.manager.debug(
             DebugLevels.Player,
             `[Player] -> [Previous] The track: ${this.queue.current.info.title} has been added to the previous track list.`,
         );
@@ -121,8 +120,7 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
     if (this.queue.current) await this.queue.utils.save();
 
     this.manager.emit(EventNames.TrackStart, this, this.queue.current, payload);
-    this.manager.emit(
-        EventNames.Debug,
+    this.manager.debug(
         DebugLevels.Player,
         `[Player] -> [Start] The track: ${this.queue.current?.info.title ?? "Unknown"} has started playing.`,
     );
@@ -153,8 +151,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
     const reasons: TrackEndReason[] = [TrackEndReason.LoadFailed, TrackEndReason.Cleanup];
     if (reasons.includes(payload.reason)) {
         if (this.destroyed) {
-            this.manager.emit(
-                EventNames.Debug,
+            this.manager.debug(
                 DebugLevels.Player,
                 `[Player] -> [End] Player for guild: ${this.guildId} is being destroyed, skipping track end handling.`,
             );
@@ -166,11 +163,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         if (!this.queue.current) return queueEnd.call(this, current, payload);
 
         this.manager.emit(EventNames.TrackEnd, this, current, payload);
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`,
-        );
+        this.manager.debug(DebugLevels.Player, `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`);
 
         if (this.queue.current) await this.play({ noReplace: true });
 
@@ -182,11 +175,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
     await onEnd.call(this);
 
     this.manager.emit(EventNames.TrackEnd, this, current, payload);
-    this.manager.emit(
-        EventNames.Debug,
-        DebugLevels.Player,
-        `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`,
-    );
+    this.manager.debug(DebugLevels.Player, `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`);
 
     if (this.queue.current) await this.play({ noReplace: true });
 
@@ -202,11 +191,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
  */
 export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent): Promise<void> {
     this.manager.emit(EventNames.TrackStuck, this, this.queue.current, payload);
-    this.manager.emit(
-        EventNames.Debug,
-        DebugLevels.Player,
-        `[Player] -> [Stuck] The track: ${this.queue.current?.info.title ?? "Unknown"} has stuck.`,
-    );
+    this.manager.debug(DebugLevels.Player, `[Player] -> [Stuck] The track: ${this.queue.current?.info.title ?? "Unknown"} has stuck.`);
 
     const isStopPlaying = await this.data.get("internal_stopPlaying");
 
@@ -237,11 +222,7 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
  */
 export async function trackError(this: PlayerStructure, payload: TrackExceptionEvent): Promise<void> {
     this.manager.emit(EventNames.TrackError, this, this.queue.current, payload);
-    this.manager.emit(
-        EventNames.Debug,
-        DebugLevels.Player,
-        `[Player] -> [Error] The track: ${this.queue.current?.info.title ?? "Unknown"} has error.`,
-    );
+    this.manager.debug(DebugLevels.Player, `[Player] -> [Error] The track: ${this.queue.current?.info.title ?? "Unknown"} has error.`);
 }
 
 /**
@@ -264,8 +245,7 @@ export async function playerUpdate(this: NodeStructure, payload: PlayerUpdate): 
     player.lastPositionUpdate = Date.now();
 
     this.nodeManager.manager.emit(EventNames.PlayerUpdate, player, oldPlayer, payload);
-    this.nodeManager.manager.emit(
-        EventNames.Debug,
+    this.nodeManager.manager.debug(
         DebugLevels.Node,
         `[Player] -> [Update] Player updated: ${player.guildId} | Payload: ${stringify(payload)}`,
     );
@@ -279,8 +259,7 @@ export async function playerUpdate(this: NodeStructure, payload: PlayerUpdate): 
  */
 export async function lyricsFound(this: PlayerStructure, payload: LyricsFoundEvent): Promise<void> {
     this.manager.emit(EventNames.LyricsFound, this, this.queue.current, payload);
-    this.manager.emit(
-        EventNames.Debug,
+    this.manager.debug(
         DebugLevels.Player,
         `[Player] -> [Lyrics] The lyrics have been found: ${this.guildId} | Payload: ${stringify(payload)}`,
     );
@@ -294,8 +273,7 @@ export async function lyricsFound(this: PlayerStructure, payload: LyricsFoundEve
  */
 export async function lyricsLine(this: PlayerStructure, payload: LyricsLineEvent): Promise<void> {
     this.manager.emit(EventNames.LyricsLine, this, this.queue.current, payload);
-    this.manager.emit(
-        EventNames.Debug,
+    this.manager.debug(
         DebugLevels.Player,
         `[Player] -> [Lyrics] The lyrics line has been found: ${this.guildId} | Payload: ${stringify(payload)}`,
     );
@@ -309,8 +287,7 @@ export async function lyricsLine(this: PlayerStructure, payload: LyricsLineEvent
  */
 export async function lyricsNotFound(this: PlayerStructure, payload: LyricsNotFoundEvent): Promise<void> {
     this.manager.emit(EventNames.LyricsNotFound, this, this.queue.current, payload);
-    this.manager.emit(
-        EventNames.Debug,
+    this.manager.debug(
         DebugLevels.Player,
         `[Player] -> [Lyrics] The lyrics were not found: ${this.guildId} | Payload: ${stringify(payload)}`,
     );
@@ -324,11 +301,7 @@ export async function lyricsNotFound(this: PlayerStructure, payload: LyricsNotFo
  */
 export async function socketClosed(this: PlayerStructure, payload: WebSocketClosedEvent): Promise<void> {
     this.manager.emit(EventNames.WebSocketClosed, this, payload);
-    this.manager.emit(
-        EventNames.Debug,
-        DebugLevels.Player,
-        `[Player] -> [Socket] The socket has closed: ${this.guildId} | Payload: ${stringify(payload)}`,
-    );
+    this.manager.debug(DebugLevels.Player, `[Player] -> [Socket] The socket has closed: ${this.guildId} | Payload: ${stringify(payload)}`);
 }
 
 /**
@@ -345,8 +318,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
         if (await player.data.get("internal_nodeChange")) continue;
         try {
             if (!player.isPlaying() && !player.queue.totalSize) {
-                this.nodeManager.manager.emit(
-                    EventNames.Debug,
+                this.nodeManager.manager.debug(
                     DebugLevels.Node,
                     `[Player] -> [Resume] Destroyed player for guild ${player.guildId} due to empty queue.`,
                 );
@@ -358,8 +330,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
 
             const voice: LavalinkPlayerVoice | null = player.voice.toNode();
             if (!voice) {
-                this.nodeManager.manager.emit(
-                    EventNames.Debug,
+                this.nodeManager.manager.debug(
                     DebugLevels.Node,
                     `[Player] -> [Resume] Skipping guild ${player.guildId} because voice data is incomplete.`,
                 );
@@ -382,8 +353,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
             this.nodeManager.manager.emit(EventNames.NodeError, this, error);
         }
 
-        this.nodeManager.manager.emit(
-            EventNames.Debug,
+        this.nodeManager.manager.debug(
             DebugLevels.Node,
             `[Player] -> [Resume] Resumed player for guild ${player.guildId} using the library.`,
         );

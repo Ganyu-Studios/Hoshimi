@@ -195,8 +195,7 @@ export class PlayerVoiceState {
             },
         });
 
-        this.player.manager.emit(
-            EventNames.Debug,
+        this.player.manager.debug(
             DebugLevels.Player,
             `[Player] -> [VoiceState] Updated voice state for guild: ${this.player.guildId} with voiceId: ${voiceId}`,
         );
@@ -219,11 +218,7 @@ export class PlayerVoiceState {
 
         await this.setState();
 
-        this.player.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Connect] Player connected for guild: ${this.player.guildId}`,
-        );
+        this.player.manager.debug(DebugLevels.Player, `[Player] -> [Connect] Player connected for guild: ${this.player.guildId}`);
 
         this.player.connected = true;
     }
@@ -247,11 +242,7 @@ export class PlayerVoiceState {
 
         await this.setState({ voiceId: undefined });
 
-        this.player.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Disconnect] Player disconnected for guild: ${this.player.guildId}`,
-        );
+        this.player.manager.debug(DebugLevels.Player, `[Player] -> [Disconnect] Player disconnected for guild: ${this.player.guildId}`);
 
         this.player.manager.emit(EventNames.PlayerDisconnect, this.player);
 
@@ -275,8 +266,7 @@ export class PlayerVoiceState {
         const oldChannelId: string | undefined = this.player.voiceId;
         await this.setState({ voiceId });
 
-        this.player.manager.emit(
-            EventNames.Debug,
+        this.player.manager.debug(
             DebugLevels.Player,
             `[Player] -> [VoiceMove] Player moved from channel: ${oldChannelId} to: ${voiceId} for guild: ${this.player.guildId}`,
         );

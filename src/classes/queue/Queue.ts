@@ -248,11 +248,7 @@ export class Queue {
     public async unshift(...tracks: TrackResolvableStructure[]): Promise<this> {
         this.tracks.unshift(...tracks);
 
-        this.player.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Queue,
-            `[Queue] -> [Unshift] Added ${this.tracks.length} tracks to the queue.`,
-        );
+        this.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Unshift] Added ${this.tracks.length} tracks to the queue.`);
 
         await this.utils.save();
 
@@ -356,11 +352,7 @@ export class Queue {
         await this.add(track, to - 1);
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
-        this.player.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Queue,
-            `[Queue] -> [Move] Moved track ${track.info.title} to position ${to}.`,
-        );
+        this.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Move] Moved track ${track.info.title} to position ${to}.`);
 
         await this.utils.save();
 

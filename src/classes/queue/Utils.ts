@@ -1,8 +1,8 @@
-import { type Awaitable, DebugLevels, EventNames } from "../../types/Manager";
+import { type Awaitable, DebugLevels } from "../../types/Manager";
 import type { AnyLavalinkTrack } from "../../types/Player";
 import type { HoshimiQueueOptions, QueueJSON, SyncOptions, TrackJSON } from "../../types/Queue";
 import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
-import { TrackResolution, stringify } from "../../util/functions/utils";
+import { stringify, TrackResolution } from "../../util/functions/utils";
 import { ResolveError, StorageError } from "../Errors";
 import type { QueueStorageAdapter } from "../storage/adapters/QueueAdapter";
 import type { TrackRequester, TrackResolvableStructure } from "../Track";
@@ -67,8 +67,7 @@ export class QueueUtils {
         const currentRequester: TrackRequester | undefined = "requester" in track ? track.requester : track.userData?.requester;
         const trackRequester: TrackRequester = await requesterFn(requester ?? currentRequester ?? {});
 
-        this.queue.player.manager.emit(
-            EventNames.Debug,
+        this.queue.player.manager.debug(
             DebugLevels.Queue,
             `[Queue] -> [Utils] Building track for ${this.queue.player.guildId} | Input: ${stringify(track)} | Requester: ${stringify(trackRequester)}`,
         );
@@ -97,8 +96,7 @@ export class QueueUtils {
 
         if (length > max) this.queue.history.splice(0, length - max);
 
-        this.queue.player.manager.emit(
-            EventNames.Debug,
+        this.queue.player.manager.debug(
             DebugLevels.Queue,
             `[Queue] -> [Adapter] Saving queue for ${this.queue.player.guildId} | Object: ${stringify(this.queue.toJSON())}`,
         );
@@ -116,11 +114,7 @@ export class QueueUtils {
      * ```
      */
     public destroy(): Awaitable<boolean> {
-        this.queue.player.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Queue,
-            `[Queue] -> [Adapter] Destroying queue for ${this.queue.player.guildId}`,
-        );
+        this.queue.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Adapter] Destroying queue for ${this.queue.player.guildId}`);
 
         return this.storage.delete(this.queue.player.guildId);
     }
@@ -157,8 +151,7 @@ export class QueueUtils {
         if (tracks.length) this.queue.tracks.splice(override ? 0 : length, override ? length : 0, ...tracks);
         if (history.length) this.queue.history.splice(0, override ? length : 0, ...history);
 
-        this.queue.player.manager.emit(
-            EventNames.Debug,
+        this.queue.player.manager.debug(
             DebugLevels.Queue,
             `[Queue] -> [Adapter] Syncing queue for ${this.queue.player.guildId} | Object: ${stringify(storedQueue)}`,
         );

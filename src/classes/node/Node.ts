@@ -34,7 +34,7 @@ import {
     type TrackStructure,
 } from "../../types/Structures";
 import { clearHeartbeatTimer, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
-import { stringify, validateQuery } from "../../util/functions/utils";
+import { censor, stringify, validateQuery } from "../../util/functions/utils";
 import { NodeError } from "../Errors";
 
 /**
@@ -416,8 +416,7 @@ export class Node {
             headers["Session-Id"] = this.options.sessionId;
             this.sessionId = this.options.sessionId;
 
-            this.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.nodeManager.manager.debug(
                 DebugLevels.Node,
                 `[Socket] -> [${this.id}]: The session id is present. | Session: ${this.options.sessionId} | Resuming: ${this.session.resuming}`,
             );
@@ -430,10 +429,9 @@ export class Node {
         this.ws.on("error", onError.bind(this));
         this.ws.on("close", onClose.bind(this));
 
-        this.nodeManager.manager.emit(
-            EventNames.Debug,
+        this.nodeManager.manager.debug(
             DebugLevels.Node,
-            `[Socket] -> [${this.id}]: Connecting to ${this.address} | State: ${this.state} | Session: ${this.sessionId} | Resumed: ${this.session.resuming} | Penalties: ${this.penalties} | Reconnects: ${this.retryAmount} | Headers: ${stringify(headers)}`,
+            `[Socket] -> [${this.id}]: Connecting to ${this.address} | State: ${this.state} | Session: ${this.sessionId} | Resumed: ${this.session.resuming} | Penalties: ${this.penalties} | Reconnects: ${this.retryAmount} | Headers: ${stringify(censor({ data: headers, keys: ["Authorization"] }))}`,
         );
     }
 

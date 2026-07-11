@@ -35,8 +35,7 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
 
     startHeartbeat.call(this);
 
-    this.nodeManager.manager.emit(
-        EventNames.Debug,
+    this.nodeManager.manager.debug(
         DebugLevels.Node,
         `[Socket] -> [${this.id}]: Connection handshake complete with ${this.address}. | API Version: ${apiVersion} | Resumed: ${isResume}`,
     );
@@ -57,8 +56,7 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
     this.sessionId = null;
     this.state = State.Idle;
 
-    this.nodeManager.manager.emit(
-        EventNames.Debug,
+    this.nodeManager.manager.debug(
         DebugLevels.Node,
         `[Socket] -> [${this.id}]: Connection closed with ${this.address}. | Code: ${code} | Reason: ${reason}`,
     );
@@ -84,8 +82,7 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
             );
 
             if (!nodes.length) {
-                this.nodeManager.manager.emit(
-                    EventNames.Debug,
+                this.nodeManager.manager.debug(
                     DebugLevels.Node,
                     `[PlayerMove] -> [${this.id}]: No connected nodes available to move players to.`,
                 );
@@ -104,8 +101,7 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
         }
 
         if (!targetNode || targetNode.id === this.id) {
-            this.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.nodeManager.manager.debug(
                 DebugLevels.Node,
                 `[PlayerMove] -> [${this.id}]: No valid target node available to move players to.`,
             );
@@ -117,18 +113,13 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
             const successful: number = results.filter((r) => r.status === "fulfilled").length;
             const failed: number = results.length - successful;
 
-            this.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.nodeManager.manager.debug(
                 DebugLevels.Node,
                 `[PlayerMove] -> [${this.id}]: Moved ${successful} players to ${targetNode.id} from disconnected node. Failed: ${failed}`,
             );
         }
     } catch (error) {
-        this.nodeManager.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Node,
-            `[PlayerMove] -> [${this.id}]: Error while moving players. Error: ${error}`,
-        );
+        this.nodeManager.manager.debug(DebugLevels.Node, `[PlayerMove] -> [${this.id}]: Error while moving players. Error: ${error}`);
     }
 }
 
@@ -141,15 +132,13 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
  */
 export function onError(this: NodeStructure, error?: Error): void {
     this.nodeManager.manager.emit(EventNames.NodeError, this, error);
-    this.nodeManager.manager.emit(
-        EventNames.Debug,
+    this.nodeManager.manager.debug(
         DebugLevels.Node,
         `[Socket] -> [${this.id}]: Connection error with ${this.address}. | Error: ${error?.message ?? "Unknown error"}`,
     );
 
     if (this.options.closeOnError && this.ws) {
-        this.nodeManager.manager.emit(
-            EventNames.Debug,
+        this.nodeManager.manager.debug(
             DebugLevels.Node,
             `[Socket] -> [${this.id}]: closeOnError is enabled. Closing socket to force reconnect.`,
         );
@@ -180,8 +169,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
             case OpCodes.Stats:
                 {
                     this.stats = payload;
-                    this.nodeManager.manager.emit(
-                        EventNames.Debug,
+                    this.nodeManager.manager.debug(
                         DebugLevels.Node,
                         `[Socket] <- [${this.id}]: Received stats. | System load: ${this.penalties}`,
                     );
@@ -191,8 +179,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
             case OpCodes.Ready:
                 {
                     if (!payload.sessionId) {
-                        this.nodeManager.manager.emit(
-                            EventNames.Debug,
+                        this.nodeManager.manager.debug(
                             DebugLevels.Node,
                             `[Socket] -> [${this.id}]: Session id was not provided. Breaking up the connection...`,
                         );
@@ -216,8 +203,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                         const timeout: number = sessionOptions.timeout;
 
                         this.nodeManager.manager.emit(EventNames.NodeResumed, this, players, payload);
-                        this.nodeManager.manager.emit(
-                            EventNames.Debug,
+                        this.nodeManager.manager.debug(
                             DebugLevels.Node,
                             `[Socket] <- [${this.id}]: Resumed session. | Session id: ${payload.sessionId} | Players: ${players.length} | Resumed: ${payload.resumed} | Timeout: ${timeout}ms`,
                         );
@@ -236,8 +222,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     if (resuming) {
                         const timeout: number = sessionOptions.timeout;
 
-                        this.nodeManager.manager.emit(
-                            EventNames.Debug,
+                        this.nodeManager.manager.debug(
                             DebugLevels.Node,
                             `[Socket] -> [${this.id}]: Setting timeout to resume session. | Timeout: ${timeout}ms`,
                         );
@@ -245,8 +230,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                         await this.updateSession({ resuming, timeout });
                     }
 
-                    this.nodeManager.manager.emit(
-                        EventNames.Debug,
+                    this.nodeManager.manager.debug(
                         DebugLevels.Node,
                         `[Socket] <- [${this.id}]: Received ready event. | Session id: ${payload.sessionId} | Resumed: ${payload.resumed}`,
                     );
@@ -305,11 +289,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
             }
         }
 
-        this.nodeManager.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Node,
-            `[Socket] -> [${this.id}]: Received payload: ${stringify(payload)}`,
-        );
+        this.nodeManager.manager.debug(DebugLevels.Node, `[Socket] -> [${this.id}]: Received payload: ${stringify(payload)}`);
     } catch (error) {
         this.nodeManager.manager.emit(EventNames.NodeError, this, error);
     }
@@ -332,8 +312,7 @@ export function startHeartbeat(this: NodeStructure): void {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
         if (!this.isAlive) {
-            this.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.nodeManager.manager.debug(
                 DebugLevels.Node,
                 `[Socket] -> [${this.id}]: No pong received within ${interval}ms. Terminating socket.`,
             );
@@ -346,8 +325,7 @@ export function startHeartbeat(this: NodeStructure): void {
         try {
             this.ws.ping();
         } catch (error) {
-            this.nodeManager.manager.emit(
-                EventNames.Debug,
+            this.nodeManager.manager.debug(
                 DebugLevels.Node,
                 `[Socket] -> [${this.id}]: Ping failed. Terminating socket. | Error: ${(error as Error).message}`,
             );
@@ -363,8 +341,7 @@ export function startHeartbeat(this: NodeStructure): void {
  */
 export function onPong(this: NodeStructure): void {
     this.isAlive = true;
-    this.nodeManager.manager.emit(
-        EventNames.Debug,
+    this.nodeManager.manager.debug(
         DebugLevels.Node,
         `[Socket] -> [${this.id}]: Received pong from ${this.address}. Marking socket as alive.`,
     );

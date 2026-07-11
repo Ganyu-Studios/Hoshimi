@@ -347,11 +347,7 @@ export class Player {
             ...(this.queue.current.userData ?? {}),
         };
 
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Play] A new track is playing: ${this.queue.current.info.title ?? "Unknown"}`,
-        );
+        this.manager.debug(DebugLevels.Player, `[Player] -> [Play] A new track is playing: ${this.queue.current.info.title ?? "Unknown"}`);
 
         // Reset position to start when playing a new track (unless a specific position is provided)
         const position: number = options.position ?? 0;
@@ -540,11 +536,7 @@ export class Player {
         await this.updatePlayer({ playerOptions });
         await this.filterManager.apply();
 
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`,
-        );
+        this.manager.debug(DebugLevels.Player, `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`);
 
         await this.data.delete("internal_nodeChange");
     }
@@ -562,11 +554,7 @@ export class Player {
      */
     public async destroy(options: DestroyOptions = {}): Promise<void> {
         if (this.destroyed) {
-            this.manager.emit(
-                EventNames.Debug,
-                DebugLevels.Player,
-                `[Player] -> [Destroy] Player for guild: ${this.guildId} is already being destroyed.`,
-            );
+            this.manager.debug(DebugLevels.Player, `[Player] -> [Destroy] Player for guild: ${this.guildId} is already being destroyed.`);
 
             if (!this.destroyPromise) return;
 
@@ -584,19 +572,14 @@ export class Player {
             await this.queue.utils.destroy();
             await this.node.destroyPlayer(this.guildId);
         } catch (error) {
-            this.manager.emit(
-                EventNames.Debug,
+            this.manager.debug(
                 DebugLevels.Player,
                 `[Player] -> [Destroy] Error during destroy for guild: ${this.guildId} | Error: ${(error as Error).message}`,
             );
         } finally {
             this.manager.deletePlayer(this.guildId);
             this.manager.emit(EventNames.PlayerDestroy, this, reason);
-            this.manager.emit(
-                EventNames.Debug,
-                DebugLevels.Player,
-                `[Player] -> [Destroy] Destroyed player for guild: ${this.guildId} | Reason: ${reason}`,
-            );
+            this.manager.debug(DebugLevels.Player, `[Player] -> [Destroy] Destroyed player for guild: ${this.guildId} | Reason: ${reason}`);
             resolver.resolve();
             this.destroyPromise = null;
         }
@@ -651,11 +634,7 @@ export class Player {
 
         await this.updatePlayer({ playerOptions: { volume: this.volume } });
 
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Volume] Player volume set to ${this.volume}% for guild: ${this.guildId}`,
-        );
+        this.manager.debug(DebugLevels.Player, `[Player] -> [Volume] Player volume set to ${this.volume}% for guild: ${this.guildId}`);
 
         return;
     }
@@ -675,11 +654,7 @@ export class Player {
         if (!LoopValues.includes(mode)) throw new PlayerError(`Invalid loop mode. Valid modes are: ${LoopValues.join(", ")}`);
 
         this.loop = mode;
-        this.manager.emit(
-            EventNames.Debug,
-            DebugLevels.Player,
-            `[Player] -> [Loop] Player loop mode set to ${mode} for guild: ${this.guildId}`,
-        );
+        this.manager.debug(DebugLevels.Player, `[Player] -> [Loop] Player loop mode set to ${mode} for guild: ${this.guildId}`);
 
         return this;
     }

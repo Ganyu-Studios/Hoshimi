@@ -14,6 +14,124 @@ import type { PromiseWithResolvers } from "../../types/Utility";
 import { UrlRegex } from "../constants";
 
 /**
+ * Check whether a track is a local Track instance (resolved).
+ * Only returns true for Track class instances (not generic LavalinkTrack objects).
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a local resolved Track instance.
+ */
+function isResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackStructure {
+    if (!track) return false;
+    // Use instanceof to ensure it's a Track class instance, not just a LavalinkTrack object
+    // A resolved track has encoded and info, and no resolve function
+    return (
+        track instanceof Track &&
+        typeof track.encoded === "string" &&
+        typeof track.info === "object" &&
+        !("resolve" in track && typeof track.resolve === "function") &&
+        "requester" in track &&
+        typeof track.requester !== "undefined" &&
+        typeof track.info.title === "string"
+    );
+}
+
+/**
+ * Check whether a track is a local UnresolvedTrack instance (unresolved).
+ * Only returns true for UnresolvedTrack class instances.
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a local unresolved UnresolvedTrack instance.
+ */
+function isUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedTrack {
+    if (!track) return false;
+    // Use instanceof to ensure it's an UnresolvedTrack class instance
+    return (
+        track instanceof UnresolvedTrack &&
+        "resolve" in track &&
+        typeof track.resolve === "function" &&
+        typeof track.requester !== "undefined" &&
+        typeof track.info === "object" &&
+        typeof track.info.title === "string"
+    );
+}
+
+/**
+ * Check whether a track is a Lavalink-compatible resolved track (not a local Track instance).
+ * Returns true for LavalinkTrack objects that have encoded and info but are not Track class instances.
+ * This is for raw Lavalink track objects from the API or other sources.
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a Lavalink resolved track (not a local Track).
+ */
+function isLavalinkResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is LavalinkTrack {
+    if (!track || typeof track !== "object") return false;
+    // Must have encoded and info, and NOT be a Track instance, and NOT have resolve
+    return (
+        !(track instanceof Track) &&
+        typeof track.encoded === "string" &&
+        typeof track.info === "object" &&
+        !("resolve" in track && typeof track.resolve === "function") &&
+        "requester" in track
+    );
+}
+
+/**
+ * Check whether a track is a Lavalink-compatible unresolved track (not a local UnresolvedTrack instance).
+ * Returns true for UnresolvedLavalinkTrack objects that have a resolve-like structure but are not UnresolvedTrack instances.
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a Lavalink unresolved track (not a local UnresolvedTrack).
+ */
+function isLavalinkUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedLavalinkTrack {
+    if (!track || typeof track !== "object") return false;
+    // Must have info and NOT be an UnresolvedTrack instance, and should not have the resolve function
+    return (
+        !(track instanceof UnresolvedTrack) &&
+        "info" in track &&
+        typeof track.info === "object" &&
+        typeof track.info?.title === "string" &&
+        !("resolve" in track && typeof track.resolve === "function")
+    );
+}
+
+/**
+ * Check whether a track is a stored track (has the structure of a TrackJSON object).
+ * This is used to identify tracks that come from storage and need to be transformed back into Track instances.
+ * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
+ * @returns {boolean} True when the track is a stored track (TrackJSON structure).
+ */
+function isStoredTrack(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackJSON {
+    if (!track || typeof track !== "object") return false;
+    return (
+        typeof track.encoded === "string" &&
+        typeof track.info === "object" &&
+        typeof track.info.title === "string" &&
+        "requester" in track &&
+        typeof track.requester !== "undefined"
+    );
+}
+
+/**
+ *
+ * Validate if the node options are correct.
+ * @param {NodeOptions} options The node options to validate.
+ * @returns {boolean} If the node options are correct.
+ */
+function isNode(options: NodeOptions): boolean {
+    return (
+        typeof options.host === "string" &&
+        typeof options.port === "number" &&
+        typeof options.password === "string" &&
+        (typeof options.id === "string" || typeof options.id === "undefined") &&
+        (typeof options.secure === "boolean" || typeof options.secure === "undefined") &&
+        (typeof options.sessionId === "string" || typeof options.sessionId === "undefined") &&
+        (typeof options.retryAmount === "number" || typeof options.retryAmount === "undefined") &&
+        (typeof options.retryDelay === "number" || typeof options.retryDelay === "undefined") &&
+        (typeof options.restTimeout === "number" || typeof options.restTimeout === "undefined") &&
+        (typeof options.heartbeat === "object" || typeof options.heartbeat === "undefined") &&
+        (typeof options.closeOnError === "boolean" || typeof options.closeOnError === "undefined") &&
+        (typeof options.heartbeat?.interval === "number" || typeof options.heartbeat?.interval === "undefined") &&
+        (typeof options.heartbeat?.statsTimeout === "number" || typeof options.heartbeat?.statsTimeout === "undefined")
+    );
+}
+
+/**
  *
  * Validate the manager options.
  * @param {HoshimiOptions} options The options to validate.
@@ -213,113 +331,6 @@ export function validateSource(type: SearchSource | SourceName | string): Search
 }
 
 /**
- * Check whether a track is a local Track instance (resolved).
- * Only returns true for Track class instances (not generic LavalinkTrack objects).
- * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
- * @returns {boolean} True when the track is a local resolved Track instance.
- */
-function isResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackStructure {
-    if (!track) return false;
-    // Use instanceof to ensure it's a Track class instance, not just a LavalinkTrack object
-    // A resolved track has encoded and info, and no resolve function
-    return (
-        track instanceof Track &&
-        typeof track.encoded === "string" &&
-        typeof track.info === "object" &&
-        !("resolve" in track && typeof track.resolve === "function") &&
-        "requester" in track &&
-        typeof track.requester !== "undefined" &&
-        typeof track.info.title === "string"
-    );
-}
-
-/**
- * Check whether a track is a local UnresolvedTrack instance (unresolved).
- * Only returns true for UnresolvedTrack class instances.
- * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
- * @returns {boolean} True when the track is a local unresolved UnresolvedTrack instance.
- */
-function isUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedTrack {
-    if (!track) return false;
-    // Use instanceof to ensure it's an UnresolvedTrack class instance
-    return (
-        track instanceof UnresolvedTrack &&
-        "resolve" in track &&
-        typeof track.resolve === "function" &&
-        typeof track.requester !== "undefined" &&
-        typeof track.info === "object" &&
-        typeof track.info.title === "string"
-    );
-}
-
-/**
- * Check whether a track is a Lavalink-compatible resolved track (not a local Track instance).
- * Returns true for LavalinkTrack objects that have encoded and info but are not Track class instances.
- * This is for raw Lavalink track objects from the API or other sources.
- * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
- * @returns {boolean} True when the track is a Lavalink resolved track (not a local Track).
- */
-function isLavalinkResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is LavalinkTrack {
-    if (!track || typeof track !== "object") return false;
-    // Must have encoded and info, and NOT be a Track instance, and NOT have resolve
-    return (
-        !(track instanceof Track) &&
-        typeof track.encoded === "string" &&
-        typeof track.info === "object" &&
-        !("resolve" in track && typeof track.resolve === "function") &&
-        "requester" in track
-    );
-}
-
-/**
- * Check whether a track is a Lavalink-compatible unresolved track (not a local UnresolvedTrack instance).
- * Returns true for UnresolvedLavalinkTrack objects that have a resolve-like structure but are not UnresolvedTrack instances.
- * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
- * @returns {boolean} True when the track is a Lavalink unresolved track (not a local UnresolvedTrack).
- */
-function isLavalinkUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is UnresolvedLavalinkTrack {
-    if (!track || typeof track !== "object") return false;
-    // Must have info and NOT be an UnresolvedTrack instance, and should not have the resolve function
-    return (
-        !(track instanceof UnresolvedTrack) &&
-        "info" in track &&
-        typeof track.info === "object" &&
-        typeof track.info?.title === "string" &&
-        !("resolve" in track && typeof track.resolve === "function")
-    );
-}
-
-/**
- * Check whether a track is a stored track (has the structure of a TrackJSON object).
- * This is used to identify tracks that come from storage and need to be transformed back into Track instances.
- * @param {TrackResolvableStructure | LavalinkTrack | UnresolvedLavalinkTrack} track The track to check.
- * @returns {boolean} True when the track is a stored track (TrackJSON structure).
- */
-function isStoredTrack(track: TrackResolvableStructure | AnyLavalinkTrack): track is TrackJSON {
-    if (!track || typeof track !== "object") return false;
-    return (
-        typeof track.encoded === "string" &&
-        typeof track.info === "object" &&
-        typeof track.info.title === "string" &&
-        "requester" in track &&
-        typeof track.requester !== "undefined"
-    );
-}
-
-/**
- *
- * A collection of utility functions for track resolution and type checking.
- * @constant
- */
-export const TrackResolution = {
-    isResolved,
-    isUnresolved,
-    isLavalinkResolved,
-    isLavalinkUnresolved,
-    isStoredTrack,
-} as const;
-
-/**
  *
  * Check if the value is defined (not undefined or null).
  * @param {unknown} value
@@ -473,27 +484,65 @@ export function normalize(input: string): string {
 }
 
 /**
- *
- * Validate if the node options are correct.
- * @param {NodeOptions} options The node options to validate.
- * @returns {boolean} If the node options are correct.
+ * This type represents a value that can be censored.
  */
-function isNode(options: NodeOptions): boolean {
-    return (
-        typeof options.host === "string" &&
-        typeof options.port === "number" &&
-        typeof options.password === "string" &&
-        (typeof options.id === "string" || typeof options.id === "undefined") &&
-        (typeof options.secure === "boolean" || typeof options.secure === "undefined") &&
-        (typeof options.sessionId === "string" || typeof options.sessionId === "undefined") &&
-        (typeof options.retryAmount === "number" || typeof options.retryAmount === "undefined") &&
-        (typeof options.retryDelay === "number" || typeof options.retryDelay === "undefined") &&
-        (typeof options.restTimeout === "number" || typeof options.restTimeout === "undefined") &&
-        (typeof options.heartbeat === "object" || typeof options.heartbeat === "undefined") &&
-        (typeof options.closeOnError === "boolean" || typeof options.closeOnError === "undefined") &&
-        (typeof options.heartbeat?.interval === "number" || typeof options.heartbeat?.interval === "undefined") &&
-        (typeof options.heartbeat?.statsTimeout === "number" || typeof options.heartbeat?.statsTimeout === "undefined")
-    );
+type Censurable = string | object;
+
+/**
+ * Options for the censoring operation.
+ */
+interface CensorOptions<T extends Censurable> {
+    /**
+     * The data to censor (string or object).
+     * @type {T}
+     */
+    data: T;
+    /**
+     * The symbol to use for censoring (default is "*").
+     * @type {string}
+     * @default "*"
+     */
+    symbol?: string;
+    /**
+     * Specific keys to censor (only applicable if `data` is an object).
+     * @type {(keyof T)[]}
+     * @default undefined
+     */
+    keys?: (keyof T)[];
+}
+
+/**
+ *
+ * Censors a string or an object by replacing its content with a specified symbol.
+ * @param {CensorOptions<T>} options The options for the censoring operation.
+ * @param {T} options.data The data to censor (string or object).
+ * @param {string} [options.symbol="*"] The symbol to use for censoring (default is "*").
+ * @param {(keyof T)[]} [options.keys] Specific keys to censor (only applicable if `data` is an object).
+ * @returns {T} The censored data, with strings replaced by the symbol and object properties censored as specified.
+ */
+export function censor<T extends Censurable>(options: CensorOptions<T>): T {
+    const { data, symbol = "*", keys } = options;
+
+    if (typeof data === "string") return symbol.repeat(data.length) as T;
+
+    const result = { ...data } as Record<string, unknown>;
+
+    for (const key in result) {
+        const shouldCensor = !keys || keys.includes(key as keyof T);
+        if (!shouldCensor) continue;
+
+        const value = result[key];
+
+        if (typeof value === "string") {
+            result[key] = symbol.repeat(value.length);
+        } else if (typeof value === "object" && value !== null) {
+            result[key] = censor({ data: value as Censurable, symbol });
+        } else if (value !== undefined && value !== null) {
+            result[key] = symbol;
+        }
+    }
+
+    return result as T;
 }
 
 /**
@@ -501,9 +550,24 @@ function isNode(options: NodeOptions): boolean {
  */
 export function createResolver<T>() {
     const resolver = {} as PromiseWithResolvers<T>;
+
     resolver.promise = new Promise<T>((resolve, reject) => {
         resolver.reject = reject;
         resolver.resolve = resolve;
     });
+
     return resolver;
 }
+
+/**
+ *
+ * A collection of utility functions for track resolution and type checking.
+ * @constant
+ */
+export const TrackResolution = {
+    isResolved,
+    isUnresolved,
+    isLavalinkResolved,
+    isLavalinkUnresolved,
+    isStoredTrack,
+} as const;
