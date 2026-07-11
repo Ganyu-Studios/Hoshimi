@@ -79,13 +79,13 @@ async function queueEnd(
     if (typeof this.manager.options.queueOptions.autoplayFn === "function") {
         await this.manager.options.queueOptions.autoplayFn(this, track);
 
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Queue] -> [Autoplay] Autoplay function executed.");
+        this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Autoplay function executed.");
 
         if (this.queue.size > 0) await onEnd.call(this);
         if (this.queue.current) {
             if (payload.type === PlayerEventType.TrackEnd) this.manager.emit(EventNames.TrackEnd, this, track, payload);
 
-            this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Queue] -> [Autoplay] Track(s) queued from autoplay function.");
+            this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Track(s) queued from autoplay function.");
 
             return this.play({ noReplace: true, paused: false });
         }
@@ -102,7 +102,7 @@ async function queueEnd(
     await onEnd.call(this, false);
 
     this.manager.emit(EventNames.QueueEnd, this, this.queue);
-    this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Queue] The queue has ended.");
+    this.manager.debug(DebugLevels.Player, "[Player] -> [Queue] The queue has ended.");
 }
 
 /**
@@ -339,7 +339,7 @@ export async function socketClosed(this: PlayerStructure, payload: WebSocketClos
  * @returns {Promise<void>} Nothing.
  */
 export async function resumeByLibrary(this: NodeStructure, players: PlayerStructure[]): Promise<void> {
-    this.nodeManager.manager.emit(EventNames.Debug, DebugLevels.Node, `[Socket] -> [${this.id}]: Resuming session by library...`);
+    this.nodeManager.manager.debug(DebugLevels.Node, `[Socket] -> [${this.id}]: Resuming session by library...`);
 
     for (const player of players) {
         if (await player.data.get("internal_nodeChange")) continue;

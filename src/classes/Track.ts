@@ -211,7 +211,7 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
         if (!this.info.title && !this.encoded && !this.info.uri)
             throw new ResolveError("Track is missing required properties for resolution.");
 
-        player.manager.emit(EventNames.Debug, DebugLevels.Player, `[Unresolved] -> [Track] Resolving the track: ${this.info.title}`);
+        player.manager.debug(DebugLevels.Player, `[Unresolved] -> [Track] Resolving the track: ${this.info.title}`);
 
         if (this.encoded) return player.node.decode.single(this.encoded, this.requester);
 

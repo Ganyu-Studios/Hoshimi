@@ -175,6 +175,21 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
     /**
      *
+     * Emit a debug event.
+     * @param {DebugLevels} level The debug level.
+     * @param {string} message The debug message.
+     * @returns {void}
+     * @example
+     * ```ts
+     * manager.debug(DebugLevels.Manager, "This is a debug message.");
+     * ```
+     */
+    public debug(level: DebugLevels, message: string): void {
+        this.emit(EventNames.Debug, level, message);
+    }
+
+    /**
+     *
      * Get the player for the guild.
      * @param {string} guildId The guild id to get the player.
      * @returns {PlayerStructure | undefined} The player for the guild.
@@ -222,12 +237,12 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
      */
     public async updateVoiceState(packet: GatewayPackets): Promise<void> {
         if (!this.ready) {
-            this.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Manager] The manager is not ready.");
+            this.debug(DebugLevels.Player, "[Player] -> [Manager] The manager is not ready.");
             return;
         }
 
         if (!("t" in packet)) {
-            this.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Voice] The packet does not have a type.");
+            this.debug(DebugLevels.Player, "[Player] -> [Voice] The packet does not have a type.");
             return;
         }
 
@@ -237,7 +252,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
                 const player: PlayerStructure | undefined = this.getPlayer(data.guild_id);
                 if (!player) {
-                    this.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Voice] The player is not found.");
+                    this.debug(DebugLevels.Player, "[Player] -> [Voice] The player is not found.");
                     return;
                 }
 
@@ -275,13 +290,13 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     const data: VoiceServer | VoiceState = packet.d;
 
                     if (!("guild_id" in data)) {
-                        this.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Voice] The guild id is missing.");
+                        this.debug(DebugLevels.Player, "[Player] -> [Voice] The guild id is missing.");
                         return;
                     }
 
                     const player: PlayerStructure | undefined = this.getPlayer(data.guild_id);
                     if (!player) {
-                        this.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Voice] The player is not found.");
+                        this.debug(DebugLevels.Player, "[Player] -> [Voice] The player is not found.");
                         return;
                     }
 
@@ -335,7 +350,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     }
 
                     if (data.user_id !== this.options.client.id) {
-                        this.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Voice] The user id does not match the client id.");
+                        this.debug(DebugLevels.Player, "[Player] -> [Voice] The user id does not match the client id.");
                         return;
                     }
 

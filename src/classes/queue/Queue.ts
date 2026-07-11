@@ -198,7 +198,7 @@ export class Queue {
 
         this.tracks.push(...tracks);
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
-        this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, `[Queue] -> [Add] Added ${this.tracks.length} tracks to the queue.`);
+        this.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Add] Added ${this.tracks.length} tracks to the queue.`);
 
         await this.utils.save();
 
@@ -289,7 +289,7 @@ export class Queue {
         }
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
-        this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, "[Queue] -> [Shuffle] Shuffled the queue.");
+        this.player.manager.debug(DebugLevels.Queue, "[Queue] -> [Shuffle] Shuffled the queue.");
 
         await this.utils.save();
 
@@ -323,7 +323,7 @@ export class Queue {
         this.history = [];
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
-        this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, "[Queue] -> [Clear] Cleared the queue.");
+        this.player.manager.debug(DebugLevels.Queue, "[Queue] -> [Clear] Cleared the queue.");
 
         await this.utils.destroy();
 
@@ -396,7 +396,7 @@ export class Queue {
         const spliced: TrackResolvableStructure[] = this.tracks.splice(start, deleteCount, ...flatten(tracks));
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
-        this.player.manager.emit(EventNames.Debug, DebugLevels.Queue, `[Queue] -> [Splice] Removed ${deleteCount} tracks from the queue.`);
+        this.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Splice] Removed ${deleteCount} tracks from the queue.`);
 
         await this.utils.save();
 

@@ -404,7 +404,7 @@ export class Player {
         if (destroy) await this.destroy({ reason: DestroyReasons.Stop });
         if (leaveVoice) await this.voice.disconnect();
 
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Stop] Player stopped for guild: ${this.guildId}`);
+        this.manager.debug(DebugLevels.Player, `[Player] -> [Stop] Player stopped for guild: ${this.guildId}`);
 
         this.playing = false;
         this.paused = false;
@@ -433,7 +433,7 @@ export class Player {
             throw new PlayerError("Skip 'to' option must be a positive and valid number.");
 
         if (!this.queue.size) {
-            this.manager.emit(EventNames.Debug, DebugLevels.Player, "[Player] -> [Skip] No tracks to skip.");
+            this.manager.debug(DebugLevels.Player, "[Player] -> [Skip] No tracks to skip.");
 
             if (throwError) throw new PlayerError("No tracks to skip.");
         }
@@ -446,7 +446,7 @@ export class Player {
 
         if (!this.isPlaying() && !this.queue.current) return this.play();
 
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Skip] Skipping to next track for guild: ${this.guildId}`);
+        this.manager.debug(DebugLevels.Player, `[Player] -> [Skip] Skipping to next track for guild: ${this.guildId}`);
 
         await this.node.stopPlayer(this.guildId);
     }
@@ -471,7 +471,7 @@ export class Player {
         if (position < 0 || position > this.queue.current.info.length)
             position = Math.max(0, Math.min(position, this.queue.current.info.length));
 
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Seek] Seeking to ${position} for guild: ${this.guildId}`);
+        this.manager.debug(DebugLevels.Player, `[Player] -> [Seek] Seeking to ${position} for guild: ${this.guildId}`);
 
         this.lastPosition = position;
         this.lastPositionUpdate = Date.now();
@@ -613,7 +613,7 @@ export class Player {
      * ```
      */
     public async setPaused(paused: boolean = !this.paused): Promise<boolean> {
-        this.manager.emit(EventNames.Debug, DebugLevels.Player, `[Player] -> [Pause] Player is now ${paused} for guild: ${this.guildId}`);
+        this.manager.debug(DebugLevels.Player, `[Player] -> [Pause] Player is now ${paused} for guild: ${this.guildId}`);
 
         // When pausing, stop position calculation by setting lastPositionUpdate to null
         if (paused) {
