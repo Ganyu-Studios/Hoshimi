@@ -1,102 +1,107 @@
 import { describe, expect, it, vi } from "vitest";
-import { NodeError, PlayerError } from "../src/classes/Errors";
 import { DSPXPluginFilter } from "../src/classes/player/filters/DSPXPlugin";
 import { LavalinkPluginFilter } from "../src/classes/player/filters/LavalinkPlugin";
 import { FilterType } from "../src/types/Filters";
-import { PluginNames } from "../src/types/Node";
-import { createMockNode } from "./helpers";
 
-function createFilterManager(filters: string[], plugins: string[]) {
-    const node = createMockNode({
-        info: { filters, plugins: plugins.map((name) => ({ name })) },
-        isNodelink: () => false,
-    });
-
+function createManagerMock() {
     return {
-        player: { node },
-        data: {
-            pluginFilters: {},
-        },
-        filters: {
-            lavalinkLavaDspxPlugin: {
-                lowPass: false,
-                highPass: false,
-                normalization: false,
-                echo: false,
-            },
-            lavalinkFilterPlugin: {
-                echo: false,
-                reverb: false,
-            },
-        },
         apply: vi.fn().mockResolvedValue(undefined),
     };
 }
 
-describe("Filter plugins", () => {
-    it("DSPX setLowPass toggles and applies on success", async () => {
-        const manager = createFilterManager([FilterType.DSPXLowpass], [PluginNames.LavaDspx]);
-        const dspx = new DSPXPluginFilter(manager as never);
+describe("Filter plugin facades", () => {
+    it("LavalinkPluginFilter.setEcho delegates to manager.apply with FilterType.Echo and the given payload", async () => {
+        const manager = createManagerMock();
+        const plugin = new LavalinkPluginFilter(manager as never);
 
-        await dspx.setLowPass();
+        await plugin.setEcho({ decay: 0.5, delay: 200 });
 
-        expect(manager.filters.lavalinkLavaDspxPlugin.lowPass).toBe(true);
-        expect(manager.apply).toHaveBeenCalled();
+        expect(manager.apply).toHaveBeenCalledTimes(1);
+        expect(manager.apply).toHaveBeenCalledWith(FilterType.Echo, { decay: 0.5, delay: 200 });
     });
 
-    it("DSPX setLowPass throws when required plugin is missing", async () => {
-        const manager = createFilterManager([FilterType.DSPXLowpass], []);
-        const dspx = new DSPXPluginFilter(manager as never);
-
-        await expect(dspx.setLowPass()).rejects.toThrow(NodeError);
-    });
-
-    it("DSPX setLowPass throws when node filter is missing", async () => {
-        const manager = createFilterManager([], [PluginNames.LavaDspx]);
-        const dspx = new DSPXPluginFilter(manager as never);
-
-        await expect(dspx.setLowPass()).rejects.toThrow(PlayerError);
-    });
-
-    it("Lavalink setEcho toggles and applies on success", async () => {
-        const manager = createFilterManager([FilterType.Echo], [PluginNames.FilterPlugin]);
+    it("LavalinkPluginFilter.setEcho applies preset defaults when called without args", async () => {
+        const manager = createManagerMock();
         const plugin = new LavalinkPluginFilter(manager as never);
 
         await plugin.setEcho();
 
-        expect(manager.filters.lavalinkFilterPlugin.echo).toBe(true);
-        expect(manager.apply).toHaveBeenCalled();
+        expect(manager.apply).toHaveBeenCalledWith(
+            FilterType.Echo,
+            expect.objectContaining({ decay: expect.any(Number), delay: expect.any(Number) }),
+        );
     });
 
-    it("Lavalink setEcho throws when node filter is missing", async () => {
-        const manager = createFilterManager([], [PluginNames.FilterPlugin]);
+    it("LavalinkPluginFilter.setReverb delegates to manager.apply with FilterType.Reverb", async () => {
+        const manager = createManagerMock();
         const plugin = new LavalinkPluginFilter(manager as never);
 
-        await expect(plugin.setEcho()).rejects.toThrow(PlayerError);
+        await plugin.setReverb({ delays: [50, 100], gains: [0.5, 0.3] });
+
+        expect(manager.apply).toHaveBeenCalledWith(FilterType.Reverb, {
+            delays: [50, 100],
+            gains: [0.5, 0.3],
+        });
     });
 
-    it("Lavalink setEcho throws when required plugin is missing", async () => {
-        const manager = createFilterManager([FilterType.Echo], []);
-        const plugin = new LavalinkPluginFilter(manager as never);
-
-        await expect(plugin.setEcho()).rejects.toThrow(NodeError);
-    });
-
-    it("DSPX setLowPass propagates apply failures", async () => {
-        const manager = createFilterManager([FilterType.DSPXLowpass], [PluginNames.LavaDspx]);
+    it("LavalinkPluginFilter.setEcho propagates errors from manager.apply", async () => {
+        const manager = createManagerMock();
         manager.apply.mockRejectedValueOnce(new Error("apply failed"));
-
-        const dspx = new DSPXPluginFilter(manager as never);
-
-        await expect(dspx.setLowPass()).rejects.toThrow("apply failed");
-    });
-
-    it("Lavalink setEcho propagates apply failures", async () => {
-        const manager = createFilterManager([FilterType.Echo], [PluginNames.FilterPlugin]);
-        manager.apply.mockRejectedValueOnce(new Error("apply failed"));
-
         const plugin = new LavalinkPluginFilter(manager as never);
 
         await expect(plugin.setEcho()).rejects.toThrow("apply failed");
+    });
+
+    it("DSPXPluginFilter.setLowPass delegates to manager.apply with FilterType.DSPXLowpass", async () => {
+        const manager = createManagerMock();
+        const dspx = new DSPXPluginFilter(manager as never);
+
+        await dspx.setLowPass({ cutoffFrequency: 200, boostFactor: 1.2 });
+
+        expect(manager.apply).toHaveBeenCalledWith(FilterType.DSPXLowpass, {
+            cutoffFrequency: 200,
+            boostFactor: 1.2,
+        });
+    });
+
+    it("DSPXPluginFilter.setHighPass delegates to manager.apply with FilterType.DSPXHighpass", async () => {
+        const manager = createManagerMock();
+        const dspx = new DSPXPluginFilter(manager as never);
+
+        await dspx.setHighPass({ cutoffFrequency: 2000, boostFactor: 0.8 });
+
+        expect(manager.apply).toHaveBeenCalledWith(FilterType.DSPXHighpass, {
+            cutoffFrequency: 2000,
+            boostFactor: 0.8,
+        });
+    });
+
+    it("DSPXPluginFilter.setNormalization delegates to manager.apply with FilterType.DSPXNormalization", async () => {
+        const manager = createManagerMock();
+        const dspx = new DSPXPluginFilter(manager as never);
+
+        await dspx.setNormalization({ maxAmplitude: 0.9, adaptive: true });
+
+        expect(manager.apply).toHaveBeenCalledWith(
+            FilterType.DSPXNormalization,
+            expect.objectContaining({ maxAmplitude: 0.9, adaptive: true }),
+        );
+    });
+
+    it("DSPXPluginFilter.setEcho delegates to manager.apply with FilterType.DSPXEcho", async () => {
+        const manager = createManagerMock();
+        const dspx = new DSPXPluginFilter(manager as never);
+
+        await dspx.setEcho({ decay: 0.5, echoLength: 0.5 });
+
+        expect(manager.apply).toHaveBeenCalledWith(FilterType.DSPXEcho, expect.objectContaining({ decay: 0.5, echoLength: 0.5 }));
+    });
+
+    it("DSPXPluginFilter.setLowPass propagates errors from manager.apply", async () => {
+        const manager = createManagerMock();
+        manager.apply.mockRejectedValueOnce(new Error("apply failed"));
+        const dspx = new DSPXPluginFilter(manager as never);
+
+        await expect(dspx.setLowPass()).rejects.toThrow("apply failed");
     });
 });

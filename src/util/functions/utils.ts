@@ -3,7 +3,6 @@ import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter
 import type { TrackRequester, TrackResolvableStructure } from "../../classes/Track";
 import { Track, UnresolvedTrack } from "../../classes/Track";
 import { type ParsedQuery, SourceRegistry } from "../../registry/SourceRegistry";
-import type { TimescaleSettings } from "../../types/Filters";
 import type { DeepRequired, HoshimiOptions, RestOrArray, SearchSource } from "../../types/Manager";
 import type { LavalinkTrack, NodeOptions, PlayerMoveFilter, SearchQuery, SourceName, UnresolvedLavalinkTrack } from "../../types/Node";
 import type { AnyLavalinkTrack, PlayerOptions } from "../../types/Player";
@@ -309,10 +308,7 @@ export function updatePlayerData(node: NodeStructure, data: Partial<UpdatePlayer
         }
 
         if (typeof data.playerOptions.filters === "object") {
-            const timescale: Readonly<TimescaleSettings> = Object.freeze({ ...player.filterManager.data.timescale });
-
             Object.assign(player.filterManager.data, data.playerOptions.filters);
-            player.filterManager.check(timescale);
         }
     }
 }

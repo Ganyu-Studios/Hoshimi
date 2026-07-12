@@ -30,6 +30,7 @@ export * from "./classes/storage/QueueMemory";
 export * from "./classes/Track";
 
 // Exports related to the registry.
+export * from "./registry/FiltersRegistry";
 export * from "./registry/PluginRegistry";
 export * from "./registry/SourceRegistry";
 

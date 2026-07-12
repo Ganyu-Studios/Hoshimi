@@ -1,17 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { Hoshimi, HoshimiDefaultOptions } from "../src";
+import { Hoshimi } from "../src";
 import { PlayerError } from "../src/classes/Errors";
 import { Player } from "../src/classes/player/Player";
 import { PlayerMemoryStorage } from "../src/classes/storage/PlayerMemory";
 import { State } from "../src/types/Node";
 import { LoopMode } from "../src/types/Player";
-import { createMockHoshimi } from "./helpers";
+import { createRealManager, createRealNode, createRealPlayer } from "./helpers";
 
 describe("Player", () => {
     it("validates loop mode and basic play state", () => {
-        const manager = createMockHoshimi();
-
-        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const manager = createRealManager();
+        const player = createRealPlayer(manager);
 
         expect(player.isPlaying()).toBe(false);
 
@@ -26,9 +25,8 @@ describe("Player", () => {
     });
 
     it("seek and setVolume throw on invalid input", async () => {
-        const manager = createMockHoshimi();
-
-        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const manager = createRealManager();
+        const player = createRealPlayer(manager);
         player.queue.current = { info: { length: 10000 } } as never;
 
         await expect(player.seek(NaN)).rejects.toThrow(PlayerError);
@@ -36,21 +34,29 @@ describe("Player", () => {
     });
 
     it("move throws when target node is missing", async () => {
-        const manager = createMockHoshimi();
+        const manager = createRealManager();
+        createRealNode(manager);
 
-        manager.nodeManager.get = vi.fn().mockReturnValue(undefined);
+        vi.spyOn(manager.nodeManager, "get").mockReturnValue(undefined);
 
-        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = createRealPlayer(manager);
 
         await expect(player.move("missing-node")).rejects.toThrow(PlayerError);
     });
 
     it("search delegates to manager.search", async () => {
-        const manager = createMockHoshimi();
+        const manager = createRealManager();
+        createRealNode(manager);
 
-        const searchSpy = vi.spyOn(manager, "search");
+        const searchSpy = vi.spyOn(manager, "search").mockResolvedValue({
+            loadType: 0,
+            tracks: [],
+            playlist: null,
+            exception: null,
+            pluginInfo: null,
+        } as never);
 
-        const player = new Player(manager as never, { guildId: "guild-1", voiceId: "voice-1" } as never);
+        const player = createRealPlayer(manager);
 
         await player.search({ query: "hello", requester: {} });
 
@@ -58,7 +64,10 @@ describe("Player", () => {
     });
 
     it("data is isolated between players and destroyed on destroy", async () => {
-        const manager = new Hoshimi({ nodes: HoshimiDefaultOptions.nodes } as never);
+        const manager = new Hoshimi({
+            nodes: [{ host: "localhost", port: 2333, password: "pass", id: "node-1", retryAmount: 0 }],
+            sendPayload: vi.fn(),
+        } as never);
 
         const nodeMock = {
             id: "node-1",
@@ -66,9 +75,18 @@ describe("Player", () => {
             options: { host: "localhost", port: 2333, password: "pass" },
             destroyPlayer: vi.fn().mockResolvedValue(undefined),
             stopPlayer: vi.fn().mockResolvedValue(null),
+            rest: {
+                request: vi.fn().mockResolvedValue(null),
+                updatePlayer: vi.fn().mockResolvedValue(null),
+                destroyPlayer: vi.fn().mockResolvedValue(undefined),
+                stopPlayer: vi.fn().mockResolvedValue(null),
+                getPlayers: vi.fn().mockResolvedValue([]),
+                updateSession: vi.fn().mockResolvedValue(null),
+            },
+            decode: { single: vi.fn() },
+            disconnect: vi.fn(),
         };
         manager.nodeManager.nodes.set("node-1", nodeMock as never);
-        manager.options.sendPayload = vi.fn();
 
         const playerA = manager.createPlayer({ guildId: "guild-a", voiceId: "voice-a" } as never);
         const playerB = manager.createPlayer({ guildId: "guild-b", voiceId: "voice-b" } as never);

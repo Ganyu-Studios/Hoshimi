@@ -49,6 +49,7 @@ function createNode(client?: { id?: string; username?: string }) {
     const nodeManager = {
         manager: {
             emit,
+            debug: vi.fn(),
             options: {
                 client,
                 sendPayload: vi.fn(),

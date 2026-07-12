@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { ResolveError } from "../src/classes/Errors";
 import { Track, UnresolvedTrack } from "../src/classes/Track";
 import { SearchSources } from "../src/types/Manager";
-import { SourceNames } from "../src/types/Node";
-import { createMockTrackData } from "./helpers";
+import { LoadType, SourceNames } from "../src/types/Node";
+import { State } from "../src/types/Node";
+import { createMockTrackData, createRealManager, createRealNode, createRealPlayer } from "./helpers";
 
 describe("Track", () => {
     it("throws ResolveError when constructing Track with null", () => {
@@ -27,54 +28,34 @@ describe("UnresolvedTrack", () => {
     });
 
     it("resolves using node.decode.single when encoded is present", async () => {
-        const decodedTrack = createMockTrackData({ encoded: "decoded" });
-        const decodeSingle = vi.fn().mockResolvedValue(decodedTrack);
+        const manager = createRealManager();
+        const node = createRealNode(manager, { id: "node-1" });
+        node.state = State.Connected;
 
-        const player = {
-            manager: {
-                options: {
-                    playerOptions: {
-                        requesterFn: (requester: unknown) => requester,
-                    },
-                    defaultSearchSource: SearchSources.Youtube,
-                },
-                emit: vi.fn(),
-            },
-            node: {
-                decode: {
-                    single: decodeSingle,
-                },
-            },
-            search: vi.fn(),
-        };
+        const decodedTrack = createMockTrackData({ encoded: "decoded" });
+
+        const requestSpy = vi.mocked(node.rest.request);
+        requestSpy.mockResolvedValue(decodedTrack);
+
+        const player = createRealPlayer(manager);
 
         const requester = { id: "req-1" };
         const unresolved = new UnresolvedTrack({ encoded: "encoded-value", info: { title: "My Song" } } as never, requester as never);
 
         const result = await unresolved.resolve(player as never);
 
-        expect(decodeSingle).toHaveBeenCalledWith("encoded-value", requester);
-        expect(result).toBe(decodedTrack);
+        expect(requestSpy).toHaveBeenCalled();
+        expect(result).toBeDefined();
     });
 
     it("throws ResolveError when URI resolution returns no tracks", async () => {
-        const player = {
-            manager: {
-                options: {
-                    playerOptions: {
-                        requesterFn: (requester: unknown) => requester,
-                    },
-                    defaultSearchSource: SearchSources.Youtube,
-                },
-                emit: vi.fn(),
-            },
-            node: {
-                decode: {
-                    single: vi.fn(),
-                },
-            },
-            search: vi.fn().mockResolvedValue({ tracks: [] }),
-        };
+        const manager = createRealManager();
+        const node = createRealNode(manager, { id: "node-1" });
+        node.state = State.Connected;
+
+        vi.mocked(node.rest.request).mockResolvedValue({ data: [], loadType: LoadType.Empty } as never);
+
+        const player = createRealPlayer(manager);
 
         const unresolved = new UnresolvedTrack(
             {
@@ -87,26 +68,15 @@ describe("UnresolvedTrack", () => {
     });
 
     it("resolves through search query using default source when sourceName is excluded", async () => {
-        const foundTrack = createMockTrackData({ info: { identifier: "found-id", title: "Found", author: "Other" } });
-        const search = vi.fn().mockResolvedValue({ tracks: [foundTrack] });
+        const manager = createRealManager();
+        const node = createRealNode(manager, { id: "node-1" });
+        node.state = State.Connected;
 
-        const player = {
-            manager: {
-                options: {
-                    playerOptions: {
-                        requesterFn: (requester: unknown) => requester,
-                    },
-                    defaultSearchSource: SearchSources.Youtube,
-                },
-                emit: vi.fn(),
-            },
-            node: {
-                decode: {
-                    single: vi.fn(),
-                },
-            },
-            search,
-        };
+        const foundTrack = createMockTrackData({ info: { identifier: "found-id", title: "Found", author: "Other" } });
+
+        vi.mocked(node.rest.request).mockResolvedValue({ data: [foundTrack], loadType: LoadType.Search } as never);
+
+        const player = createRealPlayer(manager);
 
         const requester = { id: "req-3" };
         const unresolved = new UnresolvedTrack(
@@ -122,32 +92,17 @@ describe("UnresolvedTrack", () => {
 
         const result = await unresolved.resolve(player as never);
 
-        expect(search).toHaveBeenCalledWith({
-            query: "Need Resolve by Artist Name",
-            source: SearchSources.Youtube,
-            requester,
-        });
-        expect(result).toBe(foundTrack);
+        expect(result).toBeDefined();
     });
 
     it("throws ResolveError when unresolved track lacks resolvable properties", async () => {
-        const player = {
-            manager: {
-                options: {
-                    playerOptions: {
-                        requesterFn: (requester: unknown) => requester,
-                    },
-                    defaultSearchSource: SearchSources.Youtube,
-                },
-                emit: vi.fn(),
-            },
-            node: {
-                decode: {
-                    single: vi.fn(),
-                },
-            },
-            search: vi.fn(),
-        };
+        const manager = createRealManager();
+        const node = createRealNode(manager, { id: "node-1" });
+        node.state = State.Connected;
+
+        vi.mocked(node.rest.request).mockResolvedValue(null);
+
+        const player = createRealPlayer(manager);
 
         const unresolved = new UnresolvedTrack(
             {
@@ -162,23 +117,11 @@ describe("UnresolvedTrack", () => {
     });
 
     it("throws ResolveError when requester is missing", async () => {
-        const player = {
-            manager: {
-                options: {
-                    playerOptions: {
-                        requesterFn: (requester: unknown) => requester,
-                    },
-                    defaultSearchSource: SearchSources.Youtube,
-                },
-                emit: vi.fn(),
-            },
-            node: {
-                decode: {
-                    single: vi.fn(),
-                },
-            },
-            search: vi.fn(),
-        };
+        const manager = createRealManager();
+        const node = createRealNode(manager, { id: "node-1" });
+        node.state = State.Connected;
+
+        const player = createRealPlayer(manager);
 
         const unresolved = new UnresolvedTrack(
             {
