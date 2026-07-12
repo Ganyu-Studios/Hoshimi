@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-
 import { ResolveError } from "../src/classes/Errors";
 import { Track, UnresolvedTrack } from "../src/classes/Track";
-import { LoadType, SourceNames } from "../src/types/Node";
-import { State } from "../src/types/Node";
+import { LoadType, SourceNames, State } from "../src/types/Node";
 import { createMockTrackData, createRealManager, createRealNode, createRealPlayer } from "./helpers";
 
 describe("Track", () => {
