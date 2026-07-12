@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Hoshimi } from "../src";
 import { PlayerError } from "../src/classes/Errors";
-import { Player } from "../src/classes/player/Player";
 import { PlayerMemoryStorage } from "../src/classes/storage/PlayerMemory";
 import { State } from "../src/types/Node";
 import { LoopMode } from "../src/types/Player";

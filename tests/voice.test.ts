@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, type vi } from "vitest";
 
-import { PlayerVoiceState } from "../src/classes/player/Voice";
 import { createRealManager, createRealNode, createRealPlayer } from "./helpers";
 
 describe("PlayerVoiceState", () => {

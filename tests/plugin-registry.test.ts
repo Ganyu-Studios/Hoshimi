@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NodeError } from "../src/classes/Errors";
 import { PluginCapabilities, PluginRegistry } from "../src/registry/PluginRegistry";
 import { PluginNames } from "../src/types/Node";
-import { State } from "../src/types/Node";
 import { createRealManager, createRealNode } from "./helpers";
 
 function registerBuiltins(): void {

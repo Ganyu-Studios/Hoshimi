@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { NodeManagerError } from "../src/classes/Errors";
-import { NodeManager } from "../src/classes/node/Manager";
 import { EventNames } from "../src/types/Manager";
 import { NodeSortTypes, State } from "../src/types/Node";
 import { createRealManager, createRealNode } from "./helpers";
