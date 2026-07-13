@@ -365,15 +365,18 @@ export class Node {
      * ```
      */
     public search(search: SearchQuery): Promise<LavalinkSearchResponse | null> {
-        search.source ??= this.nodeManager.manager.options.defaultSearchSource;
+        const query: SearchQuery = {
+            ...search,
+            source: search.source ?? this.nodeManager.manager.options.defaultSearchSource,
+        };
 
-        const identifier: string = validateQuery(search);
+        const identifier: string = validateQuery(query);
 
         return this.rest.request<LavalinkSearchResponse>({
             endpoint: RestRoutes.LoadTracks,
             params: {
                 identifier,
-                ...search.params,
+                ...query.params,
             },
         });
     }

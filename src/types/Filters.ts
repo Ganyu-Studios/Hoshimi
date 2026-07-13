@@ -96,10 +96,11 @@ export enum FilterType {
      */
     DSPXHighpass = "high-pass",
     /**
-     * DSPX echo filter.
+     * DSPX echo filter. Distinct canonical name from {@link FilterType.Echo} so the registry can tell them
+     * apart; both are written to the wire as `echo` (DSPX flat under `pluginFilters`, the filter-plugin nested).
      * @type {string}
      */
-    DSPXEcho = FilterType.Echo,
+    DSPXEcho = "dspx-echo",
     /**
      * DSPX normalization filter.
      * @type {string}

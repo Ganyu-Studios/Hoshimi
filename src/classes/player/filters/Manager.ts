@@ -50,7 +50,7 @@ export class FilterManager {
      * @type {FilterSettings}
      * @public
      */
-    public data: FilterSettings = { ...DefaultPlayerFilters };
+    public data: FilterSettings = structuredClone(DefaultPlayerFilters);
 
     /**
      * Thin facade for filters provided by the `lavalink-filter-plugin`.
@@ -158,16 +158,16 @@ export class FilterManager {
      */
     public async reset(): Promise<this> {
         this.bands.length = 0;
-        this.data = { ...DefaultPlayerFilters };
+        this.data = structuredClone(DefaultPlayerFilters);
         return this.commit();
     }
 
     /**
      * Serialise the current filter payload.
-     * @returns {FilterSettings} A shallow clone of the wire payload.
+     * @returns {FilterSettings} A deep clone of the wire payload (a snapshot; mutating it never touches live state).
      */
     public toJSON(): FilterSettings {
-        return { ...this.data };
+        return structuredClone(this.data);
     }
 
     // ============================================================
@@ -209,7 +209,7 @@ export class FilterManager {
                     }
                     if (Object.keys(nested).length === 0) delete stripped[key];
                     else stripped[key] = nested;
-                } else if (FilterRegistry.isDefault(key, value)) {
+                } else if (FilterRegistry.isDefaultFlatPlugin(key, value)) {
                     delete stripped[key];
                 }
             }
@@ -240,8 +240,9 @@ export class FilterManager {
      */
     private isNestedPluginEnvelope(key: string, value: unknown): boolean {
         if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-        const entry: FilterRegistration | null = FilterRegistry.resolve(key, this.player.node);
-        return !entry; // key is not a filter → it's a plugin envelope wrapping nested filters
+        // A key that is not any registered filter's wire key is a plugin-name wrapper holding nested filters.
+        // (Decided structurally, independent of which plugins the node currently has installed.)
+        return !FilterRegistry.isWireKey(key);
     }
 
     // ============================================================
@@ -253,7 +254,7 @@ export class FilterManager {
      * @private
      */
     private writeToEnvelope(entry: FilterRegistration, payload: unknown): void {
-        const name: string = String(entry.name);
+        const name: string = String(entry.wireName ?? entry.name);
         if (entry.scope === FilterScope.Core || entry.scope === FilterScope.Vendor) {
             (this.data as Record<string, unknown>)[name] = payload;
             return;
@@ -278,7 +279,7 @@ export class FilterManager {
      * @private
      */
     private readFromEnvelope(entry: FilterRegistration): unknown {
-        const name: string = String(entry.name);
+        const name: string = String(entry.wireName ?? entry.name);
         if (entry.scope === FilterScope.Core || entry.scope === FilterScope.Vendor) {
             return (this.data as Record<string, unknown>)[name];
         }
@@ -297,7 +298,7 @@ export class FilterManager {
      * @private
      */
     private clearFromEnvelope(entry: FilterRegistration): void {
-        const name: string = String(entry.name);
+        const name: string = String(entry.wireName ?? entry.name);
         if (entry.scope === FilterScope.Core || entry.scope === FilterScope.Vendor) {
             delete (this.data as Record<string, unknown>)[name];
             return;

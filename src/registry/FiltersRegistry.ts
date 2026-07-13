@@ -81,9 +81,20 @@ export type RegistryVendorName = "nodelink" | Hint<VendorNameKey>;
  */
 export interface FilterRegistration<TPayload = unknown> {
     /**
-     * The canonical filter name. This is the key written into the wire payload.
+     * The canonical filter name. Used as the registry identity/index key.
+     * Unless {@link FilterRegistration.wireName} is set, it is also the key written into the wire payload.
      */
     name: RegistryFilterName;
+    /**
+     * The key actually written into the wire payload, when it differs from {@link FilterRegistration.name}.
+     *
+     * Needed when two distinct filters share the same wire key in different envelopes — e.g. the
+     * `lavadspx-plugin` echo (`pluginFilters.echo`, flat) and the `lavalink-filter-plugin` echo
+     * (`pluginFilters["lavalink-filter-plugin"].echo`, nested) both write `echo` but must be registered
+     * under different canonical names so the registry can resolve each unambiguously.
+     * @default name
+     */
+    wireName?: string;
     /**
      * Where the filter lives in the payload envelope.
      */
@@ -370,6 +381,43 @@ export const FilterRegistry = {
     },
 
     /**
+     * Whether the given key is the wire key of any registered filter (as opposed to a plugin-name wrapper
+     * that holds nested filters inside `pluginFilters`).
+     * @param {string} key The candidate wire key.
+     * @returns {boolean} Whether any registration writes to this wire key.
+     */
+    isWireKey(key: string): boolean {
+        const target: string = keyOf(key);
+        for (const entries of entriesByName.values()) {
+            for (const entry of entries) {
+                if (keyOf(String(entry.wireName ?? entry.name)) === target) return true;
+            }
+        }
+        return false;
+    },
+
+    /**
+     * Whether a payload written flat under `pluginFilters[wireKey]` is in its default (off) state.
+     * Resolves the flat plugin registration (scope {@link FilterScope.Plugin}, no `pluginName`) by wire key,
+     * so a filter that shares a wire key with a nested one (e.g. `echo`) is evaluated with the correct predicate.
+     * @param {string} wireKey The flat key under `pluginFilters`.
+     * @param {unknown} payload The payload to inspect.
+     * @returns {boolean} Whether the payload is the default/off state.
+     */
+    isDefaultFlatPlugin(wireKey: string, payload: unknown): boolean {
+        const target: string = keyOf(wireKey);
+        for (const entries of entriesByName.values()) {
+            for (const entry of entries) {
+                if (entry.scope === FilterScope.Plugin && !entry.pluginName && keyOf(String(entry.wireName ?? entry.name)) === target) {
+                    if (!entry.isDefault) return payload === undefined || payload === null;
+                    return entry.isDefault(payload);
+                }
+            }
+        }
+        return this.isDefault(wireKey, payload);
+    },
+
+    /**
      * Returns all canonical filter names in registration order.
      * @returns {string[]} All canonical filter names.
      */
@@ -487,7 +535,8 @@ export const FilterRegistry = {
             return;
         }
 
-        const advertised: boolean = info.filters?.some((f): boolean => normalize(f) === normalize(String(entry.name))) ?? false;
+        const advertised: boolean =
+            info.filters?.some((f): boolean => normalize(f) === normalize(String(entry.wireName ?? entry.name))) ?? false;
 
         if (entry.scope === FilterScope.Plugin) {
             if (entry.capability) {
@@ -624,8 +673,13 @@ FilterRegistry.register([
     }),
     defineFilter({
         name: FilterType.DSPXEcho,
+        // Written flat as `pluginFilters.echo`; distinct canonical name avoids colliding with the
+        // nested `lavalink-filter-plugin` echo (see FilterType.Echo above).
+        wireName: FilterType.Echo,
         scope: FilterScope.Plugin,
         capability: PluginCapabilities.Dspx,
+        isDefault: (p: { echoLength?: number; decay?: number } | null | undefined): boolean =>
+            !p || ((p.echoLength ?? 0) === 0 && (p.decay ?? 0) === 0),
     }),
     defineFilter({
         name: FilterType.DSPXNormalization,

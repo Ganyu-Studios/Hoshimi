@@ -125,9 +125,9 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
      *      autoplayFn: autoplayFn,
      *      autoPlay: false,
      *      storage: new MemoryAdapter(),
-     *      requesterFn: defaultRequesterFn,
      * 	},
      *   playerOptions: {
+     *      requesterFn: defaultRequesterFn,
      *    	onDisconnect: {
      *        autoDestroy: false,
      *        autoReconnect: false,
@@ -135,7 +135,6 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
      *   	},
      *   	onError: {
      *        autoDestroy: false,
-     *        autoSkip: false,
      *        autoStop: false,
      *      },
      *   },

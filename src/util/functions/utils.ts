@@ -145,9 +145,9 @@ export function validateManagerOptions(options: HoshimiOptions): void {
         throw new OptionError("The manager option 'options.defaultSearchSource' Must be a valid search source.");
 
     if (isPlainObject(options.queueOptions)) {
-        if (typeof options.queueOptions.maxHistory !== "number")
-            throw new OptionError("The manager option 'options.queueOptions.maxPreviousTracks' must be a number.");
-        if (typeof options.queueOptions.autoplayFn !== "function")
+        if (typeof options.queueOptions.maxHistory !== "undefined" && typeof options.queueOptions.maxHistory !== "number")
+            throw new OptionError("The manager option 'options.queueOptions.maxHistory' must be a number.");
+        if (typeof options.queueOptions.autoplayFn !== "undefined" && typeof options.queueOptions.autoplayFn !== "function")
             throw new OptionError("The manager option 'options.queueOptions.autoplayFn' must be a function.");
         if (typeof options.queueOptions.storage !== "undefined" && !(options.queueOptions.storage instanceof QueueStorageAdapter))
             throw new OptionError("The manager option 'options.queueOptions.storage' must be a valid storage manager.");
@@ -158,6 +158,19 @@ export function validateManagerOptions(options: HoshimiOptions): void {
     if (isPlainObject(options.playerOptions)) {
         if (typeof options.playerOptions.requesterFn !== "function")
             throw new OptionError("The manager option 'options.playerOptions.requesterFn' must be a valid function.");
+
+        if (isPlainObject(options.playerOptions.onError)) {
+            if (
+                typeof options.playerOptions.onError.autoDestroy !== "undefined" &&
+                typeof options.playerOptions.onError.autoDestroy !== "boolean"
+            )
+                throw new OptionError("The manager option 'options.playerOptions.onError.autoDestroy' must be a boolean.");
+            if (
+                typeof options.playerOptions.onError.autoStop !== "undefined" &&
+                typeof options.playerOptions.onError.autoStop !== "boolean"
+            )
+                throw new OptionError("The manager option 'options.playerOptions.onError.autoStop' must be a boolean.");
+        }
     }
 
     if (isPlainObject(options.client)) {

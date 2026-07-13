@@ -22,7 +22,20 @@ export interface ParsedQuery {
 /**
  * The protocol strategy used to build lavalink identifiers.
  */
-export type SourceProtocol = "colon" | "double-slash" | "raw";
+export enum SourceProtocol {
+    /**
+     * Join the source and query with a colon: `source:query`. The default strategy.
+     */
+    Colon = "colon",
+    /**
+     * Join the source and query with a scheme separator: `source://query`.
+     */
+    DoubleSlash = "double-slash",
+    /**
+     * Use the query verbatim, without prefixing the source (e.g. local files, raw HTTP URLs).
+     */
+    Raw = "raw",
+}
 
 /**
  * Registration options for a source.
@@ -38,7 +51,7 @@ export interface SourceRegistration {
     name?: RegistrySourceName;
     /**
      * Protocol used when creating lavalink identifiers.
-     * @default "colon"
+     * @default SourceProtocol.Colon
      */
     protocol?: SourceProtocol;
 }
@@ -108,7 +121,7 @@ export const SourceRegistry = {
      *
      * SourceRegistry.register(
      *   { source: "mysearch" },
-     *   { source: "mytts", protocol: "double-slash" },
+     *   { source: "mytts", protocol: SourceProtocol.DoubleSlash },
      * );
      * ```
      */
@@ -121,7 +134,7 @@ export const SourceRegistry = {
 
             const name: string | undefined = typeof registration.name !== "undefined" ? String(registration.name).trim() : undefined;
             const canonicalKey: string = normalize(canonical);
-            const protocol: SourceProtocol = registration.protocol ?? sourceToProtocolMap.get(canonicalKey) ?? "colon";
+            const protocol: SourceProtocol = registration.protocol ?? sourceToProtocolMap.get(canonicalKey) ?? SourceProtocol.Colon;
 
             if (!canonicalSources.includes(canonical)) canonicalSources.push(canonical);
 
@@ -171,11 +184,11 @@ export const SourceRegistry = {
         const canonical: string | undefined = this.resolve(source);
         if (!canonical) throw new TypeError(`The source '${source}' is not a valid source.`);
 
-        const protocol: SourceProtocol = sourceToProtocolMap.get(normalize(canonical)) ?? "colon";
+        const protocol: SourceProtocol = sourceToProtocolMap.get(normalize(canonical)) ?? SourceProtocol.Colon;
         const value: string = query.trim();
 
-        if (protocol === "raw") return value;
-        if (protocol === "double-slash") return `${canonical}://${value}`;
+        if (protocol === SourceProtocol.Raw) return value;
+        if (protocol === SourceProtocol.DoubleSlash) return `${canonical}://${value}`;
 
         return `${canonical}:${value}`;
     },
@@ -221,14 +234,14 @@ SourceRegistry.register([
     { source: SearchSources.Deezer, name: SourceNames.Deezer },
     { source: SearchSources.AppleMusic, name: SourceNames.AppleMusic },
     { source: SearchSources.YandexMusic, name: SourceNames.YandexMusic },
-    { source: SearchSources.FloweryTTS, name: SourceNames.FloweryTTS, protocol: "double-slash" },
+    { source: SearchSources.FloweryTTS, name: SourceNames.FloweryTTS, protocol: SourceProtocol.DoubleSlash },
     { source: SearchSources.JioSaavn, name: SourceNames.JioSaavn },
     { source: SearchSources.VKMusic, name: SourceNames.VKMusic },
     { source: SearchSources.Tidal, name: SourceNames.Tidal },
     { source: SearchSources.TextToSpeech, name: SourceNames.TextToSpeech },
     { source: SearchSources.PornHub, name: SourceNames.PornHub },
-    { source: SearchSources.Local, protocol: "raw" },
-    { source: SearchSources.HTTP, name: SourceNames.HTTP, protocol: "raw" },
+    { source: SearchSources.Local, protocol: SourceProtocol.Raw },
+    { source: SearchSources.HTTP, name: SourceNames.HTTP, protocol: SourceProtocol.Raw },
     { source: SearchSources.SpotifyAlbumMix },
     { source: SearchSources.SpotifyArtistMix },
     { source: SearchSources.SpotifyISRCMix },

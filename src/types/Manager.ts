@@ -411,6 +411,10 @@ export enum DestroyReasons {
      * The player was destroyed because it failed to reconnect.
      */
     ReconnectFailed = "Player-ReconnectFailed",
+    /**
+     * The player was destroyed because a track threw an error and `onError.autoDestroy` is enabled.
+     */
+    TrackError = "Player-TrackError",
 }
 
 /**

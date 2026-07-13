@@ -153,6 +153,26 @@ export interface DisconnectPlayerActions {
 }
 
 /**
+ * The options for actions taken when a track throws an error.
+ */
+export interface ErrorPlayerActions {
+    /**
+     * Whether to automatically destroy the player when a track errors.
+     * Takes precedence over {@link ErrorPlayerActions.autoStop}.
+     * @type {boolean | undefined}
+     * @default false
+     */
+    autoDestroy?: boolean;
+    /**
+     * Whether to stop playback and stay idle (keeping the queue) when a track errors,
+     * instead of advancing to the next track (the default behaviour).
+     * @type {boolean | undefined}
+     * @default false
+     */
+    autoStop?: boolean;
+}
+
+/**
  * The Hoshimi player options.
  */
 export interface HoshimiPlayerOptions {
@@ -167,6 +187,11 @@ export interface HoshimiPlayerOptions {
      * @type {DisconnectPlayerActions | undefined}
      */
     onDisconnect?: DisconnectPlayerActions;
+    /**
+     * The options for handling track errors.
+     * @type {ErrorPlayerActions | undefined}
+     */
+    onError?: ErrorPlayerActions;
 }
 
 /**

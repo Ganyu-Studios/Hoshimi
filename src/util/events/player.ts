@@ -1,4 +1,4 @@
-import { DebugLevels, EventNames } from "../../types/Manager";
+import { DebugLevels, DestroyReasons, EventNames } from "../../types/Manager";
 import {
     type LavalinkPlayerVoice,
     LoopMode,
@@ -136,6 +136,16 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
 export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): Promise<void> {
     if (await this.data.get("internal_nodeChange")) return;
 
+    // Playback was stopped by onError.autoStop; swallow the trailing TrackEnd so the queue isn't advanced.
+    if (await this.data.get("internal_errorStopped")) {
+        await this.data.delete("internal_errorStopped");
+        this.manager.debug(
+            DebugLevels.Player,
+            `[Player] -> [End] Skipping track end handling; playback was stopped by onError for guild: ${this.guildId}`,
+        );
+        return;
+    }
+
     // Just use queue.current - it should be correct now because trackStart handles sync
     const current: TrackStructure | null = this.queue.current;
 
@@ -223,6 +233,38 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
 export async function trackError(this: PlayerStructure, payload: TrackExceptionEvent): Promise<void> {
     this.manager.emit(EventNames.TrackError, this, this.queue.current, payload);
     this.manager.debug(DebugLevels.Player, `[Player] -> [Error] The track: ${this.queue.current?.info.title ?? "Unknown"} has error.`);
+
+    const { autoDestroy, autoStop } = this.manager.options.playerOptions.onError;
+
+    // With no action configured, the queue advances by default: Lavalink emits TrackEnd(loadFailed)
+    // right after the exception and the trackEnd handler moves on to the next track.
+    if (autoDestroy) {
+        this.manager.debug(
+            DebugLevels.Player,
+            `[Player] -> [Error] onError.autoDestroy is enabled, destroying player for guild: ${this.guildId}`,
+        );
+
+        await this.destroy({ reason: DestroyReasons.TrackError });
+        return;
+    }
+
+    if (autoStop) {
+        this.manager.debug(
+            DebugLevels.Player,
+            `[Player] -> [Error] onError.autoStop is enabled, stopping playback for guild: ${this.guildId}`,
+        );
+
+        // Flag the upcoming TrackEnd(loadFailed) so it does not advance the queue.
+        await this.data.set("internal_errorStopped", true);
+
+        this.playing = false;
+        this.paused = false;
+        this.queue.current = null;
+        this.lastPosition = 0;
+        this.lastPositionUpdate = null;
+
+        await this.queue.utils.save();
+    }
 }
 
 /**
