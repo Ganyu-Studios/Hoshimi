@@ -217,6 +217,27 @@ export class FilterManager {
             else filters.pluginFilters = stripped;
         }
 
+        // Drop plugin filters the node cannot host (e.g. after moving to a node without the backing plugin).
+        // Only prune once the node has reported its info, so we never drop filters on a not-yet-ready node.
+        const hostable: Record<string, unknown> | undefined = filters.pluginFilters as Record<string, unknown> | undefined;
+        if (hostable && this.player.node.info) {
+            for (const key of Object.keys(hostable)) {
+                const value: unknown = hostable[key];
+                if (this.isNestedPluginEnvelope(key, value)) {
+                    // Nested envelope: keep only inner filters whose plugin resolves for this node.
+                    const nested: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+                    for (const inner of Object.keys(nested)) {
+                        if (!FilterRegistry.resolve(inner, this.player.node)) delete nested[inner];
+                    }
+                    if (Object.keys(nested).length === 0) delete hostable[key];
+                    else hostable[key] = nested;
+                } else if (!FilterRegistry.canHostFlatPlugin(this.player.node, key)) {
+                    delete hostable[key];
+                }
+            }
+            if (Object.keys(hostable).length === 0) delete filters.pluginFilters;
+        }
+
         // Drop top-level filters the node does not advertise (vendor-scoped on a recognised fork is kept).
         const advertised: ReadonlyArray<string> = this.player.node.info?.filters ?? [];
         for (const key of Object.keys(filters)) {

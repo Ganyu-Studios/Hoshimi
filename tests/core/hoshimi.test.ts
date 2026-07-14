@@ -23,19 +23,29 @@ describe("Hoshimi", () => {
         expect(manager.options.queueOptions.storage).toBeDefined();
     });
 
-    it("isUseable returns false when manager is not ready", () => {
+    it("isUsable returns false when manager is not ready", () => {
         const manager = new Hoshimi(createOptions());
         manager.ready = false;
 
-        expect(manager.isUseable()).toBe(false);
+        expect(manager.isUsable()).toBe(false);
     });
 
-    it("isUseable returns true when ready and a connected node exists", () => {
+    it("isUsable returns true when ready and a connected node exists", () => {
         const manager = new Hoshimi(createOptions());
 
         manager.ready = true;
         manager.nodeManager.nodes.set("node-1", { id: "node-1", state: State.Connected } as never);
 
+        expect(manager.isUsable()).toBe(true);
+    });
+
+    it("isUseable is a deprecated alias of isUsable", () => {
+        const manager = new Hoshimi(createOptions());
+
+        manager.ready = true;
+        manager.nodeManager.nodes.set("node-1", { id: "node-1", state: State.Connected } as never);
+
+        expect(manager.isUseable()).toBe(manager.isUsable());
         expect(manager.isUseable()).toBe(true);
     });
 });

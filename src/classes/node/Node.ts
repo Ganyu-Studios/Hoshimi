@@ -182,7 +182,7 @@ export class Node {
             ...options,
             sessionId: options.sessionId ?? "",
             id: options.id ?? `${options.host}:${options.port}`,
-            restTimeout: options.restTimeout ?? 10000,
+            restTimeout: options.restTimeout ?? nodeManager.manager.options.restOptions.restTimeout ?? 10000,
             secure: options.secure ?? false,
             retryAmount: options.retryAmount ?? 5,
             retryDelay: options.retryDelay ?? 20000,

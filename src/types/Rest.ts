@@ -465,6 +465,12 @@ export interface HoshimiRestOptions {
      * @default 10000
      */
     resumeTimeout?: number;
+    /**
+     * The default REST request timeout applied to nodes that do not set their own `restTimeout`. (in milliseconds)
+     * @type {number}
+     * @default 10000
+     */
+    restTimeout?: number;
 }
 
 /**

@@ -237,6 +237,8 @@ export function validateManagerOptions(options: HoshimiOptions): void {
     if (isPlainObject(options.restOptions)) {
         if (typeof options.restOptions.resumeTimeout !== "undefined" && typeof options.restOptions.resumeTimeout !== "number")
             throw new OptionError("The manager option 'options.restOptions.resumeTimeout' must be a number.");
+        if (typeof options.restOptions.restTimeout !== "undefined" && typeof options.restOptions.restTimeout !== "number")
+            throw new OptionError("The manager option 'options.restOptions.restTimeout' must be a number.");
     }
 }
 

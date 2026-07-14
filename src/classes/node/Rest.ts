@@ -76,7 +76,7 @@ export class Rest {
         const manager: Hoshimi = node.nodeManager.manager;
 
         this.url = `${node.options.secure ? "https" : "http"}://${node.options.host}:${node.options.port}`;
-        this.restTimeout = node.options.restTimeout ?? manager.options.restOptions.resumeTimeout ?? 10000;
+        this.restTimeout = node.options.restTimeout ?? manager.options.restOptions.restTimeout ?? 10000;
         this.userAgent = manager.options.nodeOptions.userAgent ?? HoshimiAgent;
         this.node = node;
     }

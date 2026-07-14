@@ -107,3 +107,48 @@ describe("FilterManager player isolation (no shared default state)", () => {
         expect(bpf.echo).toEqual({ decay: 0, delay: 0, echoLength: 0 }); // still default, not leaked from A
     });
 });
+
+describe("FilterManager default-state stripping", () => {
+    it("strips every default plugin filter (incl. DSPX low/high-pass and normalization) on a fresh commit", async () => {
+        const { player, node } = withBothPlugins();
+        const spy = node.rest.updatePlayer as unknown as Mock;
+        spy.mockClear();
+
+        await player.filterManager.apply(); // no-arg commit with fresh defaults
+
+        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: { pluginFilters?: unknown } } };
+        expect(sent.playerOptions.filters.pluginFilters).toBeUndefined();
+    });
+});
+
+describe("FilterManager capability pruning on commit", () => {
+    it("drops plugin filters the node cannot host, keeping the ones it can", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        // dspx installed, but NOT lavalink-filter-plugin.
+        node.info = {
+            filters: ["echo", "low-pass", "high-pass", "normalization"],
+            plugins: [{ name: "lavadspx-plugin" }],
+            isNodelink: false,
+        } as never;
+
+        const player = createRealPlayer(manager);
+
+        // Simulate state carried over from another node: a flat DSPX echo (hostable here)
+        // and a nested lavalink-filter-plugin echo (NOT hostable — plugin absent).
+        player.filterManager.data.pluginFilters = {
+            echo: { echoLength: 0.5, decay: 0.5 },
+            "lavalink-filter-plugin": { echo: { delay: 4, decay: 0.8 } },
+        };
+
+        const spy = node.rest.updatePlayer as unknown as Mock;
+        spy.mockClear();
+
+        await player.filterManager.apply(); // no-arg commit
+
+        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: { pluginFilters?: Record<string, unknown> } } };
+        const pf = sent.playerOptions.filters.pluginFilters ?? {};
+        expect(pf.echo).toEqual({ echoLength: 0.5, decay: 0.5 }); // dspx flat echo kept
+        expect(pf["lavalink-filter-plugin"]).toBeUndefined(); // filter-plugin envelope dropped
+    });
+});

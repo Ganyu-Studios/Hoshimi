@@ -167,6 +167,7 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
     defaultSearchSource: SearchSources.Youtube,
     restOptions: {
         resumeTimeout: 10000,
+        restTimeout: 10000,
     },
     nodeOptions: {
         userAgent: HoshimiAgent,

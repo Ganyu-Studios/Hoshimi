@@ -375,7 +375,8 @@ export const FilterRegistry = {
      */
     isDefault(name: RegistryFilterName, payload: unknown): boolean {
         const entries: CanonicalEntry[] = getEntries(String(name));
-        const entry: CanonicalEntry | undefined = entries[0];
+        // Prefer an entry that actually declares a predicate; fall back to the first entry otherwise.
+        const entry: CanonicalEntry | undefined = entries.find((e): boolean => typeof e.isDefault === "function") ?? entries[0];
         if (!entry?.isDefault) return payload === undefined || payload === null;
         return entry.isDefault(payload);
     },
@@ -415,6 +416,28 @@ export const FilterRegistry = {
             }
         }
         return this.isDefault(wireKey, payload);
+    },
+
+    /**
+     * Whether the node can host a flat plugin filter written under `pluginFilters[wireKey]`.
+     * Resolves the flat plugin registration by wire key and checks the node advertises its backing
+     * capability. Returns `true` when no flat registration matches the wire key (unknown key → left untouched).
+     * @param {Node} node The node providing the context.
+     * @param {string} wireKey The flat key under `pluginFilters`.
+     * @returns {boolean} Whether the node can host the filter.
+     */
+    canHostFlatPlugin(node: Node, wireKey: string): boolean {
+        const target: string = keyOf(wireKey);
+        for (const entries of entriesByName.values()) {
+            for (const entry of entries) {
+                if (entry.scope === FilterScope.Plugin && !entry.pluginName && keyOf(String(entry.wireName ?? entry.name)) === target) {
+                    if (!node.info) return false;
+                    if (entry.capability) return PluginRegistry.hasCapability(node.info.plugins ?? [], entry.capability);
+                    return true; // no capability/pluginName declared → cannot tell, keep it
+                }
+            }
+        }
+        return true;
     },
 
     /**
@@ -665,11 +688,15 @@ FilterRegistry.register([
         name: FilterType.DSPXLowpass,
         scope: FilterScope.Plugin,
         capability: PluginCapabilities.Dspx,
+        isDefault: (p: { boostFactor?: number; cutoffFrequency?: number } | null | undefined): boolean =>
+            !p || ((p.boostFactor ?? 0) === 0 && (p.cutoffFrequency ?? 0) === 0),
     }),
     defineFilter({
         name: FilterType.DSPXHighpass,
         scope: FilterScope.Plugin,
         capability: PluginCapabilities.Dspx,
+        isDefault: (p: { boostFactor?: number; cutoffFrequency?: number } | null | undefined): boolean =>
+            !p || ((p.boostFactor ?? 0) === 0 && (p.cutoffFrequency ?? 0) === 0),
     }),
     defineFilter({
         name: FilterType.DSPXEcho,
@@ -685,5 +712,7 @@ FilterRegistry.register([
         name: FilterType.DSPXNormalization,
         scope: FilterScope.Plugin,
         capability: PluginCapabilities.Dspx,
+        isDefault: (p: { maxAmplitude?: number; adaptive?: boolean } | null | undefined): boolean =>
+            !p || ((p.maxAmplitude ?? 0) === 0 && !(p.adaptive ?? false)),
     }),
 ]);

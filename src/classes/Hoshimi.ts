@@ -156,20 +156,29 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
     }
 
     /**
-     * Check if the manager is useable.
-     * @returns {boolean} If the manager is useable.
+     * Check if the manager is usable.
+     * @returns {boolean} If the manager is usable.
      * @example
      * ```ts
-     * if (manager.isUseable()) {
-     * 	console.log("The manager is useable.");
+     * if (manager.isUsable()) {
+     * 	console.log("The manager is usable.");
      * } else {
-     * 	console.log("The manager is not useable.");
+     * 	console.log("The manager is not usable.");
      * }
      * ```
      */
-    public isUseable(): boolean {
+    public isUsable(): boolean {
         const nodes: NodeStructure[] = this.nodeManager.nodes.filter((node): boolean => node.state === State.Connected);
         return this.ready && nodes.length > 0;
+    }
+
+    /**
+     * Check if the manager is usable.
+     * @deprecated Use {@link Hoshimi.isUsable} instead. This misspelled alias will be removed in a future release.
+     * @returns {boolean} If the manager is usable.
+     */
+    public isUseable(): boolean {
+        return this.isUsable();
     }
 
     /**
