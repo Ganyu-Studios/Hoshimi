@@ -2,7 +2,7 @@ import { OptionError } from "../../classes/Errors";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
 import { type ParsedQuery, SourceRegistry } from "../../registry/SourceRegistry";
 import type { HoshimiOptions, SearchSource } from "../../types/Manager";
-import type { NodeOptions, PlayerMoveFilter, SearchQuery, SourceName } from "../../types/Node";
+import type { NodeOptions, NodeSortFilter, SearchQuery, SourceName } from "../../types/Node";
 import type { PlayerOptions } from "../../types/Player";
 import { UrlRegex } from "../constants";
 import { isPlainObject } from "./utils";
@@ -110,7 +110,7 @@ function validateManagerOptions(options: HoshimiOptions): void {
             if (typeof options.nodeOptions.moveOptions.move !== "undefined" && typeof options.nodeOptions.moveOptions.move !== "boolean")
                 throw new OptionError("The manager option 'options.nodeOptions.moveOptions.move' must be a boolean.");
             if (typeof options.nodeOptions.moveOptions.filterBy !== "undefined") {
-                const filterBy: PlayerMoveFilter = options.nodeOptions.moveOptions.filterBy;
+                const filterBy: NodeSortFilter = options.nodeOptions.moveOptions.filterBy;
                 if (typeof filterBy !== "string" && typeof filterBy !== "function")
                     throw new OptionError(
                         "The manager option 'options.nodeOptions.moveOptions.filterBy' must be a valid NodeSortTypes string or a function.",

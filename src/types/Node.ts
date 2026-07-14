@@ -1199,9 +1199,9 @@ export interface NodeSessionOptions {
 export interface NodePlayerMoveOptions {
     /**
      * The node sort type or a custom function to filter the nodes to move the players to when a node gets disconnected.
-     * @type {PlayerMoveFilter | undefined}
+     * @type {NodeSortFilter | undefined}
      */
-    filterBy?: PlayerMoveFilter;
+    filterBy?: NodeSortFilter;
     /**
      * Whether to move the players to another node if the node gets disconnected.
      * @type {boolean}
@@ -1359,9 +1359,14 @@ export interface NodeJSON {
 }
 
 /**
+ * The type for the node sort function.
+ */
+export type NodeSortFunction = (node: NodeStructure) => number;
+
+/**
  * The type for the player move filter.
  */
-export type PlayerMoveFilter = NodeSortTypes | ((node: NodeStructure) => number);
+export type NodeSortFilter = NodeSortTypes | NodeSortFunction;
 
 /**
  * The type for the unresolved track info.

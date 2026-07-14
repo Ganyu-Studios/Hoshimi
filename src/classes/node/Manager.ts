@@ -1,5 +1,5 @@
 import { EventNames, type NodeIdentifier } from "../../types/Manager";
-import { type NodeOptions, NodeSortTypes, State } from "../../types/Node";
+import { type NodeOptions, type NodeSortFilter, NodeSortTypes, State } from "../../types/Node";
 import { type NodeStructure, Structures } from "../../types/Structures";
 import { Collection } from "../../util/collection";
 import { NodeManagerError } from "../Errors";
@@ -199,9 +199,11 @@ export class NodeManager {
      * }
      * ```
      */
-    public getLeastUsed(sortType: NodeSortTypes = NodeSortTypes.Penalties): NodeStructure {
+    public getLeastUsed(sortType: NodeSortFilter = NodeSortTypes.Penalties): NodeStructure {
         const nodes: NodeStructure[] = this.nodes.filter((node): boolean => node.state === State.Connected);
         if (!nodes.length) throw new NodeManagerError("No connected nodes available.");
+
+        if (typeof sortType === "function") return nodes.reduce((a, b): NodeStructure => (sortType(a) < sortType(b) ? a : b));
 
         const sortFilters: Record<NodeSortTypes, SortFunction> = {
             [NodeSortTypes.Players]: (node): number => node.stats?.players ?? 0,
