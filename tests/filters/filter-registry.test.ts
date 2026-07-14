@@ -1,9 +1,29 @@
 import { describe, expect, it, type Mock } from "vitest";
 import { FilterRegistry, FilterScope } from "../../src/registry/FiltersRegistry";
 import { PluginCapabilities } from "../../src/registry/PluginRegistry";
-import { FilterType } from "../../src/types/Filters";
+import { AudioOutput, FilterType } from "../../src/types/Filters";
+import type { FilterManagerStructure } from "../../src/types/Structures";
+import { AudioOutputData, DefaultFilterPreset } from "../../src/util/constants";
 import { createRealManager, createRealNode, createRealPlayer } from "../helpers";
 
+// Built-in top-level filters a real Lavalink node advertises via /v4/info.
+const BUILTIN_FILTERS = [
+    "volume",
+    "equalizer",
+    "karaoke",
+    "timescale",
+    "tremolo",
+    "vibrato",
+    "rotation",
+    "distortion",
+    "channelMix",
+    "lowPass",
+];
+const DSPX_FILTERS = ["low-pass", "high-pass", "echo", "normalization"];
+const FILTER_PLUGIN_FILTERS = ["echo", "reverb"];
+const ALL_FILTERS = [...new Set([...BUILTIN_FILTERS, ...DSPX_FILTERS, ...FILTER_PLUGIN_FILTERS])];
+
+/** A bare node shape for pure {@link FilterRegistry} resolution (no player needed). */
 function fakeNode(plugins: string[], filters: string[] = []) {
     return {
         id: "n",
@@ -12,16 +32,34 @@ function fakeNode(plugins: string[], filters: string[] = []) {
     } as never;
 }
 
-function withBothPlugins() {
+/**
+ * Build a real manager + connected node + player. The node advertises a realistic filter set so the
+ * "advertised" drop in commit() cannot mask filters that failed to be recognised as default.
+ */
+function setup(opts: { filters?: string[]; plugins?: string[] } = {}) {
     const manager = createRealManager();
     const node = createRealNode(manager);
     node.info = {
-        filters: ["echo"],
-        plugins: [{ name: "lavadspx-plugin" }, { name: "lavalink-filter-plugin" }],
+        filters: opts.filters ?? BUILTIN_FILTERS,
+        plugins: (opts.plugins ?? []).map((name) => ({ name })),
         isNodelink: false,
     } as never;
     const player = createRealPlayer(manager);
-    return { manager, node, player };
+    const spy = node.rest.updatePlayer as unknown as Mock;
+    spy.mockClear();
+    return { manager, node, player, fm: player.filterManager, spy };
+}
+
+/** A node with both filter plugins installed and everything advertised. */
+function bothPlugins() {
+    return setup({ filters: ALL_FILTERS, plugins: ["lavadspx-plugin", "lavalink-filter-plugin"] });
+}
+
+/** The `filters` object of the most recent updatePlayer call (throws if none happened). */
+function sentFilters(spy: Mock): Record<string, unknown> {
+    const call = spy.mock.calls.at(-1)?.[0] as { playerOptions?: { filters?: Record<string, unknown> } } | undefined;
+    if (!call) throw new Error("updatePlayer was never called");
+    return call.playerOptions?.filters ?? {};
 }
 
 describe("FilterRegistry echo disambiguation", () => {
@@ -53,36 +91,146 @@ describe("FilterRegistry echo disambiguation", () => {
 });
 
 describe("FilterManager envelope routing", () => {
-    it("dspx.setEcho writes a flat pluginFilters.echo payload", async () => {
-        const { player } = withBothPlugins();
+    it("dspx.setEcho writes a flat pluginFilters.echo payload and leaves the nested one untouched", async () => {
+        const { fm } = bothPlugins();
 
-        await player.filterManager.dspx.setEcho({ echoLength: 0.5, decay: 0.5 });
+        await fm.dspx.setEcho({ echoLength: 0.5, decay: 0.5 });
 
-        const pf = player.filterManager.data.pluginFilters as Record<string, unknown>;
+        const pf = fm.data.pluginFilters as Record<string, Record<string, unknown>>;
         expect(pf.echo).toEqual({ echoLength: 0.5, decay: 0.5 });
-        // The nested lavalink-filter-plugin echo is left untouched (still the default).
-        expect((pf["lavalink-filter-plugin"] as Record<string, unknown>).echo).toEqual({ delay: 0, decay: 0 });
+        expect(pf["lavalink-filter-plugin"].echo).toEqual({ delay: 0, decay: 0 });
     });
 
     it("plugin.setEcho writes a nested pluginFilters['lavalink-filter-plugin'].echo payload", async () => {
-        const { player } = withBothPlugins();
+        const { fm } = bothPlugins();
 
-        await player.filterManager.plugin.setEcho({ delay: 4, decay: 0.8 });
+        await fm.plugin.setEcho({ delay: 4, decay: 0.8 });
 
-        const pf = player.filterManager.data.pluginFilters as Record<string, Record<string, unknown>>;
+        const pf = fm.data.pluginFilters as Record<string, Record<string, unknown>>;
         expect(pf["lavalink-filter-plugin"].echo).toEqual({ delay: 4, decay: 0.8 });
+        expect(pf.echo).toEqual({ decay: 0, delay: 0, echoLength: 0 }); // flat dspx echo untouched
+    });
+
+    it("dspx.setLowPass sends exactly the flat DSPX low-pass envelope", async () => {
+        const { fm, spy } = setup({ filters: [...BUILTIN_FILTERS, ...DSPX_FILTERS], plugins: ["lavadspx-plugin"] });
+
+        await fm.dspx.setLowPass({ cutoffFrequency: 500, boostFactor: 1.5 });
+
+        expect(sentFilters(spy)).toEqual({
+            pluginFilters: { "low-pass": { boostFactor: 1.5, cutoffFrequency: 500 } },
+        });
+    });
+
+    it("plugin.setReverb sends exactly the nested lavalink-filter-plugin reverb envelope", async () => {
+        const { fm, spy } = setup({ filters: [...BUILTIN_FILTERS, ...FILTER_PLUGIN_FILTERS], plugins: ["lavalink-filter-plugin"] });
+
+        await fm.plugin.setReverb({ delays: [0.1], gains: [0.5] });
+
+        expect(sentFilters(spy)).toEqual({
+            pluginFilters: { "lavalink-filter-plugin": { reverb: { delays: [0.1], gains: [0.5] } } },
+        });
     });
 
     it("commit keeps a dspx echo that only sets echoLength (uses the dspx default predicate)", async () => {
-        const { player, node } = withBothPlugins();
-        const spy = node.rest.updatePlayer as unknown as Mock;
-        spy.mockClear();
+        const { fm, spy } = bothPlugins();
 
         // decay 0 but echoLength set: with the filter-plugin predicate this would be wrongly stripped.
-        await player.filterManager.dspx.setEcho({ echoLength: 0.5, decay: 0 });
+        await fm.dspx.setEcho({ echoLength: 0.5, decay: 0 });
 
-        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: { pluginFilters?: Record<string, unknown> } } };
-        expect(sent.playerOptions.filters.pluginFilters?.echo).toEqual({ echoLength: 0.5, decay: 0 });
+        expect(sentFilters(spy)).toEqual({ pluginFilters: { echo: { echoLength: 0.5, decay: 0 } } });
+    });
+});
+
+describe("FilterManager wire payload contract (core setters)", () => {
+    const CORE_CASES: Array<[string, (fm: FilterManagerStructure) => Promise<unknown>, Record<string, unknown>]> = [
+        ["setVolume(2)", (fm) => fm.setVolume(2), { volume: 2 }],
+        ["setKaraoke()", (fm) => fm.setKaraoke(), { karaoke: { ...DefaultFilterPreset.Karaoke } }],
+        ["setTremolo()", (fm) => fm.setTremolo(), { tremolo: { frequency: 4, depth: 0.8 } }],
+        ["setVibrato()", (fm) => fm.setVibrato(), { vibrato: { frequency: 4, depth: 0.8 } }],
+        ["setLowPass()", (fm) => fm.setLowPass(), { lowPass: { smoothing: 20 } }],
+        ["setDistortion()", (fm) => fm.setDistortion(), { distortion: { ...DefaultFilterPreset.Distortion } }],
+        ["setNightcore()", (fm) => fm.setNightcore(), { timescale: { ...DefaultFilterPreset.Nightcore } }],
+        ["setVaporwave()", (fm) => fm.setVaporwave(), { timescale: { ...DefaultFilterPreset.Vaporwave } }],
+        ["setAudioOutput(Mono)", (fm) => fm.setAudioOutput(AudioOutput.Mono), { channelMix: { ...AudioOutputData.mono } }],
+        ["setEQBand({band:0,gain:0.25})", (fm) => fm.setEQBand({ band: 0, gain: 0.25 }), { equalizer: [{ band: 0, gain: 0.25 }] }],
+    ];
+
+    it.each(CORE_CASES)("%s sends exactly that filter and nothing else", async (_label, apply, expected) => {
+        const { fm, spy } = setup();
+        await apply(fm);
+        expect(sentFilters(spy)).toEqual(expected);
+    });
+});
+
+describe("FilterManager combined / clear / reset semantics", () => {
+    it("keeps every applied filter and nothing extra", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setNightcore();
+        await fm.setKaraoke({ level: 0.5 });
+
+        expect(sentFilters(spy)).toEqual({
+            timescale: { ...DefaultFilterPreset.Nightcore },
+            karaoke: { level: 0.5, monoLevel: 0, filterBand: 0, filterWidth: 0 },
+        });
+    });
+
+    it("clearing one filter leaves only the remaining active filter", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setNightcore();
+        await fm.setKaraoke();
+        await fm.clear(FilterType.Karaoke);
+
+        expect(Object.keys(sentFilters(spy))).toEqual(["timescale"]);
+    });
+
+    it("reset() sends an empty payload after filters were applied", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setNightcore();
+        await fm.setDistortion();
+        await fm.reset();
+
+        expect(sentFilters(spy)).toEqual({});
+    });
+});
+
+describe("FilterManager default-state stripping", () => {
+    it("a fresh commit sends a completely empty filters payload", async () => {
+        const { fm, spy } = bothPlugins();
+
+        await fm.apply(); // no-arg commit with fresh defaults
+
+        expect(sentFilters(spy)).toEqual({});
+    });
+
+    it("regression: applying a single filter never leaks default karaoke/distortion/pluginFilters", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setNightcore();
+
+        const filters = sentFilters(spy);
+        expect(filters).not.toHaveProperty("karaoke");
+        expect(filters).not.toHaveProperty("distortion");
+        expect(filters).not.toHaveProperty("pluginFilters");
+        expect(Object.keys(filters)).toEqual(["timescale"]);
+    });
+
+    it("keeps a distortion that is not the identity transform", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setDistortion({ scale: 2 });
+
+        expect(sentFilters(spy)).toEqual({ distortion: { scale: 2 } });
+    });
+
+    it("keeps a karaoke where a single parameter is non-zero", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setKaraoke({ level: 0.5 });
+
+        expect(sentFilters(spy)).toEqual({ karaoke: { level: 0.5, monoLevel: 0, filterBand: 0, filterWidth: 0 } });
     });
 });
 
@@ -91,7 +239,7 @@ describe("FilterManager player isolation (no shared default state)", () => {
         const manager = createRealManager();
         const node = createRealNode(manager);
         node.info = {
-            filters: ["echo"],
+            filters: ALL_FILTERS,
             plugins: [{ name: "lavadspx-plugin" }, { name: "lavalink-filter-plugin" }],
             isNodelink: false,
         } as never;
@@ -108,105 +256,21 @@ describe("FilterManager player isolation (no shared default state)", () => {
     });
 });
 
-describe("FilterManager default-state stripping", () => {
-    it("strips every default plugin filter (incl. DSPX low/high-pass and normalization) on a fresh commit", async () => {
-        const { player, node } = withBothPlugins();
-        const spy = node.rest.updatePlayer as unknown as Mock;
-        spy.mockClear();
-
-        await player.filterManager.apply(); // no-arg commit with fresh defaults
-
-        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: { pluginFilters?: unknown } } };
-        expect(sent.playerOptions.filters.pluginFilters).toBeUndefined();
-    });
-});
-
-describe("FilterManager sends only non-default filters", () => {
-    const BUILTIN_FILTERS = [
-        "volume",
-        "equalizer",
-        "karaoke",
-        "timescale",
-        "tremolo",
-        "vibrato",
-        "rotation",
-        "distortion",
-        "channelMix",
-        "lowPass",
-    ];
-
-    function fullNodePlayer() {
-        const manager = createRealManager();
-        const node = createRealNode(manager);
-        // Advertise every built-in filter (like a real Lavalink node) so the "advertised" drop cannot mask
-        // filters that failed to be recognised as default.
-        node.info = { filters: BUILTIN_FILTERS, plugins: [], isNodelink: false } as never;
-        const player = createRealPlayer(manager);
-        return { player, node };
-    }
-
-    it("a fresh commit sends an empty filters payload", async () => {
-        const { player, node } = fullNodePlayer();
-        const spy = node.rest.updatePlayer as unknown as Mock;
-        spy.mockClear();
-
-        await player.filterManager.apply();
-
-        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: Record<string, unknown> } };
-        expect(sent.playerOptions.filters).toEqual({});
-    });
-
-    it("setVaporwave sends only the timescale filter (default karaoke/distortion are stripped)", async () => {
-        const { player, node } = fullNodePlayer();
-        const spy = node.rest.updatePlayer as unknown as Mock;
-        spy.mockClear();
-
-        await player.filterManager.setVaporwave();
-
-        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: Record<string, unknown> } };
-        expect(Object.keys(sent.playerOptions.filters)).toEqual(["timescale"]);
-    });
-
-    it("clear leaves no filters behind on a fresh player", async () => {
-        const { player, node } = fullNodePlayer();
-        const spy = node.rest.updatePlayer as unknown as Mock;
-        spy.mockClear();
-
-        await player.filterManager.clear(FilterType.Timescale);
-
-        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: Record<string, unknown> } };
-        expect(sent.playerOptions.filters).toEqual({});
-    });
-});
-
 describe("FilterManager capability pruning on commit", () => {
     it("drops plugin filters the node cannot host, keeping the ones it can", async () => {
-        const manager = createRealManager();
-        const node = createRealNode(manager);
         // dspx installed, but NOT lavalink-filter-plugin.
-        node.info = {
-            filters: ["echo", "low-pass", "high-pass", "normalization"],
-            plugins: [{ name: "lavadspx-plugin" }],
-            isNodelink: false,
-        } as never;
-
-        const player = createRealPlayer(manager);
+        const { fm, spy } = setup({ filters: [...BUILTIN_FILTERS, ...DSPX_FILTERS], plugins: ["lavadspx-plugin"] });
 
         // Simulate state carried over from another node: a flat DSPX echo (hostable here)
         // and a nested lavalink-filter-plugin echo (NOT hostable — plugin absent).
-        player.filterManager.data.pluginFilters = {
+        fm.data.pluginFilters = {
             echo: { echoLength: 0.5, decay: 0.5 },
             "lavalink-filter-plugin": { echo: { delay: 4, decay: 0.8 } },
         };
-
-        const spy = node.rest.updatePlayer as unknown as Mock;
         spy.mockClear();
 
-        await player.filterManager.apply(); // no-arg commit
+        await fm.apply(); // no-arg commit
 
-        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: { pluginFilters?: Record<string, unknown> } } };
-        const pf = sent.playerOptions.filters.pluginFilters ?? {};
-        expect(pf.echo).toEqual({ echoLength: 0.5, decay: 0.5 }); // dspx flat echo kept
-        expect(pf["lavalink-filter-plugin"]).toBeUndefined(); // filter-plugin envelope dropped
+        expect(sentFilters(spy)).toEqual({ pluginFilters: { echo: { echoLength: 0.5, decay: 0.5 } } });
     });
 });
