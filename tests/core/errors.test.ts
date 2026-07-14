@@ -9,7 +9,7 @@ import {
     ResolveError,
     RestError,
     StorageError,
-} from "../src/classes/Errors";
+} from "../../src/classes/Errors";
 
 describe("Errors", () => {
     it("ManagerError sets name and message", () => {

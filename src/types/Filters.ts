@@ -96,15 +96,26 @@ export enum FilterType {
      */
     DSPXHighpass = "high-pass",
     /**
-     * DSPX echo filter.
+     * DSPX echo filter. Distinct canonical name from {@link FilterType.Echo} so the registry can tell them
+     * apart; both are written to the wire as `echo` (DSPX flat under `pluginFilters`, the filter-plugin nested).
      * @type {string}
      */
-    DSPXEcho = FilterType.Echo,
+    DSPXEcho = "dspx-echo",
     /**
      * DSPX normalization filter.
      * @type {string}
      */
     DSPXNormalization = "normalization",
+    /**
+     * Channel mix filter.
+     * @type {string}
+     */
+    ChannelMix = "channelMix",
+    /**
+     * Equalizer filter.
+     * @type {string}
+     */
+    Equalizer = "equalizer",
 }
 
 /**
@@ -294,9 +305,29 @@ export interface TremoloSettings {
 }
 
 /**
+ * Custom top-level filter settings for Hoshimi.
+ *
+ * Extend this interface via module augmentation to declare typed top-level filter keys
+ * provided by a fork (e.g. Nodelink) or by code that integrates with Hoshimi.
+ *
+ * Runtime registration via {@link FilterRegistry} works without augmenting this interface;
+ * augmentation only adds compile-time autocompletion and type-checking for the new keys.
+ *
+ * @example
+ * ```ts
+ * declare module "hoshimi" {
+ *   interface CustomizableFilterSettings {
+ *     "nodelink-echo"?: { decay: number; delay: number };
+ *   }
+ * }
+ * ```
+ */
+export interface CustomizableFilterSettings {}
+
+/**
  * The options for the filters.
  */
-export interface FilterSettings {
+export interface FilterSettings extends CustomizableFilterSettings {
     /**
      * The volume of the filter.
      * @type {number | undefined}
@@ -352,12 +383,38 @@ export interface FilterSettings {
      * @type {PluginFilterSettings | undefined}
      */
     pluginFilters?: PluginFilterSettings;
+    /**
+     * Open index for vendor-scoped (fork) filters registered at runtime via {@link FilterRegistry}.
+     * Declared keys above (and any key augmented through {@link CustomizableFilterSettings}) keep their precise types.
+     */
+    [key: string]: unknown;
 }
+
+/**
+ * Custom plugin filter payloads for Hoshimi.
+ *
+ * Extend this interface via module augmentation to declare typed plugin payload keys
+ * (either nested under a plugin name, e.g. `"my-plugin"`, or flat filter keys
+ * placed directly under `pluginFilters`).
+ *
+ * Runtime registration via {@link FilterRegistry} works without augmenting this interface;
+ * augmentation only adds compile-time autocompletion and type-checking for the new keys.
+ *
+ * @example
+ * ```ts
+ * declare module "hoshimi" {
+ *   interface CustomizablePluginPayloads {
+ *     "my-fork-plugin"?: { gain?: number };
+ *   }
+ * }
+ * ```
+ */
+export interface CustomizablePluginPayloads {}
 
 /**
  * The settings for plugin filters.
  */
-export interface PluginFilterSettings {
+export interface PluginFilterSettings extends CustomizablePluginPayloads {
     /**
      * The normalization settings.
      * @type {NormalizationSettings | undefined}
@@ -383,6 +440,11 @@ export interface PluginFilterSettings {
      * @type {LavalinkFilterPluginSettings | undefined}
      */
     "lavalink-filter-plugin"?: LavalinkFilterPluginSettings;
+    /**
+     * Open index for plugin-scoped filter payloads registered at runtime via {@link FilterRegistry}.
+     * Declared keys above (and any key augmented through {@link CustomizablePluginPayloads}) keep their precise types.
+     */
+    [key: string]: unknown;
 }
 
 /**

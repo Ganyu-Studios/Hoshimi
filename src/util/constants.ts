@@ -84,7 +84,7 @@ export const DefaultFilterPreset = Object.freeze({
 export const DefaultPlayerFilters: Readonly<FilterSettings> = Object.freeze<FilterSettings>({
     volume: 1,
     equalizer: [],
-    channelMix: AudioOutputData.mono,
+    channelMix: AudioOutputData.stereo,
     lowPass: {
         smoothing: 0,
     },
@@ -167,6 +167,7 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
     defaultSearchSource: SearchSources.Youtube,
     restOptions: {
         resumeTimeout: 10000,
+        restTimeout: 10000,
     },
     nodeOptions: {
         userAgent: HoshimiAgent,
@@ -197,6 +198,10 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
             autoDestroy: false,
             autoReconnect: false,
             autoQueue: false,
+        },
+        onError: {
+            autoDestroy: false,
+            autoStop: false,
         },
     },
     client: {

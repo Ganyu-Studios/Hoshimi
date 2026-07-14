@@ -1,26 +1,36 @@
+import { FilterRegistry, type RegistryFilterName } from "../../../registry/FiltersRegistry";
 import {
     AudioOutput,
+    type ChannelMixSettings,
     type DistortionSettings,
-    type EnabledPlayerFilters,
     type EQBandSettings,
     type FilterSettings,
     FilterType,
     type KaraokeSettings,
-    type LavalinkFilterPluginSettings,
     type LowPassSettings,
     type TimescaleSettings,
     type TremoloSettings,
 } from "../../../types/Filters";
-import type { Omit, RestOrArray } from "../../../types/Manager";
+import type { RestOrArray } from "../../../types/Manager";
 import type { PlayerStructure } from "../../../types/Structures";
 import { AudioOutputData, DefaultFilterPreset, DefaultPlayerFilters } from "../../../util/constants";
-import { isDefined } from "../../../util/functions/utils";
+import { FilterPayload } from "../../../util/functions/filters";
 import { PlayerError } from "../../Errors";
 import { DSPXPluginFilter } from "./DSPXPlugin";
 import { LavalinkPluginFilter } from "./LavalinkPlugin";
 
 /**
  * Class representing a filter manager for a player.
+ *
+ * Backed by the {@link FilterRegistry}: filter writes and lookups go through the registry,
+ * which knows the canonical name, scope (Core/Plugin/Vendor), payload envelope, and default-state predicate.
+ *
+ * The previous `filters: EnabledPlayerFilters` toggle object has been removed; every "is X active"
+ * question is derived on-demand from {@link FilterRegistry.isDefault} against the current payload.
+ *
+ * The commit/envelope internals live in {@link FilterPayload} (util/functions/filters) as `this`-helpers
+ * invoked with `.call(this)`, rather than private members, matching the project convention.
+ *
  * @class FilterManager
  */
 export class FilterManager {
@@ -33,64 +43,34 @@ export class FilterManager {
     public readonly player: PlayerStructure;
 
     /**
-     * The bands applied to the player.
+     * The bands applied to the player. Kept in sync with `data.equalizer`.
      * @type {EQBandSettings[]}
      * @readonly
      */
     public readonly bands: EQBandSettings[] = [];
 
     /**
-     * The current filter settings applied to the player.
+     * The current filter payload (wire-bound). Mutated by {@link apply} and {@link clear}.
      * @type {FilterSettings}
      * @public
      */
-    public data: FilterSettings = { ...DefaultPlayerFilters };
+    public data: FilterSettings = structuredClone(DefaultPlayerFilters);
 
     /**
-     * The enabled filters for the player.
-     * @type {EnabledPlayerFilters}
-     */
-    public filters: EnabledPlayerFilters = {
-        audioOutput: AudioOutput.Stereo,
-        volume: false,
-        vaporwave: false,
-        custom: false,
-        nightcore: false,
-        rotation: false,
-        karaoke: false,
-        tremolo: false,
-        vibrato: false,
-        lowPass: false,
-        distortion: false,
-        timescale: false,
-        lavalinkFilterPlugin: {
-            echo: false,
-            reverb: false,
-        },
-        lavalinkLavaDspxPlugin: {
-            lowPass: false,
-            highPass: false,
-            normalization: false,
-            echo: false,
-        },
-    };
-
-    /**
-     * The lavalink plugin filters manager.
+     * Thin facade for filters provided by the `lavalink-filter-plugin`.
      * @type {LavalinkPluginFilter}
      * @readonly
      */
-    readonly plugin: LavalinkPluginFilter;
+    public readonly plugin: LavalinkPluginFilter;
 
     /**
-     * The DSPX plugin filters manager.
+     * Thin facade for filters provided by the `lavadspx-plugin`.
      * @type {DSPXPluginFilter}
      * @readonly
      */
-    readonly dspx: DSPXPluginFilter;
+    public readonly dspx: DSPXPluginFilter;
 
     /**
-     *
      * Creates a new filter manager.
      * @param {PlayerStructure} player The player this filter manager belongs to.
      */
@@ -100,581 +80,304 @@ export class FilterManager {
         this.dspx = new DSPXPluginFilter(this);
     }
 
-    /**
-     * Resets all filters to their default values.
-     * @returns {Promise<this>} A promise that resolves to the instance of the filter manager.
-     * @example
-     * ```ts
-     * // Reset all filters
-     * await player.filterManager.reset();
-     * ```
-     */
-    public async reset(): Promise<this> {
-        this.filters = {
-            audioOutput: AudioOutput.Stereo,
-            volume: false,
-            vaporwave: false,
-            custom: false,
-            nightcore: false,
-            rotation: false,
-            karaoke: false,
-            tremolo: false,
-            vibrato: false,
-            lowPass: false,
-            distortion: false,
-            timescale: false,
-            lavalinkFilterPlugin: {
-                echo: false,
-                reverb: false,
-            },
-            lavalinkLavaDspxPlugin: {
-                lowPass: false,
-                highPass: false,
-                normalization: false,
-                echo: false,
-            },
-        };
-
-        this.data = { ...DefaultPlayerFilters };
-
-        return this.apply();
-    }
+    // ============================================================
+    // Generic registry-driven API
+    // ============================================================
 
     /**
-     *
-     * Applies the current filters to the player.
-     * @returns {Promise<this>} A promise that resolves to the instance of the filter manager.
+     * Commit the current filter payload to the node.
+     * @returns {Promise<this>} A promise that resolves to the filter manager.
+     */
+    public apply(): Promise<this>;
+    /**
+     * Set the given filter to `payload` and commit. Idempotent — calling repeatedly
+     * with the same payload yields the same wire state.
+     * @param {RegistryFilterName} name The canonical filter name (or alias) to set.
+     * @param {TPayload} payload The payload to write into the envelope chosen by the registry.
+     * @returns {Promise<this>} A promise that resolves to the filter manager.
+     * @throws {Error} If the filter is not registered, or if the node does not advertise the filter / required plugin.
      * @example
      * ```ts
-     * // Apply the current filters
-     * await player.filterManager.apply();
+     * await player.filterManager.apply(FilterType.Echo, { decay: 0.5, delay: 200 });
      * ```
      */
-    public async apply(): Promise<this> {
-        if (!this.player.node.sessionId) return this;
-
-        this.check();
-
-        const filters = { ...this.data };
-
-        if (!this.filters.volume) delete filters.volume;
-        if (!this.filters.tremolo) delete filters.tremolo;
-        if (!this.filters.vibrato) delete filters.vibrato;
-
-        if (!this.filters.lavalinkFilterPlugin.echo) delete filters.pluginFilters?.["lavalink-filter-plugin"]?.echo;
-        if (!this.filters.lavalinkFilterPlugin.reverb) delete filters.pluginFilters?.["lavalink-filter-plugin"]?.reverb;
-
-        if (!this.filters.lavalinkLavaDspxPlugin.echo) delete filters.pluginFilters?.echo;
-        if (!this.filters.lavalinkLavaDspxPlugin.normalization) delete filters.pluginFilters?.normalization;
-        if (!this.filters.lavalinkLavaDspxPlugin.highPass) delete filters.pluginFilters?.["high-pass"];
-        if (!this.filters.lavalinkLavaDspxPlugin.lowPass) delete filters.pluginFilters?.["low-pass"];
-
-        if (filters.pluginFilters?.["lavalink-filter-plugin"] && !Object.values(filters.pluginFilters["lavalink-filter-plugin"]).length)
-            delete filters.pluginFilters["lavalink-filter-plugin"];
-        if (filters.pluginFilters && Object.values(filters.pluginFilters).length === 0) delete filters.pluginFilters;
-        if (this.filters.audioOutput === AudioOutput.Stereo) delete filters.channelMix;
-
-        if (!this.filters.lowPass) delete filters.lowPass;
-        if (!this.filters.karaoke) delete filters.karaoke;
-        if (!this.filters.rotation) delete filters.rotation;
-        if (!this.filters.distortion) delete filters.distortion;
-        if (!this.filters.timescale) delete filters.timescale;
-
-        if (this.data.timescale && Object.values(this.data.timescale).every((v) => v === 1)) delete filters.timescale;
-
-        filters.equalizer = [...this.bands];
-
-        if (!filters.equalizer.length) delete filters.equalizer;
-
-        for (const key in filters) {
-            if (!this.player.node.info?.filters?.includes(key as FilterType)) delete filters[key as keyof FilterSettings];
+    public apply<TPayload>(name: RegistryFilterName, payload: TPayload): Promise<this>;
+    public async apply<TPayload>(name?: RegistryFilterName, payload?: TPayload): Promise<this> {
+        if (typeof name !== "undefined") {
+            FilterRegistry.validate({ node: this.player.node, name });
+            const entry = FilterRegistry.resolve(name, this.player.node);
+            if (!entry) throw new PlayerError(`No registered filter resolves '${String(name)}'.`);
+            FilterPayload.writeToEnvelope.call(this, entry, payload);
         }
-
-        await this.player.updatePlayer({ playerOptions: { filters } });
-
+        await FilterPayload.commit.call(this);
         return this;
     }
 
     /**
-     * Checks if the current filters are active.
-     * @param {TimescaleSettings} timescale The timescale settings to check against.
-     * @returns {void}
+     * Remove the given filter from the payload and commit.
+     * @param {RegistryFilterName} name The canonical filter name (or alias) to clear.
+     * @returns {Promise<this>} A promise that resolves to the filter manager.
      * @example
      * ```ts
-     * // Check the current filters
-     * player.filterManager.check();
+     * await player.filterManager.clear(FilterType.Karaoke);
      * ```
      */
-    public check(timescale?: TimescaleSettings): void {
-        this.filters.rotation = this.data.rotation?.rotationHz !== 0;
-        this.filters.vibrato = this.data.vibrato?.frequency !== 0 || this.data.vibrato?.depth !== 0;
-        this.filters.tremolo = this.data.tremolo?.frequency !== 0 || this.data.tremolo?.depth !== 0;
-
-        const lavalinkPluginFilters: LavalinkFilterPluginSettings = this.data.pluginFilters?.["lavalink-filter-plugin"] ?? {};
-
-        this.filters.lavalinkFilterPlugin.echo = lavalinkPluginFilters.echo?.decay !== 0 || lavalinkPluginFilters.echo?.delay !== 0;
-        this.filters.lavalinkFilterPlugin.reverb =
-            lavalinkPluginFilters.reverb?.delays?.length !== 0 || lavalinkPluginFilters.reverb?.gains?.length !== 0;
-        this.filters.lavalinkLavaDspxPlugin.highPass = Object.values(this.data.pluginFilters?.["high-pass"] ?? {}).length > 0;
-        this.filters.lavalinkLavaDspxPlugin.lowPass = Object.values(this.data.pluginFilters?.["low-pass"] ?? {}).length > 0;
-        this.filters.lavalinkLavaDspxPlugin.normalization = Object.values(this.data.pluginFilters?.normalization ?? {}).length > 0;
-        this.filters.lavalinkLavaDspxPlugin.echo =
-            Object.values(this.data.pluginFilters?.echo ?? {}).length > 0 && typeof this.data.pluginFilters?.echo?.delay === "undefined";
-
-        this.filters.lowPass = this.data.lowPass?.smoothing !== 0;
-        this.filters.karaoke = Object.values(this.data.karaoke ?? {}).some((v) => v !== 0);
-        this.filters.distortion = Object.values(this.data.distortion ?? {}).some((v) => v !== 0 && v !== 1);
-        this.filters.timescale = Object.values(this.data.timescale ?? {}).some((v) => v !== 1);
-        this.filters.custom =
-            !this.filters.nightcore && !this.filters.vaporwave && Object.values(this.data.timescale ?? {}).some((d) => d !== 1);
-
-        if ((this.filters.nightcore || this.filters.vaporwave) && timescale) {
-            if (
-                timescale.pitch !== this.data.timescale?.pitch ||
-                timescale.rate !== this.data.timescale?.rate ||
-                timescale.speed !== this.data.timescale?.speed
-            ) {
-                this.filters.custom = Object.values(this.data.timescale ?? {}).some((v) => v !== 1);
-                this.filters.nightcore = false;
-                this.filters.vaporwave = false;
-            }
-        }
+    public async clear(name: RegistryFilterName): Promise<this> {
+        const entry = FilterRegistry.resolve(name, this.player.node);
+        if (entry) FilterPayload.clearFromEnvelope.call(this, entry);
+        await FilterPayload.commit.call(this);
+        return this;
     }
 
     /**
-     *
-     * Checks if a specific filter is active.
-     * @param {FilterType} filter The filter type to check.
-     * @returns {boolean} True if the filter is active, false otherwise.
-     * @example
-     * ```ts
-     * // Check if the nightcore filter is active
-     * const isNightcoreActive = player.filterManager.has(FilterType.Nightcore);
-     * console.log(isNightcoreActive); // true or false
-     * ```
+     * Whether the given filter is currently active (its payload is not the default/off state).
+     * @param {RegistryFilterName} name The canonical filter name (or alias).
+     * @returns {boolean} True if the filter has a non-default payload, false otherwise.
      */
-    public has(filter: FilterType): boolean {
-        const dspx: boolean = this.filters.lavalinkLavaDspxPlugin[filter as keyof typeof this.filters.lavalinkLavaDspxPlugin];
-        if (isDefined(dspx)) return dspx;
-
-        const plugin: boolean = this.filters.lavalinkFilterPlugin[filter as keyof typeof this.filters.lavalinkFilterPlugin];
-        if (isDefined(plugin)) return plugin;
-
-        const kind: boolean | AudioOutput =
-            this.filters[filter as keyof Omit<EnabledPlayerFilters, "lavalinkFilterPlugin" | "lavalinkLavaDspxPlugin">];
-
-        if (typeof kind === "boolean") return kind;
-        if (typeof kind === "string") return kind !== AudioOutput.Stereo;
-
-        return false;
+    public isEnabled(name: RegistryFilterName): boolean {
+        const entry = FilterRegistry.resolve(name, this.player.node);
+        if (!entry) return false;
+        const payload = FilterPayload.readFromEnvelope.call(this, entry);
+        return !FilterRegistry.isDefault(name, payload);
     }
 
     /**
-     *
-     * Sets the volume for the player.
-     * @param {number} volume The volume level to set (between 0 and 5).
-     * @returns {Promise<this>} A promise that resolves to the player instance.
-     * @throws {PlayerError} If the volume is not a number between 0 and 5.
-     * @example
-     * ```ts
-     * // Set the volume to 2.5
-     * await player.filterManager.setVolume(2.5);
-     * ```
+     * Returns every active filter name as derived from the current payload.
+     * @returns {string[]} Canonical filter names whose payload is non-default.
+     */
+    public getEnabled(): string[] {
+        return FilterRegistry.getFilters().filter((name): boolean => this.isEnabled(name));
+    }
+
+    /**
+     * Backward-compatible alias for {@link isEnabled}.
+     * @param {RegistryFilterName} filter The filter to check.
+     * @returns {boolean} True if active.
+     */
+    public has(filter: RegistryFilterName): boolean {
+        return this.isEnabled(filter);
+    }
+
+    /**
+     * Reset every filter to its default state and commit.
+     * @returns {Promise<this>} A promise that resolves to the filter manager.
+     */
+    public async reset(): Promise<this> {
+        this.bands.length = 0;
+        this.data = structuredClone(DefaultPlayerFilters);
+        await FilterPayload.commit.call(this);
+        return this;
+    }
+
+    /**
+     * Serialise the current filter payload.
+     * @returns {FilterSettings} A deep clone of the wire payload (a snapshot; mutating it never touches live state).
+     */
+    public toJSON(): FilterSettings {
+        return structuredClone(this.data);
+    }
+
+    // ============================================================
+    // Typed convenience setters (idempotent — delegate to apply)
+    // ============================================================
+
+    /**
+     * Set the volume.
+     * @param {number} volume Volume between 0 and 5.
      */
     public async setVolume(volume: number): Promise<this> {
         if (typeof volume !== "number" || Number.isNaN(volume) || volume < 0 || volume > 5)
             throw new PlayerError("Volume must be a number between 0 and 5.");
-
-        this.data = { volume };
-        this.filters.volume = volume !== 1;
-
-        return this.apply();
+        return this.apply<number>(FilterType.Volume, volume);
     }
 
     /**
-     * Sets the audio output for the player.
-     * @param {AudioOutput} output The audio output to set.
-     * @returns {Promise<this>} A promise that resolves to the player instance.
-     * @throws {PlayerError} If the output is not a valid AudioOutput value.
-     * @example
-     * ```ts
-     * // Set the audio output to mono
-     * await player.filterManager.setAudioOutput(AudioOutput.Mono);
-     * ```
+     * Set one or more equalizer bands. Keeps `this.bands` and `data.equalizer` in sync.
+     */
+    public async setEQBand(...bands: RestOrArray<EQBandSettings>): Promise<this> {
+        const list: EQBandSettings[] = bands.flat();
+        if (!list.length || !list.every((b): boolean => typeof b.band === "number" && typeof b.gain === "number"))
+            throw new PlayerError("Bands must be a non-empty object array containing 'band' and 'gain' properties.");
+        for (const { band, gain } of list) this.bands[band] = { band, gain };
+        this.data.equalizer = [...this.bands];
+        await FilterPayload.commit.call(this);
+        return this;
+    }
+
+    /**
+     * Clear every equalizer band.
+     */
+    public async clearEQBands(): Promise<this> {
+        this.bands.length = 0;
+        this.data.equalizer = [];
+        await FilterPayload.commit.call(this);
+        return this;
+    }
+
+    /**
+     * Set the karaoke filter.
+     */
+    public async setKaraoke(settings: Partial<KaraokeSettings> = DefaultFilterPreset.Karaoke): Promise<this> {
+        return this.apply<KaraokeSettings>(FilterType.Karaoke, {
+            level: settings.level ?? 0,
+            monoLevel: settings.monoLevel ?? 0,
+            filterBand: settings.filterBand ?? 0,
+            filterWidth: settings.filterWidth ?? 0,
+        });
+    }
+
+    /**
+     * Set the tremolo filter.
+     */
+    public async setTremolo(settings: Partial<TremoloSettings> = DefaultFilterPreset.Tremolo): Promise<this> {
+        return this.apply<TremoloSettings>(FilterType.Tremolo, {
+            frequency: settings.frequency ?? 0,
+            depth: settings.depth ?? 0,
+        });
+    }
+
+    /**
+     * Set the vibrato filter.
+     */
+    public async setVibrato(settings: Partial<TremoloSettings> = DefaultFilterPreset.Vibrato): Promise<this> {
+        return this.apply<TremoloSettings>(FilterType.Vibrato, {
+            frequency: settings.frequency ?? 0,
+            depth: settings.depth ?? 0,
+        });
+    }
+
+    /**
+     * Set the low-pass filter.
+     */
+    public async setLowPass(settings: Partial<LowPassSettings> = DefaultFilterPreset.Lowpass): Promise<this> {
+        return this.apply<LowPassSettings>(FilterType.LowPass, { smoothing: settings.smoothing ?? 0 });
+    }
+
+    /**
+     * Set the distortion filter.
+     */
+    public async setDistortion(settings: Partial<DistortionSettings> = DefaultFilterPreset.Distortion): Promise<this> {
+        return this.apply<DistortionSettings>(FilterType.Distortion, { ...settings });
+    }
+
+    /**
+     * Set the timescale filter explicitly.
+     */
+    public async setTimescale(settings: Partial<TimescaleSettings>): Promise<this> {
+        return this.apply<TimescaleSettings>(FilterType.Timescale, {
+            speed: settings.speed ?? 1,
+            pitch: settings.pitch ?? 1,
+            rate: settings.rate ?? 1,
+        });
+    }
+
+    /**
+     * Adjust timescale speed only.
+     */
+    public async setSpeed(speed: number = 1): Promise<this> {
+        const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
+        return this.apply<TimescaleSettings>(FilterType.Timescale, { ...current, speed });
+    }
+
+    /**
+     * Adjust timescale rate only.
+     */
+    public async setRate(rate: number = 1): Promise<this> {
+        const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
+        return this.apply<TimescaleSettings>(FilterType.Timescale, { ...current, rate });
+    }
+
+    /**
+     * Adjust timescale pitch only.
+     */
+    public async setPitch(pitch: number = 1): Promise<this> {
+        const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
+        return this.apply<TimescaleSettings>(FilterType.Timescale, { ...current, pitch });
+    }
+
+    /**
+     * Apply the Nightcore preset to the timescale filter.
+     */
+    public async setNightcore(settings: Partial<TimescaleSettings> = DefaultFilterPreset.Nightcore): Promise<this> {
+        return this.apply<TimescaleSettings>(FilterType.Timescale, {
+            speed: settings.speed ?? DefaultFilterPreset.Nightcore.speed,
+            pitch: settings.pitch ?? DefaultFilterPreset.Nightcore.pitch,
+            rate: settings.rate ?? DefaultFilterPreset.Nightcore.rate,
+        });
+    }
+
+    /**
+     * Apply the Vaporwave preset to the timescale filter.
+     */
+    public async setVaporwave(settings: Partial<TimescaleSettings> = DefaultFilterPreset.Vaporwave): Promise<this> {
+        return this.apply<TimescaleSettings>(FilterType.Timescale, {
+            speed: settings.speed ?? DefaultFilterPreset.Vaporwave.speed,
+            pitch: settings.pitch ?? DefaultFilterPreset.Vaporwave.pitch,
+            rate: settings.rate ?? DefaultFilterPreset.Vaporwave.rate,
+        });
+    }
+
+    /**
+     * Whether the timescale currently matches the Nightcore preset exactly.
+     */
+    public isNightcore(): boolean {
+        const t: TimescaleSettings | null | undefined = this.data.timescale;
+        return (
+            !!t &&
+            t.speed === DefaultFilterPreset.Nightcore.speed &&
+            t.pitch === DefaultFilterPreset.Nightcore.pitch &&
+            t.rate === DefaultFilterPreset.Nightcore.rate
+        );
+    }
+
+    /**
+     * Whether the timescale currently matches the Vaporwave preset exactly.
+     */
+    public isVaporwave(): boolean {
+        const t: TimescaleSettings | null | undefined = this.data.timescale;
+        return (
+            !!t &&
+            t.speed === DefaultFilterPreset.Vaporwave.speed &&
+            t.pitch === DefaultFilterPreset.Vaporwave.pitch &&
+            t.rate === DefaultFilterPreset.Vaporwave.rate
+        );
+    }
+
+    /**
+     * Set the audio output. Writes the matching channelMix preset.
      */
     public async setAudioOutput(output: AudioOutput): Promise<this> {
         const outputs: AudioOutput[] = Object.values(AudioOutput);
-        if (!outputs.includes(output)) throw new PlayerError(`Audio output must be one of the following: ${outputs.join(", ")}.`);
-
-        this.filters.audioOutput = output;
-        this.data.channelMix = AudioOutputData[output];
-
-        return this.apply();
+        if (!outputs.includes(output)) throw new PlayerError(`Audio output must be one of: ${outputs.join(", ")}.`);
+        return this.apply<ChannelMixSettings>(FilterType.ChannelMix, { ...AudioOutputData[output] });
     }
 
     /**
-     *
-     * Sets the speed for the player.
-     * @param {number} speed The speed to set (default is 1).
-     * @returns {Promise<this>} A promise that resolves to the player instance.
-     * @throws {PlayerError} If the node does not support the timescale filter.
-     * @example
-     * ```ts
-     * // Set the speed to 1.5
-     * await player.filterManager.setSpeed(1.5);
-     * ```
+     * Whether the timescale represents any non-default playback rate that is neither Nightcore nor Vaporwave.
      */
-    public async setSpeed(speed: number = 1): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Timescale))
-            throw new PlayerError("Node filters does not include the 'timescale' filter. (Or the node doesn't have it enabled)");
+    public isCustomTimescale(): boolean {
+        const t: TimescaleSettings | null | undefined = this.data.timescale;
+        if (!t) return false;
+        if ((t.speed ?? 1) === 1 && (t.pitch ?? 1) === 1 && (t.rate ?? 1) === 1) return false;
+        return !this.isNightcore() && !this.isVaporwave();
+    }
 
-        if (this.filters.nightcore || this.filters.vaporwave) {
-            this.data.timescale = {
-                speed: 1,
-                pitch: 1,
-                rate: 1,
-            };
-
-            this.filters.nightcore = false;
-            this.filters.vaporwave = false;
+    /**
+     * The current audio output mode, derived from `data.channelMix`.
+     */
+    public get audioOutput(): AudioOutput {
+        const m: ChannelMixSettings | null | undefined = this.data.channelMix;
+        if (!m) return AudioOutput.Stereo;
+        for (const out of Object.values(AudioOutput)) {
+            const preset: ChannelMixSettings = AudioOutputData[out];
+            if (
+                preset.leftToLeft === m.leftToLeft &&
+                preset.leftToRight === m.leftToRight &&
+                preset.rightToLeft === m.rightToLeft &&
+                preset.rightToRight === m.rightToRight
+            )
+                return out;
         }
-
-        this.data.timescale!.speed = speed;
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Sets the rate for the player.
-     * @param {number} rate The rate to set (default is 1).
-     * @returns {Promise<this>} A promise that resolves to the player instance.
-     * @throws {PlayerError} If the node does not support the timescale filter.
-     * @example
-     * ```ts
-     * // Set the rate to 1.2
-     * await player.filterManager.setRate(1.2);
-     * ```
-     */
-    public async setRate(rate: number = 1): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Timescale))
-            throw new PlayerError("Node filters does not include the 'timescale' filter. (Or the node doesn't have it enabled)");
-
-        if (this.filters.nightcore || this.filters.vaporwave) {
-            this.data.timescale = {
-                speed: 1,
-                pitch: 1,
-                rate: 1,
-            };
-
-            this.filters.nightcore = false;
-            this.filters.vaporwave = false;
-        }
-
-        this.data.timescale!.rate = rate;
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Sets the pitch for the player.
-     * @param {number} pitch The pitch
-     * @returns {Promise<this>} A promise that resolves to the player instance.
-     * @throws {PlayerError} If the node does not support the timescale filter.
-     * @example
-     * ```ts
-     * // Set the pitch to 0.8
-     * await player.filterManager.setPitch(0.8);
-     * ```
-     */
-    public async setPitch(pitch: number = 1): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Timescale))
-            throw new PlayerError("Node filters does not include the 'timescale' filter. (Or the node doesn't have it enabled)");
-
-        if (this.filters.nightcore || this.filters.vaporwave) {
-            this.data.timescale = {
-                speed: 1,
-                pitch: 1,
-                rate: 1,
-            };
-
-            this.filters.nightcore = false;
-            this.filters.vaporwave = false;
-        }
-
-        this.data.timescale!.pitch = pitch;
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Sets the EQ bands for the player.
-     * @param {RestOrArray<EQBandSettings>} bands The EQ band settings to set.
-     * @returns {Promise<this>} A promise that resolves to the instance of the manager.
-     * @throws {PlayerError} If the bands array is empty or contains invalid band settings.
-     * @example
-     * ```ts
-     * // Set multiple EQ bands
-     * await player.filterManager.setEQBand(
-     *   { band: 0, gain: 0.5 },
-     *   { band: 1, gain: -0.3 },
-     * );
-     * ```
-     */
-    public async setEQBand(...bands: RestOrArray<EQBandSettings>): Promise<this> {
-        bands = bands.flat();
-
-        if (!bands.length || !bands.every((band): boolean => typeof band.band === "number" && typeof band.gain === "number"))
-            throw new PlayerError("Bands must be a non-empty object array containing 'band' and 'gain' properties.");
-
-        for (const { band, gain } of bands) this.bands[band] = { band, gain };
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Clears all EQ bands for the player.
-     * @returns {Promise<this>} A promise that resolves to the instance of the manager.
-     * @example
-     * ```ts
-     * // Clear all EQ bands
-     * await player.filterManager.clearEQBands();
-     * ```
-     */
-    public async clearEQBands(): Promise<this> {
-        return this.setEQBand(this.bands.map((b) => ({ band: b.band, gain: 0 })));
-    }
-
-    /**
-     *
-     * Set the vibrato filter with the given settings.
-     * @param {TremoloSettings} [settings=DefaultFilterPreset.Vibrato] The settings for the vibrato filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not support the vibrato filter.
-     * @example
-     * ```ts
-     * // Set the vibrato filter
-     * await player.filterManager.setVibrato({ frequency: 4.0, depth: 0.5 });
-     * ```
-     */
-    public async setVibrato(settings: Partial<TremoloSettings> = DefaultFilterPreset.Vibrato): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Vibrato))
-            throw new PlayerError("Node filters does not include the 'vibrato' filter. (Or the node doesn't have it enabled)");
-
-        this.data.vibrato = {
-            frequency: this.filters.vibrato ? 0 : settings.frequency,
-            depth: this.filters.vibrato ? 0 : settings.depth,
-        };
-
-        this.filters.vibrato = !this.filters.vibrato;
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Set the tremolo filter with the given settings.
-     * @param {TremoloSettings} [settings=DefaultFilterPreset.Tremolo] The settings for the tremolo filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not support the tremolo filter.
-     * @example
-     * ```ts
-     * // Set the tremolo filter
-     * await player.filterManager.setTremolo({ frequency: 4.0, depth: 0.5 });
-     * ```
-     */
-    public async setTremolo(settings: Partial<TremoloSettings> = DefaultFilterPreset.Tremolo): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Tremolo))
-            throw new PlayerError("Node filters does not include the 'tremolo' filter. (Or the node doesn't have it enabled)");
-
-        this.data.tremolo = {
-            frequency: this.filters.tremolo ? 0 : settings.frequency,
-            depth: this.filters.tremolo ? 0 : settings.depth,
-        };
-
-        this.filters.tremolo = !this.filters.tremolo;
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Set the low-pass filter with the given settings.
-     * @param {LowPassSettings} [settings=DefaultFilterPreset.Lowpass] The settings for the low-pass filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not support the low-pass filter.
-     * @example
-     * ```ts
-     * // Set the low-pass filter
-     * await player.filterManager.setLowPass({ smoothing: 20.0 });
-     * ```
-     */
-    public async setLowPass(settings: Partial<LowPassSettings> = DefaultFilterPreset.Lowpass): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.LowPass))
-            throw new PlayerError("Node filters does not include the 'lowPass' filter. (Or the node doesn't have it enabled)");
-
-        this.data.lowPass = { smoothing: this.filters.lowPass ? 0 : settings.smoothing };
-        this.filters.lowPass = !this.filters.lowPass;
-
-        return this.apply();
-    }
-
-    /**
-     * Set the nightcore filter with the given settings.
-     * @param {Partial<TimescaleSettings>} [settings=DefaultFilterPreset.Nightcore] The settings for the nightcore filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not support the timescale filter.
-     * @example
-     * ```ts
-     * // Set the nightcore filter
-     * await player.filterManager.setNightcore();
-     * ```
-     */
-    public async setNightcore(settings: Partial<TimescaleSettings> = DefaultFilterPreset.Nightcore): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Timescale))
-            throw new PlayerError("Node filters does not include the 'timescale' filter. (Or the node doesn't have it enabled)");
-
-        this.data.timescale = {
-            speed: this.filters.nightcore ? 1 : settings.speed,
-            pitch: this.filters.nightcore ? 1 : settings.pitch,
-            rate: this.filters.nightcore ? 1 : settings.rate,
-        };
-
-        this.filters.nightcore = !this.filters.nightcore;
-        this.filters.vaporwave = false;
-        this.filters.custom = false;
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Set the vaporwave filter with the given settings.
-     * @param {Partial<TimescaleSettings>} [settings=DefaultFilterPreset.Vaporwave] The settings for the vaporwave filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not support the timescale filter.
-     * @example
-     * ```ts
-     * // Set the vaporwave filter
-     * await player.filterManager.setVaporwave();
-     * ```
-     */
-    public async setVaporwave(settings: Partial<TimescaleSettings> = DefaultFilterPreset.Vaporwave): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Timescale))
-            throw new PlayerError("Node filters does not include the 'timescale' filter. (Or the node doesn't have it enabled)");
-
-        this.data.timescale = {
-            speed: this.filters.vaporwave ? 1 : settings.speed,
-            pitch: this.filters.vaporwave ? 1 : settings.pitch,
-            rate: this.filters.vaporwave ? 1 : settings.rate,
-        };
-
-        this.filters.vaporwave = !this.filters.vaporwave;
-        this.filters.nightcore = false;
-        this.filters.custom = false;
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Set the karaoke filter with the given settings.
-     * @param {KaraokeSettings} [settings=DefaultFilterPreset.Karaoke] The settings for the karaoke filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not support the karaoke filter.
-     * @example
-     * ```ts
-     * // Set the karaoke filter
-     * await player.filterManager.setKaraoke({ level: -15.0, monoLevel: -20.0, filterBand: 220.0, filterWidth: 100.0 });
-     * ```
-     */
-    public async setKaraoke(settings: Partial<KaraokeSettings> = DefaultFilterPreset.Karaoke): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Karaoke))
-            throw new PlayerError("Node filters does not include the 'karaoke' filter. (Or the node doesn't have it enabled)");
-
-        this.data.karaoke = {
-            level: this.data.karaoke!.level ? 0 : settings.level,
-            monoLevel: this.data.karaoke!.monoLevel ? 0 : settings.monoLevel,
-            filterBand: this.data.karaoke!.filterBand ? 0 : settings.filterBand,
-            filterWidth: this.data.karaoke!.filterWidth ? 0 : settings.filterWidth,
-        };
-
-        this.filters.karaoke = !this.filters.karaoke;
-
-        return this.apply();
-    }
-
-    /**
-     *
-     * Set the distortion filter with the given settings.
-     * @param {Partial<DistortionSettings>} [settings=DefaultFilterPreset.Distortion] The settings for the distortion filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not support the distortion filter.
-     * @example
-     * ```ts
-     * // Set the distortion filter
-     * await player.filterManager.setDistortion({ sinOffset: 0.5, sinScale: 2.0 });
-     * ```
-     */
-    public async setDistortion(settings: Partial<DistortionSettings> = DefaultFilterPreset.Distortion): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Distortion))
-            throw new PlayerError("Node filters does not include the 'distortion' filter. (Or the node doesn't have it enabled)");
-
-        this.data.distortion = {
-            sinOffset: this.filters.distortion ? 0 : settings.sinOffset,
-            sinScale: this.filters.distortion ? 1 : settings.sinScale,
-            cosOffset: this.filters.distortion ? 0 : settings.cosOffset,
-            cosScale: this.filters.distortion ? 1 : settings.cosScale,
-            tanOffset: this.filters.distortion ? 0 : settings.tanOffset,
-            offset: this.filters.distortion ? 0 : settings.offset,
-            scale: this.filters.distortion ? 1 : settings.scale,
-        };
-
-        this.filters.distortion = !this.filters.distortion;
-
-        return this.apply();
-    }
-
-    /**
-     * Set the timescale filter with the given settings.
-     * @param {Partial<TimescaleSettings>} settings The timescale settings to set.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not support the timescale filter.
-     * @example
-     * ```ts
-     * // Set the timescale filter
-     * await player.filterManager.setTimescale({ speed: 1.2, pitch: 0.8, rate: 1.0 });
-     * ```
-     */
-    public async setTimescale(settings: Partial<TimescaleSettings>): Promise<this> {
-        if (!this.player.node.info?.filters?.includes(FilterType.Timescale))
-            throw new PlayerError("Node filters does not include the 'timescale' filter. (Or the node doesn't have it enabled)");
-
-        this.data.timescale = {
-            pitch: settings.pitch ?? 1,
-            rate: settings.rate ?? 1,
-            speed: settings.speed ?? 1,
-        };
-
-        this.filters.timescale = !this.filters.timescale;
-
-        return this.apply();
-    }
-
-    /**
-     * Convert the filter settings to a JSON object.
-     * @returns {FilterSettings} The filter settings as a JSON object.
-     * @example
-     * ```ts
-     * // Convert filter settings to JSON
-     * const filterSettingsJSON = player.filterManager.toJSON();
-     * console.log(filterSettingsJSON); // { volume: 1, equalizer: [...], ... }
-     * ```
-     */
-    public toJSON(): FilterSettings {
-        return { ...this.data };
+        return AudioOutput.Stereo;
     }
 }

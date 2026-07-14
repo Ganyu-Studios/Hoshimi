@@ -30,6 +30,7 @@ export * from "./classes/storage/QueueMemory";
 export * from "./classes/Track";
 
 // Exports related to the registry.
+export * from "./registry/FiltersRegistry";
 export * from "./registry/PluginRegistry";
 export * from "./registry/SourceRegistry";
 
@@ -46,4 +47,4 @@ export * from "./types/Structures";
 export * from "./util/constants";
 
 // Exports related to track utilities.
-export { TrackResolution } from "./util/functions/utils";
+export { TrackResolution } from "./util/functions/track";

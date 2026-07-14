@@ -1,11 +1,13 @@
-import { PluginCapabilities, PluginRegistry } from "../../../registry/PluginRegistry";
 import { type EchoSettings, type FilterPluginPassSettings, FilterType, type NormalizationSettings } from "../../../types/Filters";
 import type { FilterManagerStructure } from "../../../types/Structures";
 import { DefaultFilterPreset } from "../../../util/constants";
-import { PlayerError } from "../../Errors";
 
 /**
- * Class representing the DSPX Plugin filters for a player.
+ * Thin facade over the `lavadspx-plugin` filters.
+ *
+ * Each setter delegates to {@link FilterManager.apply}; validation, envelope routing,
+ * and node-capability checks are handled by the {@link FilterRegistry}.
+ *
  * @class DSPXPluginFilter
  */
 export class DSPXPluginFilter {
@@ -25,149 +27,47 @@ export class DSPXPluginFilter {
     }
 
     /**
-     *
-     * Set the low-pass filter with the given settings.
-     * @param {FilterPluginPassSettings} [settings=DefaultFilter.DSPXLowPass] The settings for the low-pass filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not have the required plugin or filter enabled.
+     * Set the DSPX low-pass filter (idempotent).
      * @example
      * ```ts
-     * // Set the low-pass filter with custom settings
-     * await player.filterManager.dspxPlugin.setLowPass({ cutoffFrequency: 500, boostFactor: 1.5 });
-     * // Disable the low-pass filter
-     * await player.filterManager.dspxPlugin.setLowPass();
+     * await player.filterManager.dspx.setLowPass({ cutoffFrequency: 500, boostFactor: 1.5 });
+     * await player.filterManager.clear(FilterType.DSPXLowpass);
      * ```
      */
-    public async setLowPass(settings: Partial<FilterPluginPassSettings> = DefaultFilterPreset.DSPXLowPass): Promise<this> {
-        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Dspx] });
-
-        if (!this.manager.player.node.info?.filters?.includes(FilterType.DSPXLowpass))
-            throw new PlayerError("Node filters does not include the 'low-pass' filter. (Or the node doesn't have it enabled)");
-
-        if (!this.manager.data) this.manager.data = {};
-        if (!this.manager.data.pluginFilters) this.manager.data.pluginFilters = {};
-        if (!this.manager.data.pluginFilters["low-pass"]) this.manager.data.pluginFilters["low-pass"] = {};
-        if (this.manager.filters.lavalinkLavaDspxPlugin.lowPass) {
-            delete this.manager.data.pluginFilters["low-pass"];
-        } else {
-            this.manager.data.pluginFilters["low-pass"] = { ...settings };
-        }
-
-        this.manager.filters.lavalinkLavaDspxPlugin.lowPass = !this.manager.filters.lavalinkLavaDspxPlugin.lowPass;
-
-        await this.manager.apply();
-
-        return this;
+    public async setLowPass(
+        settings: Partial<FilterPluginPassSettings> = DefaultFilterPreset.DSPXLowPass,
+    ): Promise<FilterManagerStructure> {
+        return this.manager.apply<FilterPluginPassSettings>(FilterType.DSPXLowpass, {
+            boostFactor: settings.boostFactor ?? 0,
+            cutoffFrequency: settings.cutoffFrequency ?? 0,
+        });
     }
 
     /**
-     *
-     * Set the high-pass filter with the given settings.
-     * @param {FilterPluginPassSettings} [settings=DefaultFilter.DSPXHighPass] The settings for the high-pass filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not have the required plugin or filter enabled.
-     * @example
-     * ```ts
-     * // Set the high-pass filter with custom settings
-     * await player.filterManager.dspxPlugin.setHighPass({ cutoffFrequency: 2000, boostFactor: 0.8 });
-     * // Disable the high-pass filter
-     * await player.filterManager.dspxPlugin.setHighPass();
-     * ```
+     * Set the DSPX high-pass filter (idempotent).
      */
-    public async setHighPass(settings: Partial<FilterPluginPassSettings> = DefaultFilterPreset.DSPXHighPass): Promise<this> {
-        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Dspx] });
-
-        if (this.manager.player.node.info && !this.manager.player.node.info?.filters?.includes(FilterType.DSPXHighpass))
-            throw new PlayerError("Node filters does not include the 'high-pass' filter. (Or the node doesn't have it enabled)");
-
-        if (!this.manager.data) this.manager.data = {};
-        if (!this.manager.data.pluginFilters) this.manager.data.pluginFilters = {};
-        if (!this.manager.data.pluginFilters["high-pass"]) this.manager.data.pluginFilters["high-pass"] = {};
-
-        if (this.manager.filters.lavalinkLavaDspxPlugin.highPass) {
-            delete this.manager.data.pluginFilters["high-pass"];
-        } else {
-            this.manager.data.pluginFilters["high-pass"] = { ...settings };
-        }
-
-        this.manager.filters.lavalinkLavaDspxPlugin.highPass = !this.manager.filters.lavalinkLavaDspxPlugin.highPass;
-
-        await this.manager.apply();
-
-        return this;
+    public async setHighPass(
+        settings: Partial<FilterPluginPassSettings> = DefaultFilterPreset.DSPXHighPass,
+    ): Promise<FilterManagerStructure> {
+        return this.manager.apply<FilterPluginPassSettings>(FilterType.DSPXHighpass, {
+            boostFactor: settings.boostFactor ?? 0,
+            cutoffFrequency: settings.cutoffFrequency ?? 0,
+        });
     }
 
     /**
-     *
-     * Set the normalization filter with the given settings.
-     * @param {NormalizationSettings} [settings=DefaultFilter.DSPXNormalization] The settings for the normalization filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not have the required plugin or filter enabled.
-     * @example
-     * ```ts
-     * // Set the normalization filter with custom settings
-     * await player.filterManager.dspxPlugin.setNormalization({ maxAmplitude: 0.9, adaptive: true });
-     * // Disable the normalization filter
-     * await player.filterManager.dspxPlugin.setNormalization();
-     * ```
+     * Set the DSPX normalization filter (idempotent).
      */
-    public async setNormalization(settings: Partial<NormalizationSettings> = DefaultFilterPreset.DSPXNormalization): Promise<this> {
-        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Dspx] });
-
-        if (!this.manager.player.node.info?.filters?.includes(FilterType.DSPXNormalization))
-            throw new PlayerError("Node filters does not include the 'normalization' filter. (Or the node doesn't have it enabled)");
-
-        if (!this.manager.data) this.manager.data = {};
-        if (!this.manager.data.pluginFilters) this.manager.data.pluginFilters = {};
-        if (!this.manager.data.pluginFilters.normalization) this.manager.data.pluginFilters.normalization = {};
-
-        if (this.manager.filters.lavalinkLavaDspxPlugin.normalization) {
-            delete this.manager.data.pluginFilters.normalization;
-        } else {
-            this.manager.data.pluginFilters.normalization = { ...settings };
-        }
-
-        this.manager.filters.lavalinkLavaDspxPlugin.normalization = !this.manager.filters.lavalinkLavaDspxPlugin.normalization;
-
-        await this.manager.apply();
-
-        return this;
+    public async setNormalization(
+        settings: Partial<NormalizationSettings> = DefaultFilterPreset.DSPXNormalization,
+    ): Promise<FilterManagerStructure> {
+        return this.manager.apply<NormalizationSettings>(FilterType.DSPXNormalization, { ...settings } as NormalizationSettings);
     }
 
     /**
-     *
-     * Set the echo filter with the given settings.
-     * @param {EchoSettings} [settings=DefaultFilter.DSPXEcho] The settings for the echo filter.
-     * @returns {Promise<this>} The instance of the filter manager.
-     * @throws {PlayerError} If the node does not have the required plugin or filter enabled.
-     * @example
-     * ```ts
-     * // Set the echo filter with custom settings
-     * await player.filterManager.dspxPlugin.setEcho({ echoLength: 500, decay: 0.5, delay: 200 });
-     * // Disable the echo filter
-     * await player.filterManager.dspxPlugin.setEcho();
-     * ```
+     * Set the DSPX echo filter (idempotent).
      */
-    public async setEcho(settings: Partial<EchoSettings> = DefaultFilterPreset.DSPXEcho): Promise<this> {
-        PluginRegistry.validate({ node: this.manager.player.node, required: [PluginCapabilities.Dspx] });
-
-        if (!this.manager.player.node.info?.filters?.includes(FilterType.DSPXEcho))
-            throw new PlayerError("Node filters does not include the 'echo' filter. (Or the node doesn't have it enabled)");
-
-        if (!this.manager.data) this.manager.data = {};
-        if (!this.manager.data.pluginFilters) this.manager.data.pluginFilters = {};
-        if (!this.manager.data.pluginFilters.echo) this.manager.data.pluginFilters.echo = {};
-
-        if (this.manager.filters.lavalinkLavaDspxPlugin.echo) {
-            delete this.manager.data.pluginFilters.echo;
-        } else {
-            this.manager.data.pluginFilters.echo = { ...settings };
-        }
-
-        this.manager.filters.lavalinkLavaDspxPlugin.echo = !this.manager.filters.lavalinkLavaDspxPlugin.echo;
-
-        await this.manager.apply();
-
-        return this;
+    public async setEcho(settings: Partial<EchoSettings> = DefaultFilterPreset.DSPXEcho): Promise<FilterManagerStructure> {
+        return this.manager.apply<EchoSettings>(FilterType.DSPXEcho, { ...settings } as EchoSettings);
     }
 }

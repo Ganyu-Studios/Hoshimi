@@ -34,7 +34,8 @@ import {
     type TrackStructure,
 } from "../../types/Structures";
 import { clearHeartbeatTimer, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
-import { censor, stringify, validateQuery } from "../../util/functions/utils";
+import { censor, stringify } from "../../util/functions/utils";
+import { Validations } from "../../util/functions/validations";
 import { NodeError } from "../Errors";
 
 /**
@@ -182,7 +183,7 @@ export class Node {
             ...options,
             sessionId: options.sessionId ?? "",
             id: options.id ?? `${options.host}:${options.port}`,
-            restTimeout: options.restTimeout ?? 10000,
+            restTimeout: options.restTimeout ?? nodeManager.manager.options.restOptions.restTimeout ?? 10000,
             secure: options.secure ?? false,
             retryAmount: options.retryAmount ?? 5,
             retryDelay: options.retryDelay ?? 20000,
@@ -365,15 +366,18 @@ export class Node {
      * ```
      */
     public search(search: SearchQuery): Promise<LavalinkSearchResponse | null> {
-        search.source ??= this.nodeManager.manager.options.defaultSearchSource;
+        const query: SearchQuery = {
+            ...search,
+            source: search.source ?? this.nodeManager.manager.options.defaultSearchSource,
+        };
 
-        const identifier: string = validateQuery(search);
+        const identifier: string = Validations.validateQuery(query);
 
         return this.rest.request<LavalinkSearchResponse>({
             endpoint: RestRoutes.LoadTracks,
             params: {
                 identifier,
-                ...search.params,
+                ...query.params,
             },
         });
     }

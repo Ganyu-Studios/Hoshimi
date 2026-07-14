@@ -20,7 +20,8 @@ import type { LavalinkPlayerVoice, PlayerOptions } from "../types/Player";
 import { type NodeManagerStructure, type NodeStructure, type PlayerStructure, Structures, type TrackStructure } from "../types/Structures";
 import { Collection } from "../util/collection";
 import { HoshimiDefaultOptions } from "../util/constants";
-import { isPlainObject, mergeDefault, stringify, validateManagerOptions } from "../util/functions/utils";
+import { isPlainObject, mergeDefault, stringify } from "../util/functions/utils";
+import { Validations } from "../util/functions/validations";
 import { ManagerError, OptionError } from "./Errors";
 
 /**
@@ -125,9 +126,9 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
      *      autoplayFn: autoplayFn,
      *      autoPlay: false,
      *      storage: new MemoryAdapter(),
-     *      requesterFn: defaultRequesterFn,
      * 	},
      *   playerOptions: {
+     *      requesterFn: defaultRequesterFn,
      *    	onDisconnect: {
      *        autoDestroy: false,
      *        autoReconnect: false,
@@ -135,7 +136,6 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
      *   	},
      *   	onError: {
      *        autoDestroy: false,
-     *        autoSkip: false,
      *        autoStop: false,
      *      },
      *   },
@@ -151,26 +151,35 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
         this.options = mergeDefault(HoshimiDefaultOptions, options);
 
-        validateManagerOptions(this.options);
+        Validations.validateManagerOptions(this.options);
 
         this.nodeManager = Structures.NodeManager(this);
     }
 
     /**
-     * Check if the manager is useable.
-     * @returns {boolean} If the manager is useable.
+     * Check if the manager is usable.
+     * @returns {boolean} If the manager is usable.
      * @example
      * ```ts
-     * if (manager.isUseable()) {
-     * 	console.log("The manager is useable.");
+     * if (manager.isUsable()) {
+     * 	console.log("The manager is usable.");
      * } else {
-     * 	console.log("The manager is not useable.");
+     * 	console.log("The manager is not usable.");
      * }
      * ```
      */
-    public isUseable(): boolean {
+    public isUsable(): boolean {
         const nodes: NodeStructure[] = this.nodeManager.nodes.filter((node): boolean => node.state === State.Connected);
         return this.ready && nodes.length > 0;
+    }
+
+    /**
+     * Check if the manager is usable.
+     * @deprecated Use {@link Hoshimi.isUsable} instead. This misspelled alias will be removed in a future release.
+     * @returns {boolean} If the manager is usable.
+     */
+    public isUseable(): boolean {
+        return this.isUsable();
     }
 
     /**

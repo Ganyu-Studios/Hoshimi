@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { NodeError } from "../src/classes/Errors";
-import { PluginCapabilities, PluginRegistry } from "../src/registry/PluginRegistry";
-import { PluginNames } from "../src/types/Node";
-import { createMockNode } from "./helpers";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { NodeError } from "../../src/classes/Errors";
+import { PluginCapabilities, PluginRegistry } from "../../src/registry/PluginRegistry";
+import { PluginNames } from "../../src/types/Node";
+import { createRealManager, createRealNode } from "../helpers";
 
 function registerBuiltins(): void {
     PluginRegistry.register([
@@ -213,19 +213,25 @@ describe("PluginRegistry", () => {
 
     describe("validate", () => {
         it("passes when a required capability is provided by an installed plugin", () => {
-            const node = createMockNode({ info: { plugins: [{ name: PluginNames.FilterPlugin }] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v1" });
+            node.info = { plugins: [{ name: PluginNames.FilterPlugin }], filters: [], isNodelink: false } as never;
 
             expect(() => PluginRegistry.validate({ node: node as never, required: [PluginCapabilities.Filters] })).not.toThrow();
         });
 
         it("throws NodeError when a required capability is missing", () => {
-            const node = createMockNode({ info: { plugins: [{ name: PluginNames.LavaLyrics }] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v2" });
+            node.info = { plugins: [{ name: PluginNames.LavaLyrics }], filters: [], isNodelink: false } as never;
 
             expect(() => PluginRegistry.validate({ node: node as never, required: [PluginCapabilities.Filters] })).toThrow(NodeError);
         });
 
         it("passes when one of the `any` capabilities is present", () => {
-            const node = createMockNode({ info: { plugins: [{ name: PluginNames.JavaLyrics }] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v3" });
+            node.info = { plugins: [{ name: PluginNames.JavaLyrics }], filters: [], isNodelink: false } as never;
 
             expect(() =>
                 PluginRegistry.validate({
@@ -236,7 +242,9 @@ describe("PluginRegistry", () => {
         });
 
         it("throws NodeError when none of the `any` capabilities are present", () => {
-            const node = createMockNode({ info: { plugins: [{ name: "unrelated-plugin" }] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v4" });
+            node.info = { plugins: [{ name: "unrelated-plugin" }], filters: [], isNodelink: false } as never;
 
             expect(() =>
                 PluginRegistry.validate({
@@ -247,20 +255,27 @@ describe("PluginRegistry", () => {
         });
 
         it("throws NodeError when the node is not ready", () => {
-            const node = createMockNode({ info: null, ready: false });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v5" });
+            node.info = null;
 
             expect(() => PluginRegistry.validate({ node: node as never, required: [PluginCapabilities.Lyrics] })).toThrow(NodeError);
         });
 
         it("does not validate Nodelink nodes and emits a debug event", () => {
-            const node = createMockNode({ info: { plugins: [] }, isNodelink: () => true });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v6" });
+            node.info = { plugins: [], filters: [], isNodelink: true } as never;
+            const emitSpy = vi.spyOn(manager, "emit");
 
             expect(() => PluginRegistry.validate({ node: node as never, required: [PluginCapabilities.Filters] })).not.toThrow();
-            expect(node.nodeManager.manager.emit).toHaveBeenCalled();
+            expect(emitSpy).toHaveBeenCalled();
         });
 
         it("recognizes a registered fork as satisfying the capability", () => {
-            const node = createMockNode({ info: { plugins: [{ name: "lavasrc-fork-plugin" }] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v7" });
+            node.info = { plugins: [{ name: "lavasrc-fork-plugin" }], filters: [], isNodelink: false } as never;
 
             expect(() => PluginRegistry.validate({ node: node as never, any: [PluginCapabilities.Lyrics] })).toThrow(NodeError);
 
@@ -270,16 +285,21 @@ describe("PluginRegistry", () => {
         });
 
         it("bypasses validation globally when skipValidation(true) is active", () => {
-            const node = createMockNode({ info: { plugins: [] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v8" });
+            node.info = { plugins: [], filters: [], isNodelink: false } as never;
+            const emitSpy = vi.spyOn(manager, "emit");
 
             PluginRegistry.skipValidation(true);
 
             expect(() => PluginRegistry.validate({ node: node as never, required: [PluginCapabilities.Filters] })).not.toThrow();
-            expect(node.nodeManager.manager.emit).toHaveBeenCalled();
+            expect(emitSpy).toHaveBeenCalled();
         });
 
         it("bypasses validation for individually-skipped capabilities", () => {
-            const node = createMockNode({ info: { plugins: [] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v9" });
+            node.info = { plugins: [], filters: [], isNodelink: false } as never;
 
             PluginRegistry.skipValidation(PluginCapabilities.Filters);
 
@@ -287,7 +307,9 @@ describe("PluginRegistry", () => {
         });
 
         it("still enforces non-skipped capabilities when only one is skipped", () => {
-            const node = createMockNode({ info: { plugins: [] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v10" });
+            node.info = { plugins: [], filters: [], isNodelink: false } as never;
 
             PluginRegistry.skipValidation(PluginCapabilities.Filters);
 
@@ -300,7 +322,9 @@ describe("PluginRegistry", () => {
         });
 
         it("is a no-op when called without required or any", () => {
-            const node = createMockNode({ info: { plugins: [{ name: PluginNames.LavaLyrics }] } });
+            const manager = createRealManager();
+            const node = createRealNode(manager, { id: "node-v11" });
+            node.info = { plugins: [{ name: PluginNames.LavaLyrics }], filters: [], isNodelink: false } as never;
 
             expect(() => PluginRegistry.validate({ node: node as never })).not.toThrow();
         });

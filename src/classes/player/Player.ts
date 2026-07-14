@@ -23,7 +23,8 @@ import {
 } from "../../types/Structures";
 import type { PromiseWithResolvers } from "../../types/Utility";
 import { LoopValues } from "../../util/constants";
-import { createResolver, validatePlayerOptions } from "../../util/functions/utils";
+import { createResolver } from "../../util/functions/utils";
+import { Validations } from "../../util/functions/validations";
 import { PlayerError } from "../Errors";
 import type { Hoshimi } from "../Hoshimi";
 import type { PlayerStorageAdapter } from "../storage/adapters/PlayerAdapter";
@@ -231,7 +232,7 @@ export class Player {
             (typeof this.options.node === "string" ? this.manager.nodeManager.get(this.options.node) : this.options.node) ??
             this.manager.nodeManager.getLeastUsed();
 
-        validatePlayerOptions(this.options);
+        Validations.validatePlayerOptions(this.options);
 
         this.data = Structures.PlayerStorageAdapter(this.guildId);
         this.queue = Structures.Queue(this);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { SourceRegistry } from "../src/registry/SourceRegistry";
-import { SearchSources } from "../src/types/Manager";
-import { SourceNames } from "../src/types/Node";
+import { SourceProtocol, SourceRegistry } from "../../src/registry/SourceRegistry";
+import { SearchSources } from "../../src/types/Manager";
+import { SourceNames } from "../../src/types/Node";
 
 describe("SourceRegistry", () => {
     describe("register", () => {
@@ -20,7 +20,10 @@ describe("SourceRegistry", () => {
         });
 
         it("registers multiple sources via rest arguments", () => {
-            const result = SourceRegistry.register({ source: "src-rest-1" }, { source: "src-rest-2", protocol: "double-slash" });
+            const result = SourceRegistry.register(
+                { source: "src-rest-1" },
+                { source: "src-rest-2", protocol: SourceProtocol.DoubleSlash },
+            );
 
             expect(result).toEqual(["src-rest-1", "src-rest-2"]);
             expect(SourceRegistry.isRegistered("src-rest-1")).toBe(true);
@@ -28,7 +31,7 @@ describe("SourceRegistry", () => {
         });
 
         it("registers multiple sources via a single array argument", () => {
-            const result = SourceRegistry.register([{ source: "src-array-1" }, { source: "src-array-2", protocol: "raw" }]);
+            const result = SourceRegistry.register([{ source: "src-array-1" }, { source: "src-array-2", protocol: SourceProtocol.Raw }]);
 
             expect(result).toEqual(["src-array-1", "src-array-2"]);
         });
@@ -46,13 +49,13 @@ describe("SourceRegistry", () => {
         });
 
         it("uses the double-slash protocol when configured", () => {
-            SourceRegistry.register({ source: "src-protocol-slash", protocol: "double-slash" });
+            SourceRegistry.register({ source: "src-protocol-slash", protocol: SourceProtocol.DoubleSlash });
 
             expect(SourceRegistry.createIdentifier("src-protocol-slash", "value")).toBe("src-protocol-slash://value");
         });
 
         it("uses the raw protocol when configured", () => {
-            SourceRegistry.register({ source: "src-protocol-raw", protocol: "raw" });
+            SourceRegistry.register({ source: "src-protocol-raw", protocol: SourceProtocol.Raw });
 
             expect(SourceRegistry.createIdentifier("src-protocol-raw", "https://example.com/file.mp3")).toBe(
                 "https://example.com/file.mp3",
@@ -63,7 +66,7 @@ describe("SourceRegistry", () => {
             SourceRegistry.register({ source: "src-reregister-1" });
             expect(SourceRegistry.createIdentifier("src-reregister-1", "x")).toBe("src-reregister-1:x");
 
-            SourceRegistry.register({ source: "src-reregister-1", protocol: "double-slash" });
+            SourceRegistry.register({ source: "src-reregister-1", protocol: SourceProtocol.DoubleSlash });
             expect(SourceRegistry.createIdentifier("src-reregister-1", "x")).toBe("src-reregister-1://x");
         });
     });
@@ -135,7 +138,7 @@ describe("SourceRegistry", () => {
         });
 
         it("respects the raw protocol and returns the query untouched", () => {
-            SourceRegistry.register({ source: "src-ci-raw", protocol: "raw" });
+            SourceRegistry.register({ source: "src-ci-raw", protocol: SourceProtocol.Raw });
 
             expect(SourceRegistry.createIdentifier("src-ci-raw", "https://files.example/track.mp3")).toBe(
                 "https://files.example/track.mp3",
@@ -154,7 +157,7 @@ describe("SourceRegistry", () => {
         });
 
         it("parses a double-slash-prefixed query", () => {
-            SourceRegistry.register({ source: "src-parse-slash", protocol: "double-slash" });
+            SourceRegistry.register({ source: "src-parse-slash", protocol: SourceProtocol.DoubleSlash });
 
             expect(SourceRegistry.parseQuery("src-parse-slash://value")).toEqual({
                 source: "src-parse-slash",

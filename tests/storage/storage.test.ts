@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { PlayerMemoryStorage } from "../src/classes/storage/PlayerMemory";
-import { QueueMemoryStorage } from "../src/classes/storage/QueueMemory";
+import { PlayerMemoryStorage } from "../../src/classes/storage/PlayerMemory";
+import { QueueMemoryStorage } from "../../src/classes/storage/QueueMemory";
 
 describe("storage", () => {
     it("QueueMemoryStorage set/get/has/delete/clear work correctly", () => {

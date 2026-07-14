@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, type vi } from "vitest";
 
-import { PlayerVoiceState } from "../src/classes/player/Voice";
-import { createMockPlayer } from "./helpers";
+import { createRealManager, createRealNode, createRealPlayer } from "../helpers";
 
 describe("PlayerVoiceState", () => {
     it("patch/reset and toJSON/toNode behave as expected", () => {
-        const voice = new PlayerVoiceState(createMockPlayer() as never);
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const voice = player.voice;
 
         voice.patch({ endpoint: "endpoint", sessionId: "session", token: "token", channelId: "voice-1" });
 
@@ -17,15 +19,17 @@ describe("PlayerVoiceState", () => {
     });
 
     it("setState sends payload and updates player/voice fields", async () => {
-        const player = createMockPlayer();
-        const voice = new PlayerVoiceState(player as never);
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const voice = player.voice;
 
         await voice.setState({ voiceId: "voice-2", selfMute: true, selfDeaf: false });
 
         expect(player.voiceId).toBe("voice-2");
         expect(player.selfMute).toBe(true);
         expect(player.selfDeaf).toBe(false);
-        expect(player.manager.options.sendPayload).toHaveBeenCalledWith("guild-1", {
+        expect(manager.options.sendPayload).toHaveBeenCalledWith("guild-1", {
             op: 4,
             d: {
                 guild_id: "guild-1",
@@ -37,22 +41,27 @@ describe("PlayerVoiceState", () => {
     });
 
     it("connect returns early when already connected or no voice channel", async () => {
-        const playerA = createMockPlayer({ connected: true });
+        const manager = createRealManager();
+        createRealNode(manager);
+        const playerA = createRealPlayer(manager);
+        playerA.connected = true;
 
-        const voiceA = new PlayerVoiceState(playerA as never);
+        const voiceA = playerA.voice;
         await voiceA.connect();
-        expect(playerA.manager.options.sendPayload).not.toHaveBeenCalled();
+        expect(manager.options.sendPayload).not.toHaveBeenCalled();
 
-        const playerB = createMockPlayer({ voiceId: undefined, options: { voiceId: undefined } });
-
-        const voiceB = new PlayerVoiceState(playerB as never);
+        const playerB = createRealPlayer(manager, { guildId: "guild-2" });
+        playerB.voiceId = undefined as never;
+        const voiceB = playerB.voice;
         await voiceB.connect();
-        expect(playerB.manager.options.sendPayload).not.toHaveBeenCalled();
+        expect(manager.options.sendPayload).not.toHaveBeenCalled();
     });
 
     it("disconnect/move/mute/deaf paths update state", async () => {
-        const player = createMockPlayer();
-        const voice = new PlayerVoiceState(player as never);
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const voice = player.voice;
 
         await voice.disconnect();
         expect(player.voiceId).toBeUndefined();
@@ -68,19 +77,23 @@ describe("PlayerVoiceState", () => {
     });
 
     it("setState propagates sendPayload failures", async () => {
-        const player = createMockPlayer();
-        player.manager.options.sendPayload.mockRejectedValueOnce(new Error("gateway unavailable"));
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        (manager.options.sendPayload as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("gateway unavailable"));
 
-        const voice = new PlayerVoiceState(player as never);
+        const voice = player.voice;
 
         await expect(voice.setState({ voiceId: "voice-9" })).rejects.toThrow("gateway unavailable");
     });
 
     it("connect rejects when state update fails", async () => {
-        const player = createMockPlayer();
-        player.manager.options.sendPayload.mockRejectedValueOnce(new Error("cannot send payload"));
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        (manager.options.sendPayload as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("cannot send payload"));
 
-        const voice = new PlayerVoiceState(player as never);
+        const voice = player.voice;
 
         await expect(voice.connect()).rejects.toThrow("cannot send payload");
         expect(player.connected).toBe(false);

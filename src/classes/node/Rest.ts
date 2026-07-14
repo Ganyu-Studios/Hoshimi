@@ -17,7 +17,7 @@ import {
 } from "../../types/Rest";
 import type { NodeStructure } from "../../types/Structures";
 import { HoshimiAgent } from "../../util/constants";
-import { stringify, updatePlayerData } from "../../util/functions/utils";
+import { stringify, updatePlayerState } from "../../util/functions/utils";
 import { RestError } from "../Errors";
 
 /**
@@ -76,7 +76,7 @@ export class Rest {
         const manager: Hoshimi = node.nodeManager.manager;
 
         this.url = `${node.options.secure ? "https" : "http"}://${node.options.host}:${node.options.port}`;
-        this.restTimeout = node.options.restTimeout ?? manager.options.restOptions.resumeTimeout ?? 10000;
+        this.restTimeout = node.options.restTimeout ?? manager.options.restOptions.restTimeout ?? 10000;
         this.userAgent = manager.options.nodeOptions.userAgent ?? HoshimiAgent;
         this.node = node;
     }
@@ -198,7 +198,7 @@ export class Rest {
             `[Rest] -> [${this.node.id}]: Updated player data for guild: ${data.guildId} | Payload: ${stringify(data)}`,
         );
 
-        updatePlayerData(this.node, data);
+        updatePlayerState(this.node, data);
 
         return this.request<LavalinkPlayer>({
             method: HttpMethods.Patch,

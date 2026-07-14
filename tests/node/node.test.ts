@@ -37,18 +37,19 @@ vi.mock("ws", () => {
 });
 
 import { WebSocket } from "ws";
-import { NodeError, OptionError } from "../src/classes/Errors";
-import { LyricsManager } from "../src/classes/node/Lyrics";
-import { Node } from "../src/classes/node/Node";
-import { EventNames, type HoshimiOptions, SearchSources } from "../src/types/Manager";
-import { NodeDestroyReasons, PluginNames, State, WebsocketCloseCodes } from "../src/types/Node";
-import { HttpMethods, RestRoutes } from "../src/types/Rest";
+import { NodeError, OptionError } from "../../src/classes/Errors";
+import { LyricsManager } from "../../src/classes/node/Lyrics";
+import { Node } from "../../src/classes/node/Node";
+import { EventNames, type HoshimiOptions, SearchSources } from "../../src/types/Manager";
+import { NodeDestroyReasons, PluginNames, State, WebsocketCloseCodes } from "../../src/types/Node";
+import { HttpMethods, RestRoutes } from "../../src/types/Rest";
 
 function createNode(client?: { id?: string; username?: string }) {
     const emit = vi.fn();
     const nodeManager = {
         manager: {
             emit,
+            debug: vi.fn(),
             options: {
                 client,
                 sendPayload: vi.fn(),
