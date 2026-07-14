@@ -121,6 +121,64 @@ describe("FilterManager default-state stripping", () => {
     });
 });
 
+describe("FilterManager sends only non-default filters", () => {
+    const BUILTIN_FILTERS = [
+        "volume",
+        "equalizer",
+        "karaoke",
+        "timescale",
+        "tremolo",
+        "vibrato",
+        "rotation",
+        "distortion",
+        "channelMix",
+        "lowPass",
+    ];
+
+    function fullNodePlayer() {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        // Advertise every built-in filter (like a real Lavalink node) so the "advertised" drop cannot mask
+        // filters that failed to be recognised as default.
+        node.info = { filters: BUILTIN_FILTERS, plugins: [], isNodelink: false } as never;
+        const player = createRealPlayer(manager);
+        return { player, node };
+    }
+
+    it("a fresh commit sends an empty filters payload", async () => {
+        const { player, node } = fullNodePlayer();
+        const spy = node.rest.updatePlayer as unknown as Mock;
+        spy.mockClear();
+
+        await player.filterManager.apply();
+
+        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: Record<string, unknown> } };
+        expect(sent.playerOptions.filters).toEqual({});
+    });
+
+    it("setVaporwave sends only the timescale filter (default karaoke/distortion are stripped)", async () => {
+        const { player, node } = fullNodePlayer();
+        const spy = node.rest.updatePlayer as unknown as Mock;
+        spy.mockClear();
+
+        await player.filterManager.setVaporwave();
+
+        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: Record<string, unknown> } };
+        expect(Object.keys(sent.playerOptions.filters)).toEqual(["timescale"]);
+    });
+
+    it("clear leaves no filters behind on a fresh player", async () => {
+        const { player, node } = fullNodePlayer();
+        const spy = node.rest.updatePlayer as unknown as Mock;
+        spy.mockClear();
+
+        await player.filterManager.clear(FilterType.Timescale);
+
+        const sent = spy.mock.calls.at(-1)?.[0] as { playerOptions: { filters: Record<string, unknown> } };
+        expect(sent.playerOptions.filters).toEqual({});
+    });
+});
+
 describe("FilterManager capability pruning on commit", () => {
     it("drops plugin filters the node cannot host, keeping the ones it can", async () => {
         const manager = createRealManager();

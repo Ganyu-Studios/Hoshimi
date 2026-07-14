@@ -621,7 +621,9 @@ FilterRegistry.register([
     defineFilter({
         name: FilterType.Karaoke,
         scope: FilterScope.Core,
-        isDefault: (p: unknown): boolean => p === null || p === undefined,
+        // Off when absent or every parameter is zero (the neutral payload in DefaultPlayerFilters).
+        isDefault: (p: { level?: number; monoLevel?: number; filterBand?: number; filterWidth?: number } | null | undefined): boolean =>
+            !p || ((p.level ?? 0) === 0 && (p.monoLevel ?? 0) === 0 && (p.filterBand ?? 0) === 0 && (p.filterWidth ?? 0) === 0),
     }),
     defineFilter({
         name: FilterType.Rotation,
@@ -647,7 +649,31 @@ FilterRegistry.register([
     defineFilter({
         name: FilterType.Distortion,
         scope: FilterScope.Core,
-        isDefault: (p: unknown): boolean => p === null || p === undefined,
+        // Off when absent or the identity transform (all offsets 0 and all scales 1), matching DefaultPlayerFilters.
+        isDefault: (
+            p:
+                | {
+                      sinOffset?: number;
+                      sinScale?: number;
+                      cosOffset?: number;
+                      cosScale?: number;
+                      tanOffset?: number;
+                      tanScale?: number;
+                      offset?: number;
+                      scale?: number;
+                  }
+                | null
+                | undefined,
+        ): boolean =>
+            !p ||
+            ((p.sinOffset ?? 0) === 0 &&
+                (p.cosOffset ?? 0) === 0 &&
+                (p.tanOffset ?? 0) === 0 &&
+                (p.offset ?? 0) === 0 &&
+                (p.sinScale ?? 1) === 1 &&
+                (p.cosScale ?? 1) === 1 &&
+                (p.tanScale ?? 1) === 1 &&
+                (p.scale ?? 1) === 1),
     }),
     defineFilter({
         name: FilterType.Equalizer,
