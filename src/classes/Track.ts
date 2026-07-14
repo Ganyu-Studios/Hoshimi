@@ -10,7 +10,8 @@ import {
 } from "../types/Node";
 import type { TrackJSON } from "../types/Queue";
 import type { PlayerStructure, TrackStructure, UnresolvedTrackStructure } from "../types/Structures";
-import { TrackResolution, validateSource } from "../util/functions/utils";
+import { TrackResolution } from "../util/functions/track";
+import { Validations } from "../util/functions/validations";
 import { ResolveError } from "./Errors";
 
 /**
@@ -231,7 +232,7 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
 
         const source: SearchSource =
             this.info.sourceName && !excluded.includes(this.info.sourceName)
-                ? validateSource(this.info.sourceName)
+                ? Validations.validateSource(this.info.sourceName)
                 : player.manager.options.defaultSearchSource;
 
         player.manager.debug(

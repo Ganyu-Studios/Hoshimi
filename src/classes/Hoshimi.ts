@@ -20,7 +20,8 @@ import type { LavalinkPlayerVoice, PlayerOptions } from "../types/Player";
 import { type NodeManagerStructure, type NodeStructure, type PlayerStructure, Structures, type TrackStructure } from "../types/Structures";
 import { Collection } from "../util/collection";
 import { HoshimiDefaultOptions } from "../util/constants";
-import { isPlainObject, mergeDefault, stringify, validateManagerOptions } from "../util/functions/utils";
+import { isPlainObject, mergeDefault, stringify } from "../util/functions/utils";
+import { Validations } from "../util/functions/validations";
 import { ManagerError, OptionError } from "./Errors";
 
 /**
@@ -150,7 +151,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
 
         this.options = mergeDefault(HoshimiDefaultOptions, options);
 
-        validateManagerOptions(this.options);
+        Validations.validateManagerOptions(this.options);
 
         this.nodeManager = Structures.NodeManager(this);
     }

@@ -47,4 +47,4 @@ export * from "./types/Structures";
 export * from "./util/constants";
 
 // Exports related to track utilities.
-export { TrackResolution } from "./util/functions/utils";
+export { TrackResolution } from "./util/functions/track";

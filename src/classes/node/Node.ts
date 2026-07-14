@@ -34,7 +34,8 @@ import {
     type TrackStructure,
 } from "../../types/Structures";
 import { clearHeartbeatTimer, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
-import { censor, stringify, validateQuery } from "../../util/functions/utils";
+import { censor, stringify } from "../../util/functions/utils";
+import { Validations } from "../../util/functions/validations";
 import { NodeError } from "../Errors";
 
 /**
@@ -370,7 +371,7 @@ export class Node {
             source: search.source ?? this.nodeManager.manager.options.defaultSearchSource,
         };
 
-        const identifier: string = validateQuery(query);
+        const identifier: string = Validations.validateQuery(query);
 
         return this.rest.request<LavalinkSearchResponse>({
             endpoint: RestRoutes.LoadTracks,

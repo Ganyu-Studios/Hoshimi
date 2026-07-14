@@ -17,7 +17,7 @@ import {
 } from "../../types/Rest";
 import type { NodeStructure } from "../../types/Structures";
 import { HoshimiAgent } from "../../util/constants";
-import { stringify, updatePlayerData } from "../../util/functions/utils";
+import { stringify, updatePlayerState } from "../../util/functions/utils";
 import { RestError } from "../Errors";
 
 /**
@@ -198,7 +198,7 @@ export class Rest {
             `[Rest] -> [${this.node.id}]: Updated player data for guild: ${data.guildId} | Payload: ${stringify(data)}`,
         );
 
-        updatePlayerData(this.node, data);
+        updatePlayerState(this.node, data);
 
         return this.request<LavalinkPlayer>({
             method: HttpMethods.Patch,
