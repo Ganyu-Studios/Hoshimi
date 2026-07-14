@@ -1084,9 +1084,10 @@ export interface NodeOptions {
      */
     secure?: boolean;
     /**
-     * The timeout for the REST in milliseconds.
+     * The timeout for the REST in milliseconds. Overrides the manager-level `restOptions.restTimeout`
+     * for this node; when omitted, that manager default is used (falling back to `10000`).
      * @type {number}
-     * @default 10000
+     * @default restOptions.restTimeout
      */
     restTimeout?: number;
     /**
