@@ -27,7 +27,7 @@
 - 📣 **Events**: Granular events with debug levels.
 - 🧩 **Extensible**: Override structures with your own ones.
 - 🧪 **Safety & DX**: Strict validation, descriptive errors, TypeScript-first API build, and formatting/linting.
-- 📜 **Filters**: Built-in filters, easy management and easy to use!  
+- 📜 **Filters**: Built-in filters, plugin filters, and anything your fork exposes — no registration needed.  
 
 ## ⚙️ Requirements
 - **Runtime** - atleast one of:
@@ -101,6 +101,65 @@ client.events.values.RAW = {
     await client.start();
 })();
 ```
+
+## 📜 Filters
+
+A filter is active while its key is in the payload. There is no "off" payload: `clear` removes the key,
+and `isEnabled` is presence.
+
+```typescript
+import { FilterType } from "hoshimi";
+
+const player = hoshimi.getPlayer("guildId");
+
+await player.filterManager.setNightcore();
+await player.filterManager.set(FilterType.Echo, { delay: 200, decay: 0.5 });
+
+player.filterManager.isEnabled(FilterType.Echo); // true
+player.filterManager.getEnabled();               // ["timescale", "echo"]
+
+await player.filterManager.clear(FilterType.Echo);
+await player.filterManager.reset();              // drops every filter
+```
+
+Filters Hoshimi has never heard of work too — a fork's own filters, a plugin you wrote, anything. The
+envelope comes from the options:
+
+```typescript
+// pluginFilters.myFilter — the extension point the Lavalink v4 spec defines
+await player.filterManager.set("myFilter", { gain: 2 });
+
+// pluginFilters["my-plugin"].boost — nested, per the spec's plugin shape
+await player.filterManager.set("boost", { gain: 2 }, { plugin: "my-plugin" });
+
+// filters.forkEcho — top level, next to the built-ins, where forks expose theirs
+await player.filterManager.set("forkEcho", { decay: 0.5 }, { top: true });
+
+// Clear it from the same envelope it was written to
+await player.filterManager.clear("boost", { plugin: "my-plugin" });
+```
+
+Hoshimi does not check which server it is talking to, so whether a fork-specific filter is safe to send
+is up to you: point the player at a node that understands it.
+
+Registering a filter is **optional**. Do it to get routing by name — no options at the call site — plus a
+check against what the node advertises in `/v4/info`:
+
+```typescript
+import { FilterRegistry, FilterScope, PluginCapabilities } from "hoshimi";
+
+FilterRegistry.register({
+    name: "boost",
+    scope: FilterScope.Plugin,      // Plugin -> pluginFilters · Core -> top level
+    pluginName: "my-plugin",        // omit to write it flat under pluginFilters
+    capability: PluginCapabilities.Filters,
+});
+
+await player.filterManager.set("boost", { gain: 2 }); // routed and validated
+```
+
+`set(name, payload, { validate: false })` skips that check when a node fails to advertise a filter it
+actually supports.
 
 ## 💖 Used By
 

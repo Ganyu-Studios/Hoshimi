@@ -54,7 +54,7 @@ export class FilterManager {
 
     /**
      * The current filter payload (wire-bound). Starts empty: a key is only present while its filter is
-     * active. Mutated by {@link apply} and {@link clear}.
+     * active. Mutated by {@link FilterManager.set} and {@link FilterManager.clear}.
      * @type {FilterSettings}
      * @public
      */
