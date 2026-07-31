@@ -65,7 +65,41 @@ describe("Queue", () => {
         expect(queue.tracks).toEqual(snapshot);
     });
 
-    it("toJSON trims history to maxHistory", () => {
+    it("move places the track at the given position", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const queue = player.queue;
+        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+
+        const [a, b, c] = [mockedTrack("a"), mockedTrack("b"), mockedTrack("c")];
+        await queue.add([a, b, c] as never);
+
+        await queue.move(c as never, 0);
+        expect(queue.tracks.map((track) => track.encoded)).toEqual(["c", "a", "b"]);
+
+        await queue.move(c as never, 1);
+        expect(queue.tracks.map((track) => track.encoded)).toEqual(["a", "c", "b"]);
+    });
+
+    it("move clamps an out of range position", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const queue = player.queue;
+        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+
+        const [a, b, c] = [mockedTrack("a"), mockedTrack("b"), mockedTrack("c")];
+        await queue.add([a, b, c] as never);
+
+        await queue.move(a as never, 99);
+        expect(queue.tracks.map((track) => track.encoded)).toEqual(["b", "c", "a"]);
+
+        await queue.move(a as never, -5);
+        expect(queue.tracks.map((track) => track.encoded)).toEqual(["a", "b", "c"]);
+    });
+
+    it("toJSON trims history to maxHistory without mutating it", () => {
         const manager = createRealManager({ queueOptions: { maxHistory: 2 } } as never);
         createRealNode(manager);
         const player = createRealPlayer(manager);
@@ -75,6 +109,7 @@ describe("Queue", () => {
         const json = queue.toJSON();
 
         expect(json.history.length).toBe(2);
+        expect(queue.history.length).toBe(3);
     });
 });
 
@@ -146,6 +181,18 @@ describe("QueueUtils", () => {
         const player = createRealPlayer(manager);
         const queue = player.queue;
 
+        queue.tracks.push({ encoded: "track" } as TrackResolvableStructure);
+
+        expect(() => queue.toJSON()).toThrow(QueueError);
+    });
+
+    it("throws when only some tracks are invalid", () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const queue = player.queue;
+
+        queue.tracks.push(mockedTrack("valid"));
         queue.tracks.push({ encoded: "track" } as TrackResolvableStructure);
 
         expect(() => queue.toJSON()).toThrow(QueueError);

@@ -349,7 +349,12 @@ export class Queue {
         if (index === -1) return this;
 
         await this.splice(index, 1);
-        await this.add(track, to - 1);
+
+        // `to` is a 0-based index into the queue without the moved track; clamped so an out of range
+        // position lands at the start or the end instead of silently falling back to a push.
+        const position: number = Math.max(0, Math.min(to, this.tracks.length));
+
+        await this.add(track, position);
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
         this.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Move] Moved track ${track.info.title} to position ${to}.`);
@@ -411,16 +416,17 @@ export class Queue {
         const tracks: TrackResolvableStructure[] = [...this.tracks, ...this.history, this.current].filter(
             (track): track is TrackResolvableStructure => !!track,
         );
-        if (tracks.length && tracks.every((track): boolean => !(track instanceof Track) && !(track instanceof UnresolvedTrack)))
+        if (tracks.some((track): boolean => !(track instanceof Track) && !(track instanceof UnresolvedTrack)))
             throw new QueueError("Cannot convert queue to JSON because it contains invalid object tracks.");
 
         const max: number = this.player.manager.options.queueOptions.maxHistory;
 
-        if (this.history.length > max) this.history.splice(max, this.history.length);
+        // Trim on a copy: serialising must not mutate the live queue.
+        const history: TrackStructure[] = this.history.slice(0, max);
 
         return {
             tracks: this.tracks.map((track): TrackJSON => track.toJSON()),
-            history: this.history.map((track): TrackJSON => track.toJSON()),
+            history: history.map((track): TrackJSON => track.toJSON()),
             current: this.current?.toJSON() ?? null,
         };
     }
