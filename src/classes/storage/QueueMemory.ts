@@ -17,7 +17,10 @@ export class QueueMemoryStorage<T extends QueueJSON = QueueJSON> extends QueueSt
     private readonly storage: Map<string, QueueJSON> = new Map();
 
     public get(key: string): T | undefined {
-        return this.parse(this.storage.get(key));
+        const value: QueueJSON | undefined = this.storage.get(this.buildKey(this.namespace, key));
+        if (typeof value === "undefined") return undefined;
+
+        return this.parse(value);
     }
 
     public set(key: string, value: T): void {

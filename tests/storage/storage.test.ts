@@ -17,8 +17,9 @@ describe("storage", () => {
         storage.set(key, value);
 
         expect(storage.has(key)).toBe(true);
-        expect(storage.get(key)).toBeUndefined();
-        expect(storage.get(namespacedKey)).toEqual(value);
+        expect(storage.get(key)).toEqual(value);
+        expect(storage.get(namespacedKey)).toBeUndefined();
+        expect(storage.get("unknown-guild")).toBeUndefined();
 
         expect(storage.delete(key)).toBe(true);
         expect(storage.has(key)).toBe(false);
