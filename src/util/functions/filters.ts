@@ -18,33 +18,19 @@ export const FilterPayload = {
     async commit(this: FilterManager): Promise<void> {
         if (!this.player.node.sessionId) return;
 
+        // A key is only present while its filter is active, so the payload needs no default-state
+        // stripping: what `data` holds is what the node should apply.
         // `data.equalizer` is the source of truth (kept in sync with `this.bands` by setEQBand/clearEQBands).
         const filters: FilterSettings = { ...this.data };
 
-        // Strip default-state top-level filters via the registry.
-        for (const key of Object.keys(filters)) {
-            if (key === "pluginFilters") continue;
-            const value: unknown = (filters as Record<string, unknown>)[key];
-            if (FilterRegistry.isDefault(key, value)) {
-                delete (filters as Record<string, unknown>)[key];
-            }
-        }
-
-        // Strip default-state plugin filters and prune empty envelopes.
+        // Prune empty envelopes a caller may have left behind by editing `data` by hand. Copied rather
+        // than mutated in place so the live payload is never touched.
         const pluginFilters: Record<string, unknown> | undefined = filters.pluginFilters as Record<string, unknown> | undefined;
         if (pluginFilters) {
             const stripped: Record<string, unknown> = { ...pluginFilters };
             for (const key of Object.keys(stripped)) {
                 const value: unknown = stripped[key];
-                if (FilterPayload.isNested(key, value)) {
-                    // Nested plugin envelope: prune each child filter individually.
-                    const nested: Record<string, unknown> = { ...(value as Record<string, unknown>) };
-                    for (const inner of Object.keys(nested)) {
-                        if (FilterRegistry.isDefault(inner, nested[inner])) delete nested[inner];
-                    }
-                    if (Object.keys(nested).length === 0) delete stripped[key];
-                    else stripped[key] = nested;
-                } else if (FilterRegistry.isDefaultFlatPlugin(key, value)) {
+                if (FilterPayload.isNested(key, value) && Object.keys(value as Record<string, unknown>).length === 0) {
                     delete stripped[key];
                 }
             }

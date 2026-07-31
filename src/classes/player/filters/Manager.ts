@@ -13,7 +13,7 @@ import {
 } from "../../../types/Filters";
 import type { RestOrArray } from "../../../types/Manager";
 import type { PlayerStructure } from "../../../types/Structures";
-import { AudioOutputData, DefaultFilterPreset, DefaultPlayerFilters } from "../../../util/constants";
+import { AudioOutputData, DefaultFilterPreset } from "../../../util/constants";
 import { FilterPayload } from "../../../util/functions/filters";
 import { PlayerError } from "../../Errors";
 import { DSPXPluginFilter } from "./DSPXPlugin";
@@ -25,8 +25,9 @@ import { LavalinkPluginFilter } from "./LavalinkPlugin";
  * Backed by the {@link FilterRegistry}: filter writes and lookups go through the registry,
  * which knows the canonical name, scope (Core/Plugin/Vendor), payload envelope, and default-state predicate.
  *
- * The previous `filters: EnabledPlayerFilters` toggle object has been removed; every "is X active"
- * question is derived on-demand from {@link FilterRegistry.isDefault} against the current payload.
+ * A filter is active when its key is present in the payload, and inactive when it is absent: there is
+ * no neutral "off" payload. {@link FilterManager.set} writes a key, {@link FilterManager.clear} removes
+ * it, and {@link FilterManager.isEnabled} is presence.
  *
  * The commit/envelope internals live in {@link FilterPayload} (util/functions/filters) as `this`-helpers
  * invoked with `.call(this)`, rather than private members, matching the project convention.
@@ -50,11 +51,12 @@ export class FilterManager {
     public readonly bands: EQBandSettings[] = [];
 
     /**
-     * The current filter payload (wire-bound). Mutated by {@link apply} and {@link clear}.
+     * The current filter payload (wire-bound). Starts empty: a key is only present while its filter is
+     * active. Mutated by {@link apply} and {@link clear}.
      * @type {FilterSettings}
      * @public
      */
-    public data: FilterSettings = structuredClone(DefaultPlayerFilters);
+    public data: FilterSettings = {};
 
     /**
      * Thin facade for filters provided by the `lavalink-filter-plugin`.
@@ -130,20 +132,21 @@ export class FilterManager {
     }
 
     /**
-     * Whether the given filter is currently active (its payload is not the default/off state).
+     * Whether the given filter is currently active, i.e. whether its key is present in the payload.
      * @param {RegistryFilterName} name The canonical filter name (or alias).
-     * @returns {boolean} True if the filter has a non-default payload, false otherwise.
+     * @returns {boolean} True if the filter has a payload, false otherwise.
      */
     public isEnabled(name: RegistryFilterName): boolean {
         const entry = FilterRegistry.resolve(name, this.player.node);
         if (!entry) return false;
-        const payload = FilterPayload.read.call(this, entry);
-        return !FilterRegistry.isDefault(name, payload);
+        return typeof FilterPayload.read.call(this, entry) !== "undefined";
     }
 
     /**
      * Returns every active filter name as derived from the current payload.
-     * @returns {string[]} Canonical filter names whose payload is non-default.
+     *
+     * Only covers registered filters; keys written for unregistered ones are not listed.
+     * @returns {string[]} Canonical filter names present in the payload.
      */
     public getEnabled(): string[] {
         return FilterRegistry.getFilters().filter((name): boolean => this.isEnabled(name));
@@ -159,12 +162,12 @@ export class FilterManager {
     }
 
     /**
-     * Reset every filter to its default state and commit.
+     * Drop every filter and commit an empty payload.
      * @returns {Promise<this>} A promise that resolves to the filter manager.
      */
     public async reset(): Promise<this> {
         this.bands.length = 0;
-        this.data = structuredClone(DefaultPlayerFilters);
+        this.data = {};
         await FilterPayload.commit.call(this);
         return this;
     }
@@ -209,7 +212,7 @@ export class FilterManager {
      */
     public async clearEQBands(): Promise<this> {
         this.bands.length = 0;
-        this.data.equalizer = [];
+        delete this.data.equalizer;
         await FilterPayload.commit.call(this);
         return this;
     }

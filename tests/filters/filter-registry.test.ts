@@ -98,7 +98,7 @@ describe("FilterManager envelope routing", () => {
 
         const pf = fm.data.pluginFilters as Record<string, Record<string, unknown>>;
         expect(pf.echo).toEqual({ echoLength: 0.5, decay: 0.5 });
-        expect(pf["lavalink-filter-plugin"].echo).toEqual({ delay: 0, decay: 0 });
+        expect(pf["lavalink-filter-plugin"]).toBeUndefined(); // the nested envelope is never created
     });
 
     it("plugin.setEcho writes a nested pluginFilters['lavalink-filter-plugin'].echo payload", async () => {
@@ -108,7 +108,7 @@ describe("FilterManager envelope routing", () => {
 
         const pf = fm.data.pluginFilters as Record<string, Record<string, unknown>>;
         expect(pf["lavalink-filter-plugin"].echo).toEqual({ delay: 4, decay: 0.8 });
-        expect(pf.echo).toEqual({ decay: 0, delay: 0, echoLength: 0 }); // flat dspx echo untouched
+        expect(pf.echo).toBeUndefined(); // the flat dspx echo is never created
     });
 
     it("dspx.setLowPass sends exactly the flat DSPX low-pass envelope", async () => {
@@ -131,10 +131,10 @@ describe("FilterManager envelope routing", () => {
         });
     });
 
-    it("commit keeps a dspx echo that only sets echoLength (uses the dspx default predicate)", async () => {
+    it("commit keeps a dspx echo whose decay is 0", async () => {
         const { fm, spy } = bothPlugins();
 
-        // decay 0 but echoLength set: with the filter-plugin predicate this would be wrongly stripped.
+        // Presence is what activates a filter, so a zero member does not make the payload disappear.
         await fm.dspx.setEcho({ echoLength: 0.5, decay: 0 });
 
         expect(sentFilters(spy)).toEqual({ pluginFilters: { echo: { echoLength: 0.5, decay: 0 } } });
@@ -196,16 +196,17 @@ describe("FilterManager combined / clear / reset semantics", () => {
     });
 });
 
-describe("FilterManager default-state stripping", () => {
+describe("FilterManager presence semantics", () => {
     it("a fresh commit sends a completely empty filters payload", async () => {
         const { fm, spy } = bothPlugins();
 
-        await fm.apply(); // no-arg commit with fresh defaults
+        await fm.apply(); // no-arg commit on an untouched payload
 
+        expect(fm.data).toEqual({});
         expect(sentFilters(spy)).toEqual({});
     });
 
-    it("regression: applying a single filter never leaks default karaoke/distortion/pluginFilters", async () => {
+    it("applying a single filter sends only that key", async () => {
         const { fm, spy } = setup();
 
         await fm.setNightcore();
@@ -217,25 +218,54 @@ describe("FilterManager default-state stripping", () => {
         expect(Object.keys(filters)).toEqual(["timescale"]);
     });
 
-    it("keeps a distortion that is not the identity transform", async () => {
+    it("sends an all-zero payload, since presence is what activates a filter", async () => {
         const { fm, spy } = setup();
 
-        await fm.setDistortion({ scale: 2 });
+        await fm.setKaraoke({ level: 0, monoLevel: 0, filterBand: 0, filterWidth: 0 });
 
-        expect(sentFilters(spy)).toEqual({ distortion: { scale: 2 } });
+        expect(sentFilters(spy)).toEqual({ karaoke: { level: 0, monoLevel: 0, filterBand: 0, filterWidth: 0 } });
+        expect(fm.isEnabled(FilterType.Karaoke)).toBe(true);
     });
 
-    it("keeps a karaoke where a single parameter is non-zero", async () => {
+    it("isEnabled tracks presence, not payload values", async () => {
+        const { fm } = setup();
+
+        expect(fm.isEnabled(FilterType.Volume)).toBe(false);
+
+        await fm.setVolume(1); // the old neutral volume: active now that it was set explicitly
+
+        expect(fm.isEnabled(FilterType.Volume)).toBe(true);
+    });
+
+    it("clear() removes the key instead of neutralising it", async () => {
         const { fm, spy } = setup();
 
-        await fm.setKaraoke({ level: 0.5 });
+        await fm.setNightcore();
+        expect(fm.isEnabled(FilterType.Timescale)).toBe(true);
 
-        expect(sentFilters(spy)).toEqual({ karaoke: { level: 0.5, monoLevel: 0, filterBand: 0, filterWidth: 0 } });
+        await fm.clear(FilterType.Timescale);
+
+        expect(fm.isEnabled(FilterType.Timescale)).toBe(false);
+        expect(fm.data.timescale).toBeUndefined();
+        expect(sentFilters(spy)).toEqual({});
+    });
+
+    it("clearEQBands removes the equalizer key", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setEQBand({ band: 0, gain: 0.25 });
+        expect(fm.isEnabled(FilterType.Equalizer)).toBe(true);
+
+        await fm.clearEQBands();
+
+        expect(fm.data.equalizer).toBeUndefined();
+        expect(fm.isEnabled(FilterType.Equalizer)).toBe(false);
+        expect(sentFilters(spy)).toEqual({});
     });
 });
 
-describe("FilterManager player isolation (no shared default state)", () => {
-    it("does not share pluginFilters objects between players and does not leak mutations", async () => {
+describe("FilterManager player isolation", () => {
+    it("does not leak payload writes between players", async () => {
         const manager = createRealManager();
         const node = createRealNode(manager);
         node.info = {
@@ -247,12 +277,14 @@ describe("FilterManager player isolation (no shared default state)", () => {
         const a = createRealPlayer(manager, { guildId: "g-a", voiceId: "v-a" });
         const b = createRealPlayer(manager, { guildId: "g-b", voiceId: "v-b" });
 
-        expect(a.filterManager.data.pluginFilters).not.toBe(b.filterManager.data.pluginFilters);
+        expect(a.filterManager.data).not.toBe(b.filterManager.data);
+        expect(a.filterManager.data).toEqual({});
+        expect(b.filterManager.data).toEqual({});
 
         await a.filterManager.dspx.setEcho({ echoLength: 0.5, decay: 0.5 });
 
-        const bpf = b.filterManager.data.pluginFilters as Record<string, unknown>;
-        expect(bpf.echo).toEqual({ decay: 0, delay: 0, echoLength: 0 }); // still default, not leaked from A
+        expect((a.filterManager.data.pluginFilters as Record<string, unknown>).echo).toEqual({ echoLength: 0.5, decay: 0.5 });
+        expect(b.filterManager.data).toEqual({}); // nothing created on B
     });
 });
 

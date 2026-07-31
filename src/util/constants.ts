@@ -1,6 +1,6 @@
 import PackageJson from "../../package.json";
 import { QueueMemoryStorage } from "../classes/storage/QueueMemory";
-import type { ChannelMixSettings, FilterSettings } from "../types/Filters";
+import type { ChannelMixSettings } from "../types/Filters";
 import { AudioOutput } from "../types/Filters";
 import { type RequiredHoshimiOptions, SearchSources } from "../types/Manager";
 import { NodeSortTypes, type UserAgent } from "../types/Node";
@@ -75,80 +75,6 @@ export const DefaultFilterPreset = Object.freeze({
 
     PluginEcho: { decay: 0.8, delay: 4 },
     PluginReverb: { delays: [0.037, 0.042, 0.048, 0.053], gains: [0.84, 0.83, 0.82, 0.81] },
-});
-
-/**
- * The default filter settings.
- * @type {Readonly<FilterSettings>} DefaultFilters
- */
-export const DefaultPlayerFilters: Readonly<FilterSettings> = Object.freeze<FilterSettings>({
-    volume: 1,
-    equalizer: [],
-    channelMix: AudioOutputData.stereo,
-    lowPass: {
-        smoothing: 0,
-    },
-    karaoke: {
-        level: 0,
-        monoLevel: 0,
-        filterBand: 0,
-        filterWidth: 0,
-    },
-    timescale: {
-        speed: 1,
-        pitch: 1,
-        rate: 1,
-    },
-    rotation: {
-        rotationHz: 0,
-    },
-    tremolo: {
-        frequency: 0,
-        depth: 0,
-    },
-    vibrato: {
-        frequency: 0,
-        depth: 0,
-    },
-    pluginFilters: {
-        "high-pass": {
-            boostFactor: 0,
-            cutoffFrequency: 0,
-        },
-        "low-pass": {
-            boostFactor: 0,
-            cutoffFrequency: 0,
-        },
-        "lavalink-filter-plugin": {
-            echo: {
-                delay: 0,
-                decay: 0,
-            },
-            reverb: {
-                delays: [],
-                gains: [],
-            },
-        },
-        echo: {
-            decay: 0,
-            delay: 0,
-            echoLength: 0,
-        },
-        normalization: {
-            adaptive: false,
-            maxAmplitude: 0,
-        },
-    },
-    distortion: {
-        cosOffset: 0,
-        sinOffset: 0,
-        tanOffset: 0,
-        offset: 0,
-        scale: 1,
-        cosScale: 1,
-        sinScale: 1,
-        tanScale: 1,
-    },
 });
 
 /**
