@@ -15,7 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'Ganyu-Studios/Hoshimi'
     permissions:
+      # id-token for npm provenance; the other two are what changesets/action needs to push
+      # `changeset-release/release` and open the version pull request. Declaring any permissions
+      # block sets every unlisted scope to none, which is why omitting them returned a 403.
       id-token: write
+      contents: write
+      pull-requests: write
     steps:
       - name: Check out code
         uses: actions/checkout@v6
