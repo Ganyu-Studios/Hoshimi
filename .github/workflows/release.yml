@@ -15,12 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'Ganyu-Studios/Hoshimi'
     permissions:
-      # id-token for npm provenance; the other two are what changesets/action needs to push
-      # `changeset-release/release` and open the version pull request. Declaring any permissions
-      # block sets every unlisted scope to none, which is why omitting them returned a 403.
+      # id-token for npm provenance, contents to push the version commit back to `release`.
+      # Declaring any permissions block sets every unlisted scope to none.
       id-token: write
       contents: write
-      pull-requests: write
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -39,12 +37,36 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Create Release Pull Request
-        uses: changesets/action@v1
+      # Merging into `release` *is* the approval, so the version is applied and published here rather
+      # than through a second pull request on a `changeset-release/*` branch.
+      - name: Apply changesets
+        run: |
+          pnpm changeset version
+
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_ENV"
+
+          if npm view "hoshimi@$version" version > /dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_ENV"
+            echo "hoshimi@$version is already published, nothing to do."
+          else
+            echo "published=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Publish to npm
+        if: env.published == 'false'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        with:
-          commit: "chore: release packages"
-          publish: npm publish --provenance
-          title: "chore: release packages"
+        run: |
+          echo "Publishing hoshimi@$version"
+          npm config set //registry.npmjs.org/:_authToken ${NODE_AUTH_TOKEN}
+          npm publish --provenance
+
+      - name: Commit the release
+        if: env.published == 'false'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "chore(release): v$version [skip ci]"
+          git push origin HEAD:release

@@ -41,6 +41,9 @@ jobs:
   linter:
     # Nothing gets pushed back or published off a red test run.
     needs: test
+    # Push events only: this job commits back to `github.ref`, which on a pull_request is the ephemeral
+    # `refs/pull/N/merge` — not a branch to push to, and gone the moment the pull request is merged.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
         contents: write
