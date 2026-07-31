@@ -17,8 +17,9 @@ describe("storage", () => {
         storage.set(key, value);
 
         expect(storage.has(key)).toBe(true);
-        expect(storage.get(key)).toBeUndefined();
-        expect(storage.get(namespacedKey)).toEqual(value);
+        expect(storage.get(key)).toEqual(value);
+        expect(storage.get(namespacedKey)).toBeUndefined();
+        expect(storage.get("unknown-guild")).toBeUndefined();
 
         expect(storage.delete(key)).toBe(true);
         expect(storage.has(key)).toBe(false);
@@ -53,5 +54,19 @@ describe("storage", () => {
 
         storage.clear();
         expect(storage.size()).toBe(0);
+    });
+
+    it("PlayerMemoryStorage hides internal keys from every enumeration", () => {
+        const storage = new PlayerMemoryStorage("guild-1");
+
+        storage.set("volume" as never, 100 as never);
+        storage.set("internal_stopPlaying" as never, true as never);
+
+        expect(storage.get("internal_stopPlaying" as never)).toBe(true);
+
+        expect(storage.keys()).toEqual(["volume"]);
+        expect(storage.values()).toEqual([100]);
+        expect(storage.entries()).toEqual([["volume", 100]]);
+        expect(storage.all()).toEqual({ volume: 100 });
     });
 });

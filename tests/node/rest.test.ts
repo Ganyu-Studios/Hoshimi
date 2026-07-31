@@ -56,6 +56,34 @@ describe("Rest", () => {
         expect(opts.headers["User-Agent"]).toContain("hoshimi-test");
     });
 
+    it("request censors the password in the debug log", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        node.sessionId = "sess-123";
+        const rest = new Rest(node as never);
+
+        (node.rest.request as ReturnType<typeof vi.fn>).mockRestore();
+
+        const debugSpy = vi.spyOn(manager, "debug");
+
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                ok: true,
+                status: HttpStatusCodes.OK,
+                json: vi.fn().mockResolvedValue({}),
+            } as never),
+        );
+
+        await rest.request({ endpoint: RestRoutes.NodeInfo });
+
+        const logged = debugSpy.mock.calls.map(([, message]) => message).join("\n");
+
+        expect(logged).toContain("Headers:");
+        expect(logged).not.toContain("pass");
+        expect(logged).toContain('"Authorization":"****"');
+    });
+
     it("request sends POST body as string", async () => {
         const manager = createRealManager();
         const node = createRealNode(manager);

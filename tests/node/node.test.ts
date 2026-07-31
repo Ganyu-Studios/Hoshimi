@@ -68,7 +68,6 @@ function createNode(client?: { id?: string; username?: string }) {
                     },
                     heartbeatOptions: {
                         interval: 30000,
-                        statsTimeout: 65000,
                     },
                 },
                 restOptions: {
@@ -159,7 +158,7 @@ describe("Node", () => {
         node.connect();
 
         const instances = WebSocket as unknown as { instances: Array<Record<string, unknown>> };
-        const ws = instances.instances[0];
+        const ws = instances.instances[0]!;
 
         expect(node.state).toBe(State.Connecting);
         expect(ws.url).toBe("ws://localhost:2333/v4/websocket");
@@ -190,7 +189,7 @@ describe("Node", () => {
         node.connect();
 
         const instances = WebSocket as unknown as { OPEN: number; instances: Array<{ readyState: number }> };
-        instances.instances[0].readyState = instances.OPEN;
+        instances.instances[0]!.readyState = instances.OPEN;
 
         expect(node.ready).toBe(true);
     });
@@ -242,7 +241,7 @@ describe("Node", () => {
         node.disconnect({ code: 1000, reason: "bye" });
 
         const instances = WebSocket as unknown as { instances: Array<{ closedWith: { code?: number; reason?: string } }> };
-        const ws = instances.instances[0];
+        const ws = instances.instances[0]!;
 
         expect(ws.closedWith).toEqual({ code: 1000, reason: "bye" });
         expect(node.ws).toBeNull();

@@ -1,5 +1,6 @@
 import { describe, expect, it, type Mock } from "vitest";
-import { FilterRegistry, FilterScope } from "../../src/registry/FiltersRegistry";
+import { PlayerError } from "../../src/classes/Errors";
+import { defineFilter, FilterRegistry, FilterScope } from "../../src/registry/FiltersRegistry";
 import { PluginCapabilities } from "../../src/registry/PluginRegistry";
 import { AudioOutput, FilterType } from "../../src/types/Filters";
 import type { FilterManagerStructure } from "../../src/types/Structures";
@@ -90,6 +91,35 @@ describe("FilterRegistry echo disambiguation", () => {
     });
 });
 
+describe("FilterRegistry key classification", () => {
+    it("isPluginName only recognises plugins that own nested filters", () => {
+        expect(FilterRegistry.isPluginName("lavalink-filter-plugin")).toBe(true);
+
+        // Flat DSPX filters declare no pluginName, so their keys are filters, not envelopes.
+        expect(FilterRegistry.isPluginName("echo")).toBe(false);
+        expect(FilterRegistry.isPluginName("low-pass")).toBe(false);
+
+        // Never registered: a filter of its own.
+        expect(FilterRegistry.isPluginName("my-fork-plugin")).toBe(false);
+    });
+
+    it("isKnown separates unregistered names from unresolvable ones", () => {
+        expect(FilterRegistry.isKnown(FilterType.Echo)).toBe(true);
+        expect(FilterRegistry.isKnown(FilterType.DSPXEcho)).toBe(true);
+        expect(FilterRegistry.isKnown("myFilter")).toBe(false);
+
+        // Known, yet unresolvable on a node without the backing plugin.
+        expect(FilterRegistry.resolve(FilterType.Echo, fakeNode([], []))).toBeNull();
+        expect(FilterRegistry.isKnown(FilterType.Echo)).toBe(true);
+    });
+
+    it("defineFilter is a pass-through", () => {
+        const registration = { name: "passthrough", scope: FilterScope.Core };
+
+        expect(defineFilter(registration)).toBe(registration);
+    });
+});
+
 describe("FilterManager envelope routing", () => {
     it("dspx.setEcho writes a flat pluginFilters.echo payload and leaves the nested one untouched", async () => {
         const { fm } = bothPlugins();
@@ -98,7 +128,7 @@ describe("FilterManager envelope routing", () => {
 
         const pf = fm.data.pluginFilters as Record<string, Record<string, unknown>>;
         expect(pf.echo).toEqual({ echoLength: 0.5, decay: 0.5 });
-        expect(pf["lavalink-filter-plugin"].echo).toEqual({ delay: 0, decay: 0 });
+        expect(pf["lavalink-filter-plugin"]).toBeUndefined(); // the nested envelope is never created
     });
 
     it("plugin.setEcho writes a nested pluginFilters['lavalink-filter-plugin'].echo payload", async () => {
@@ -107,8 +137,8 @@ describe("FilterManager envelope routing", () => {
         await fm.plugin.setEcho({ delay: 4, decay: 0.8 });
 
         const pf = fm.data.pluginFilters as Record<string, Record<string, unknown>>;
-        expect(pf["lavalink-filter-plugin"].echo).toEqual({ delay: 4, decay: 0.8 });
-        expect(pf.echo).toEqual({ decay: 0, delay: 0, echoLength: 0 }); // flat dspx echo untouched
+        expect(pf["lavalink-filter-plugin"]!.echo).toEqual({ delay: 4, decay: 0.8 });
+        expect(pf.echo).toBeUndefined(); // the flat dspx echo is never created
     });
 
     it("dspx.setLowPass sends exactly the flat DSPX low-pass envelope", async () => {
@@ -131,10 +161,10 @@ describe("FilterManager envelope routing", () => {
         });
     });
 
-    it("commit keeps a dspx echo that only sets echoLength (uses the dspx default predicate)", async () => {
+    it("commit keeps a dspx echo whose decay is 0", async () => {
         const { fm, spy } = bothPlugins();
 
-        // decay 0 but echoLength set: with the filter-plugin predicate this would be wrongly stripped.
+        // Presence is what activates a filter, so a zero member does not make the payload disappear.
         await fm.dspx.setEcho({ echoLength: 0.5, decay: 0 });
 
         expect(sentFilters(spy)).toEqual({ pluginFilters: { echo: { echoLength: 0.5, decay: 0 } } });
@@ -196,16 +226,17 @@ describe("FilterManager combined / clear / reset semantics", () => {
     });
 });
 
-describe("FilterManager default-state stripping", () => {
+describe("FilterManager presence semantics", () => {
     it("a fresh commit sends a completely empty filters payload", async () => {
         const { fm, spy } = bothPlugins();
 
-        await fm.apply(); // no-arg commit with fresh defaults
+        await fm.apply(); // no-arg commit on an untouched payload
 
+        expect(fm.data).toEqual({});
         expect(sentFilters(spy)).toEqual({});
     });
 
-    it("regression: applying a single filter never leaks default karaoke/distortion/pluginFilters", async () => {
+    it("applying a single filter sends only that key", async () => {
         const { fm, spy } = setup();
 
         await fm.setNightcore();
@@ -217,25 +248,181 @@ describe("FilterManager default-state stripping", () => {
         expect(Object.keys(filters)).toEqual(["timescale"]);
     });
 
-    it("keeps a distortion that is not the identity transform", async () => {
+    it("sends an all-zero payload, since presence is what activates a filter", async () => {
         const { fm, spy } = setup();
 
-        await fm.setDistortion({ scale: 2 });
+        await fm.setKaraoke({ level: 0, monoLevel: 0, filterBand: 0, filterWidth: 0 });
 
-        expect(sentFilters(spy)).toEqual({ distortion: { scale: 2 } });
+        expect(sentFilters(spy)).toEqual({ karaoke: { level: 0, monoLevel: 0, filterBand: 0, filterWidth: 0 } });
+        expect(fm.isEnabled(FilterType.Karaoke)).toBe(true);
     });
 
-    it("keeps a karaoke where a single parameter is non-zero", async () => {
+    it("isEnabled tracks presence, not payload values", async () => {
+        const { fm } = setup();
+
+        expect(fm.isEnabled(FilterType.Volume)).toBe(false);
+
+        await fm.setVolume(1); // the old neutral volume: active now that it was set explicitly
+
+        expect(fm.isEnabled(FilterType.Volume)).toBe(true);
+    });
+
+    it("get returns the active payload, and undefined once cleared", async () => {
+        const { fm } = setup();
+
+        expect(fm.get(FilterType.Timescale)).toBeUndefined();
+
+        await fm.setNightcore();
+        expect(fm.get(FilterType.Timescale)).toEqual({ ...DefaultFilterPreset.Nightcore });
+
+        await fm.clear(FilterType.Timescale);
+        expect(fm.get(FilterType.Timescale)).toBeUndefined();
+    });
+
+    it("get reads from the envelope the routing options point at", async () => {
+        const { fm } = setup();
+
+        await fm.set("boost", { gain: 2 }, { plugin: "my-plugin" });
+
+        expect(fm.get("boost", { plugin: "my-plugin" })).toEqual({ gain: 2 });
+        expect(fm.get("boost")).toBeUndefined(); // flat envelope, nothing there
+    });
+
+    it("clear() removes the key instead of neutralising it", async () => {
         const { fm, spy } = setup();
 
-        await fm.setKaraoke({ level: 0.5 });
+        await fm.setNightcore();
+        expect(fm.isEnabled(FilterType.Timescale)).toBe(true);
 
-        expect(sentFilters(spy)).toEqual({ karaoke: { level: 0.5, monoLevel: 0, filterBand: 0, filterWidth: 0 } });
+        await fm.clear(FilterType.Timescale);
+
+        expect(fm.isEnabled(FilterType.Timescale)).toBe(false);
+        expect(fm.data.timescale).toBeUndefined();
+        expect(sentFilters(spy)).toEqual({});
+    });
+
+    it("clearEQBands removes the equalizer key", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setEQBand({ band: 0, gain: 0.25 });
+        expect(fm.isEnabled(FilterType.Equalizer)).toBe(true);
+
+        await fm.clearEQBands();
+
+        expect(fm.data.equalizer).toBeUndefined();
+        expect(fm.isEnabled(FilterType.Equalizer)).toBe(false);
+        expect(sentFilters(spy)).toEqual({});
     });
 });
 
-describe("FilterManager player isolation (no shared default state)", () => {
-    it("does not share pluginFilters objects between players and does not leak mutations", async () => {
+describe("FilterManager.set with unregistered filters", () => {
+    it("routes an unknown filter to a flat pluginFilters entry", async () => {
+        const { fm, spy } = setup();
+
+        await fm.set("myFilter", { gain: 2 });
+
+        expect(sentFilters(spy)).toEqual({ pluginFilters: { myFilter: { gain: 2 } } });
+        expect(fm.isEnabled("myFilter")).toBe(true);
+    });
+
+    it("nests an unknown filter under the given plugin", async () => {
+        const { fm, spy } = setup();
+
+        await fm.set("boost", { gain: 2 }, { plugin: "my-fork-plugin" });
+
+        expect(sentFilters(spy)).toEqual({ pluginFilters: { "my-fork-plugin": { boost: { gain: 2 } } } });
+        expect(fm.isEnabled("boost", { plugin: "my-fork-plugin" })).toBe(true);
+        expect(fm.isEnabled("boost")).toBe(false); // not the flat envelope
+    });
+
+    it("writes an unknown filter at the top level with top: true and keeps it through commit", async () => {
+        const { fm, spy } = setup();
+
+        // The node advertises none of this: an unknown top-level key must survive anyway.
+        await fm.set("forkEcho", { decay: 0.5 }, { top: true });
+
+        expect(sentFilters(spy)).toEqual({ forkEcho: { decay: 0.5 } });
+        expect(fm.isEnabled("forkEcho", { top: true })).toBe(true);
+    });
+
+    it("clears an unknown filter from the envelope it was written to", async () => {
+        const { fm, spy } = setup();
+
+        await fm.set("boost", { gain: 2 }, { plugin: "my-fork-plugin" });
+        await fm.clear("boost", { plugin: "my-fork-plugin" });
+
+        expect(sentFilters(spy)).toEqual({});
+        expect(fm.data.pluginFilters).toBeUndefined(); // empty wrapper pruned
+    });
+
+    it("keeps registered and unregistered filters side by side", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setNightcore();
+        await fm.set("myFilter", { gain: 2 });
+        await fm.set("forkEcho", { decay: 0.5 }, { top: true });
+
+        expect(sentFilters(spy)).toEqual({
+            timescale: { ...DefaultFilterPreset.Nightcore },
+            forkEcho: { decay: 0.5 },
+            pluginFilters: { myFilter: { gain: 2 } },
+        });
+    });
+
+    it("rejects contradictory routing options", async () => {
+        const { fm } = setup();
+
+        await expect(fm.set("x", {}, { plugin: true, top: true })).rejects.toThrow(PlayerError);
+    });
+
+    it("skips node validation for unknown filters, but honours validate: true", async () => {
+        const { fm, spy } = setup({ filters: [...BUILTIN_FILTERS, "advertisedFork"] });
+
+        // Not advertised, no validation asked for: goes through.
+        await expect(fm.set("myFilter", { gain: 2 })).resolves.toBe(fm);
+
+        // Not advertised and validation asked for: refused.
+        await expect(fm.set("ghost", { gain: 2 }, { validate: true })).rejects.toThrow(PlayerError);
+
+        // Advertised and validation asked for: goes through.
+        spy.mockClear();
+        await fm.set("advertisedFork", { gain: 1 }, { top: true, validate: true });
+        expect(sentFilters(spy)).toHaveProperty("advertisedFork");
+    });
+
+    it("lets an explicit envelope override what the registry resolved", async () => {
+        const { fm, spy } = bothPlugins();
+
+        // FilterType.Echo normally nests under lavalink-filter-plugin.
+        await fm.set(FilterType.Echo, { delay: 4, decay: 0.8 }, { top: true });
+
+        expect(sentFilters(spy)).toEqual({ echo: { delay: 4, decay: 0.8 } });
+    });
+
+    it("validates registered filters unless validate: false", async () => {
+        const { fm, spy } = setup({ filters: ["volume"] }); // timescale not advertised
+
+        await expect(fm.setNightcore()).rejects.toThrow();
+
+        spy.mockClear();
+        await fm.set(FilterType.Timescale, { speed: 1.2, pitch: 1, rate: 1 }, { validate: false });
+
+        // Written, but commit still drops a registered filter the node does not advertise.
+        expect(fm.data.timescale).toEqual({ speed: 1.2, pitch: 1, rate: 1 });
+        expect(sentFilters(spy)).toEqual({});
+    });
+
+    it("apply(name, payload) still works as a deprecated alias of set", async () => {
+        const { fm, spy } = setup();
+
+        await fm.apply(FilterType.Volume, 2);
+
+        expect(sentFilters(spy)).toEqual({ volume: 2 });
+    });
+});
+
+describe("FilterManager player isolation", () => {
+    it("does not leak payload writes between players", async () => {
         const manager = createRealManager();
         const node = createRealNode(manager);
         node.info = {
@@ -247,12 +434,14 @@ describe("FilterManager player isolation (no shared default state)", () => {
         const a = createRealPlayer(manager, { guildId: "g-a", voiceId: "v-a" });
         const b = createRealPlayer(manager, { guildId: "g-b", voiceId: "v-b" });
 
-        expect(a.filterManager.data.pluginFilters).not.toBe(b.filterManager.data.pluginFilters);
+        expect(a.filterManager.data).not.toBe(b.filterManager.data);
+        expect(a.filterManager.data).toEqual({});
+        expect(b.filterManager.data).toEqual({});
 
         await a.filterManager.dspx.setEcho({ echoLength: 0.5, decay: 0.5 });
 
-        const bpf = b.filterManager.data.pluginFilters as Record<string, unknown>;
-        expect(bpf.echo).toEqual({ decay: 0, delay: 0, echoLength: 0 }); // still default, not leaked from A
+        expect((a.filterManager.data.pluginFilters as Record<string, unknown>).echo).toEqual({ echoLength: 0.5, decay: 0.5 });
+        expect(b.filterManager.data).toEqual({}); // nothing created on B
     });
 });
 
@@ -272,5 +461,34 @@ describe("FilterManager capability pruning on commit", () => {
         await fm.apply(); // no-arg commit
 
         expect(sentFilters(spy)).toEqual({ pluginFilters: { echo: { echoLength: 0.5, decay: 0.5 } } });
+    });
+
+    it("keeps top-level filters when the node has not reported its info yet", async () => {
+        const { node, fm, spy } = setup();
+
+        fm.data.timescale = { speed: 1.29, pitch: 1.29, rate: 0.94 };
+        fm.data.rotation = { rotationHz: 0.2 };
+
+        // Not ready yet: no /v4/info response, so the advertised list is unknown, not empty.
+        node.info = null;
+        spy.mockClear();
+
+        await fm.apply();
+
+        expect(sentFilters(spy)).toEqual({
+            timescale: { speed: 1.29, pitch: 1.29, rate: 0.94 },
+            rotation: { rotationHz: 0.2 },
+        });
+    });
+
+    it("still drops top-level filters the node reports it does not support", async () => {
+        const { fm, spy } = setup({ filters: ["volume", "equalizer"] });
+
+        fm.data.timescale = { speed: 1.29, pitch: 1.29, rate: 0.94 };
+        spy.mockClear();
+
+        await fm.apply();
+
+        expect(sentFilters(spy)).toEqual({});
     });
 });

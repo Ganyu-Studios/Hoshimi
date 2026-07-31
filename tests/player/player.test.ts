@@ -32,6 +32,30 @@ describe("Player", () => {
         await expect(player.setVolume(NaN)).rejects.toThrow(PlayerError);
     });
 
+    it("skip throws on an empty queue, or resolves when throwError is false", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        await expect(player.skip()).rejects.toThrow(PlayerError);
+
+        await expect(player.skip({ throwError: false })).resolves.toBeUndefined();
+        expect(node.rest.stopPlayer).not.toHaveBeenCalled();
+    });
+
+    it("skip stops playback when a track is playing", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        player.playing = true;
+        player.paused = false;
+
+        await player.skip({ throwError: false });
+
+        expect(node.rest.stopPlayer).toHaveBeenCalledWith(player.guildId);
+    });
+
     it("move throws when target node is missing", async () => {
         const manager = createRealManager();
         createRealNode(manager);
