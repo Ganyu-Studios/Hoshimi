@@ -57,8 +57,7 @@ function isNode(options: NodeOptions): boolean {
         isOptionalNonNegativeInteger(options.restTimeout) &&
         (typeof options.heartbeat === "object" || typeof options.heartbeat === "undefined") &&
         (typeof options.closeOnError === "boolean" || typeof options.closeOnError === "undefined") &&
-        isOptionalNonNegativeInteger(options.heartbeat?.interval) &&
-        isOptionalNonNegativeInteger(options.heartbeat?.statsTimeout)
+        isOptionalNonNegativeInteger(options.heartbeat?.interval)
     );
 }
 
@@ -149,10 +148,6 @@ function validateManagerOptions(options: HoshimiOptions): void {
 
         if (isPlainObject(options.nodeOptions.heartbeatOptions)) {
             assertNonNegativeInteger(options.nodeOptions.heartbeatOptions.interval, "options.nodeOptions.heartbeatOptions.interval");
-            assertNonNegativeInteger(
-                options.nodeOptions.heartbeatOptions.statsTimeout,
-                "options.nodeOptions.heartbeatOptions.statsTimeout",
-            );
         }
 
         if (typeof options.nodeOptions.userAgent !== "undefined" && typeof options.nodeOptions.userAgent !== "string")

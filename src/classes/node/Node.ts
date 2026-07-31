@@ -121,12 +121,6 @@ export class Node {
     public heartbeatInterval: NodeJS.Timeout | null = null;
 
     /**
-     * Timeout handle for the stats watchdog.
-     * @type {NodeJS.Timeout | null}
-     */
-    public statsTimeout: NodeJS.Timeout | null = null;
-
-    /**
      * Whether the socket responded to the last ping. Set to false when a ping
      * is sent, back to true when a pong arrives. If still false at the next
      * ping, the socket is terminated.
@@ -176,7 +170,6 @@ export class Node {
 
         const heartbeat: Required<NodeHeartbeatOptions> = {
             interval: nodeHeartbeat.interval ?? managerHeartbeat.interval,
-            statsTimeout: nodeHeartbeat.statsTimeout ?? managerHeartbeat.statsTimeout,
         };
 
         this.options = {

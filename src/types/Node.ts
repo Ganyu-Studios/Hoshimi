@@ -1254,14 +1254,6 @@ export interface NodeHeartbeatOptions {
      * @default 30000
      */
     interval?: number;
-
-    /**
-     * Maximum time in milliseconds between Lavalink `stats` messages before
-     * the socket is considered dead. Stats are sent every 60s, so 65000
-     * leaves a 5s buffer. Set to 0 to disable.
-     * @default 65000
-     */
-    statsTimeout?: number;
 }
 
 /**

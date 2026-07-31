@@ -68,7 +68,6 @@ function createNode(client?: { id?: string; username?: string }) {
                     },
                     heartbeatOptions: {
                         interval: 30000,
-                        statsTimeout: 65000,
                     },
                 },
                 restOptions: {

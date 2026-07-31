@@ -47,7 +47,6 @@ describe("Validations.validateManagerOptions", () => {
             { restOptions: { restTimeout: Number.NaN } },
             { restOptions: { resumeTimeout: 1.5 } },
             { nodeOptions: { heartbeatOptions: { interval: Number.NaN } } },
-            { nodeOptions: { heartbeatOptions: { statsTimeout: -5 } } },
             { nodeOptions: { sessionOptions: { timeout: Number.POSITIVE_INFINITY } } },
         ];
 
@@ -66,7 +65,6 @@ describe("Validations.validateManagerOptions", () => {
             { host: "localhost", port: 2333, password: "pass", retryDelay: -1 },
             { host: "localhost", port: 2333, password: "pass", restTimeout: Number.POSITIVE_INFINITY },
             { host: "localhost", port: 2333, password: "pass", heartbeat: { interval: Number.NaN } },
-            { host: "localhost", port: 2333, password: "pass", heartbeat: { statsTimeout: -1 } },
         ];
 
         for (const node of nodes) {
@@ -83,7 +81,7 @@ describe("Validations.validateManagerOptions", () => {
                 restOptions: { restTimeout: 5000, resumeTimeout: 10000 },
                 nodeOptions: {
                     sessionOptions: { timeout: 60 },
-                    heartbeatOptions: { interval: 0, statsTimeout: 65000 },
+                    heartbeatOptions: { interval: 0 },
                 },
             }),
         ).not.toThrow();

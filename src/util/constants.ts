@@ -183,7 +183,6 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
         },
         heartbeatOptions: {
             interval: 30000,
-            statsTimeout: 65000,
         },
     },
     queueOptions: {
