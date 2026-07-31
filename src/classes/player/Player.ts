@@ -502,9 +502,9 @@ export class Player {
 
         if (this.queue.current || this.queue.size) {
             const sources: SourceName[] = [this.queue.current, ...this.queue.tracks]
-                .filter((t): t is TrackResolvableStructure => t != null || typeof t !== "undefined")
+                .filter((t) => !!t)
                 .map((t): SourceName | undefined => t.info.sourceName)
-                .filter((s): s is SourceName => s != null || typeof s !== "undefined");
+                .filter((s) => !!s);
 
             const missings: SourceName[] = [...new Set(sources)].filter((s): boolean => !target.info!.sourceManagers.includes(s));
             if (missings.length) throw new PlayerError(`Target node is missing source managers for: ${missings.join(", ")}`);
