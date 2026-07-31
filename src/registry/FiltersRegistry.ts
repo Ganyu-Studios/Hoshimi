@@ -132,6 +132,14 @@ export interface FilterRegistration<TPayload = unknown> {
 }
 
 /**
+ * The envelope coordinates of a filter: everything needed to place its payload on the wire.
+ *
+ * A {@link FilterRegistration} satisfies it, and so does a synthetic route built on the fly for a
+ * filter that was never registered (see `FilterManager.set`).
+ */
+export type FilterRoute = Pick<FilterRegistration, "name" | "wireName" | "scope" | "pluginName">;
+
+/**
  * Options for validating that a node can host a registered filter.
  */
 export interface ValidateFilterOptions {
@@ -395,6 +403,32 @@ export const FilterRegistry = {
             }
         }
         return false;
+    },
+
+    /**
+     * Whether the given key is the name of a plugin that owns nested filters, i.e. whether
+     * `pluginFilters[key]` is an envelope rather than a filter payload.
+     * @param {string} key The candidate `pluginFilters` key.
+     * @returns {boolean} Whether any registration nests its filters under this plugin name.
+     */
+    isPluginName(key: string): boolean {
+        const target: string = keyOf(key);
+        for (const entries of entriesByName.values()) {
+            for (const entry of entries) {
+                if (entry.pluginName && keyOf(String(entry.pluginName)) === target) return true;
+            }
+        }
+        return false;
+    },
+
+    /**
+     * Whether the registry knows a name at all, regardless of node context. Distinguishes "never
+     * registered" from "registered but not resolvable on this node".
+     * @param {RegistryFilterName} name The filter name (or alias).
+     * @returns {boolean} Whether any registration exists under that name.
+     */
+    isKnown(name: RegistryFilterName): boolean {
+        return getEntries(String(name)).length > 0;
     },
 
     /**

@@ -119,6 +119,44 @@ export enum FilterType {
 }
 
 /**
+ * Options for `FilterManager.set`, controlling where the payload is written and whether the node is
+ * checked for support.
+ *
+ * | given | envelope | `validate` default |
+ * | --- | --- | --- |
+ * | nothing, registered filter | whatever the registry resolves | `true` |
+ * | nothing, unknown filter | `pluginFilters[name]` (flat) | `false` |
+ * | `plugin: true` | `pluginFilters[name]` (flat) | `false` |
+ * | `plugin: "some-plugin"` | `pluginFilters["some-plugin"][name]` | `false` |
+ * | `top: true` | `filters[name]` (top level) | `false` |
+ *
+ * Passing a routing option always wins over the registry, so an explicit envelope can be forced for a
+ * registered name too.
+ */
+export interface SetFilterOptions {
+    /**
+     * Write the filter under `pluginFilters`: `true` places it flat, a plugin name nests it under that
+     * plugin (the shape the Lavalink spec defines for plugin filters).
+     * @type {string | true | undefined}
+     */
+    plugin?: string | true;
+    /**
+     * Write the filter at the top level of the payload, next to the built-in Lavalink filters. This is
+     * where fork-specific filters live; prefer registering them with {@link FilterScope.Vendor} when the
+     * fork is known, so they get validation and per-node gating.
+     * @type {boolean | undefined}
+     */
+    top?: boolean;
+    /**
+     * Whether to check that the node advertises the filter (and installs its backing plugin) before
+     * writing. Only meaningful for registered filters — there is nothing to check an unknown key
+     * against. See the table above for the defaults.
+     * @type {boolean | undefined}
+     */
+    validate?: boolean;
+}
+
+/**
  * The band settings for the equalizer.
  */
 export interface EQBandSettings {

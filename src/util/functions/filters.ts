@@ -1,27 +1,36 @@
+import { PlayerError } from "../../classes/Errors";
 import type { FilterManager } from "../../classes/player/filters/Manager";
-import { type FilterRegistration, FilterRegistry, FilterScope } from "../../registry/FiltersRegistry";
-import type { FilterSettings } from "../../types/Filters";
+import {
+    type FilterRegistration,
+    FilterRegistry,
+    type FilterRoute,
+    FilterScope,
+    type RegistryFilterName,
+} from "../../registry/FiltersRegistry";
+import type { FilterSettings, SetFilterOptions } from "../../types/Filters";
 
 /**
  * Internal grouping of the {@link FilterManager} wire/envelope helpers. Kept off the class (no private
- * members) per the project convention; the state-bound entries are invoked with `.call(manager)`.
+ * members) per the project convention, with the manager passed explicitly rather than through `this`:
+ * these are always invoked directly, unlike the socket/player handlers in `util/events`, which have to
+ * be `this`-bound because they are registered as callbacks.
  * Not part of the public package surface.
  */
 export const FilterPayload = {
     /**
-     * Build the wire payload from the manager's {@link FilterManager.data} — stripping default-state entries,
-     * plugin filters the node cannot host, and top-level filters the node does not advertise — then send it
-     * via the REST `updatePlayer` endpoint.
-     * @this {FilterManager}
+     * Build the wire payload from the manager's {@link FilterManager.data} — pruning empty envelopes,
+     * plugin filters the node cannot host, and registered top-level filters the node does not advertise
+     * — then send it via the REST `updatePlayer` endpoint.
+     * @param {FilterManager} manager The filter manager holding the payload.
      * @returns {Promise<void>}
      */
-    async commit(this: FilterManager): Promise<void> {
-        if (!this.player.node.sessionId) return;
+    async commit(manager: FilterManager): Promise<void> {
+        if (!manager.player.node.sessionId) return;
 
         // A key is only present while its filter is active, so the payload needs no default-state
         // stripping: what `data` holds is what the node should apply.
-        // `data.equalizer` is the source of truth (kept in sync with `this.bands` by setEQBand/clearEQBands).
-        const filters: FilterSettings = { ...this.data };
+        // `data.equalizer` is the source of truth (kept in sync with `manager.bands` by setEQBand/clearEQBands).
+        const filters: FilterSettings = { ...manager.data };
 
         // Prune empty envelopes a caller may have left behind by editing `data` by hand. Copied rather
         // than mutated in place so the live payload is never touched.
@@ -41,18 +50,20 @@ export const FilterPayload = {
         // Drop plugin filters the node cannot host (e.g. after moving to a node without the backing plugin).
         // Only prune once the node has reported its info, so we never drop filters on a not-yet-ready node.
         const hostable: Record<string, unknown> | undefined = filters.pluginFilters as Record<string, unknown> | undefined;
-        if (hostable && this.player.node.info) {
+        if (hostable && manager.player.node.info) {
             for (const key of Object.keys(hostable)) {
                 const value: unknown = hostable[key];
                 if (FilterPayload.isNested(key, value)) {
                     // Nested envelope: keep only inner filters whose plugin resolves for this node.
+                    // Names the registry never heard of are left alone, same as unknown flat keys.
                     const nested: Record<string, unknown> = { ...(value as Record<string, unknown>) };
                     for (const inner of Object.keys(nested)) {
-                        if (!FilterRegistry.resolve(inner, this.player.node)) delete nested[inner];
+                        if (!FilterRegistry.isKnown(inner)) continue;
+                        if (!FilterRegistry.resolve(inner, manager.player.node)) delete nested[inner];
                     }
                     if (Object.keys(nested).length === 0) delete hostable[key];
                     else hostable[key] = nested;
-                } else if (!FilterRegistry.canHostFlatPlugin(this.player.node, key)) {
+                } else if (!FilterRegistry.canHostFlatPlugin(manager.player.node, key)) {
                     delete hostable[key];
                 }
             }
@@ -60,55 +71,86 @@ export const FilterPayload = {
         }
 
         // Drop top-level filters the node does not advertise (vendor-scoped on a recognised fork is kept).
-        // Like the plugin pruning above, only once the node has actually reported its filter list: an
-        // absent one means "unknown", not "advertises nothing", and treating it as empty wiped the whole
-        // payload on a not-yet-ready node.
-        const advertised: ReadonlyArray<string> | undefined = this.player.node.info?.filters;
+        // Only once the node has actually reported its filter list: an absent one means "unknown", not
+        // "advertises nothing". Keys the registry does not know are left alone — the same treatment flat
+        // plugin filters get in canHostFlatPlugin — so an ad-hoc filter is never silently dropped.
+        const advertised: ReadonlyArray<string> | undefined = manager.player.node.info?.filters;
         if (advertised) {
             for (const key of Object.keys(filters)) {
                 if (key === "pluginFilters") continue;
-                const entry: FilterRegistration | null = FilterRegistry.resolve(key, this.player.node);
-                if (entry?.scope === FilterScope.Vendor && this.player.node.isNodelink()) continue;
+                const entry: FilterRegistration | null = FilterRegistry.resolve(key, manager.player.node);
+                if (!entry) continue;
+                if (entry.scope === FilterScope.Vendor && manager.player.node.isNodelink()) continue;
                 if (!advertised.some((f): boolean => f === key)) {
                     delete (filters as Record<string, unknown>)[key];
                 }
             }
         }
 
-        await this.player.updatePlayer({ playerOptions: { filters } });
+        await manager.player.updatePlayer({ playerOptions: { filters } });
     },
 
     /**
      * Detect whether a `pluginFilters` key is a nested-plugin envelope (e.g. `"lavalink-filter-plugin"`)
-     * rather than a flat filter (e.g. `"echo"`). A key that is not any registered filter's wire key is a
-     * plugin-name wrapper holding nested filters (decided structurally, independent of installed plugins).
+     * rather than a filter payload written flat (e.g. `"echo"`).
+     *
+     * Decided by asking the registry whether the key names a plugin that owns nested filters, not by
+     * ruling out known wire keys: an unregistered key is a filter of its own, not a wrapper, so an
+     * ad-hoc filter is never mistaken for an envelope and pruned away.
      * @param {string} key The `pluginFilters` key to inspect.
      * @param {unknown} value The value stored under that key.
      * @returns {boolean} Whether the key wraps nested filters.
      */
     isNested(key: string, value: unknown): boolean {
         if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-        return !FilterRegistry.isWireKey(key);
+        return FilterRegistry.isPluginName(key);
     },
 
     /**
-     * Write `payload` into the correct envelope for the given entry.
-     * @this {FilterManager}
-     * @param {FilterRegistration} entry The resolved registration describing where the filter lives.
+     * Work out where a filter's payload belongs.
+     *
+     * A routing option (`plugin`/`top`) always wins, so an explicit envelope can be forced even for a
+     * registered name. Otherwise the registry decides, and a name it does not know falls back to a flat
+     * `pluginFilters` entry — the extension point the Lavalink v4 spec defines.
+     * @param {FilterManager} manager The filter manager, for node context.
+     * @param {RegistryFilterName} name The filter name (or alias).
+     * @param {SetFilterOptions} [options={}] The routing options.
+     * @throws {PlayerError} If both `plugin` and `top` are given.
+     * @returns {FilterRoute} The envelope coordinates for the filter.
+     */
+    route(manager: FilterManager, name: RegistryFilterName, options: SetFilterOptions = {}): FilterRoute {
+        const key: string = String(name);
+
+        if (typeof options.plugin !== "undefined" && options.top)
+            throw new PlayerError("The filter options 'plugin' and 'top' are mutually exclusive.");
+
+        if (options.top) return { name: key, scope: FilterScope.Vendor };
+        if (typeof options.plugin !== "undefined") {
+            if (typeof options.plugin === "string") return { name: key, scope: FilterScope.Plugin, pluginName: options.plugin };
+            return { name: key, scope: FilterScope.Plugin };
+        }
+
+        return FilterRegistry.resolve(name, manager.player.node) ?? { name: key, scope: FilterScope.Plugin };
+    },
+
+    /**
+     * Write `payload` into the envelope described by `route`.
+     * @param {FilterManager} manager The filter manager holding the payload.
+     * @param {FilterRoute} route Where the filter lives.
      * @param {unknown} payload The payload to write.
      * @returns {void}
      */
-    write(this: FilterManager, entry: FilterRegistration, payload: unknown): void {
-        const name: string = String(entry.wireName ?? entry.name);
-        if (entry.scope === FilterScope.Core || entry.scope === FilterScope.Vendor) {
-            (this.data as Record<string, unknown>)[name] = payload;
+    write(manager: FilterManager, route: FilterRoute, payload: unknown): void {
+        const name: string = String(route.wireName ?? route.name);
+        if (route.scope === FilterScope.Core || route.scope === FilterScope.Vendor) {
+            (manager.data as Record<string, unknown>)[name] = payload;
             return;
         }
         // Plugin
-        if (!this.data.pluginFilters) this.data.pluginFilters = {};
-        const pf: Record<string, unknown> = this.data.pluginFilters as Record<string, unknown>;
-        if (entry.pluginName) {
-            const nestedKey: string = String(entry.pluginName);
+        if (!manager.data.pluginFilters) manager.data.pluginFilters = {};
+        const pf: Record<string, unknown> = manager.data.pluginFilters as Record<string, unknown>;
+        if (route.pluginName) {
+            const nestedKey: string = String(route.pluginName);
             const current: unknown = pf[nestedKey];
             const next: Record<string, unknown> =
                 current && typeof current === "object" && !Array.isArray(current) ? { ...(current as Record<string, unknown>) } : {};
@@ -120,20 +162,20 @@ export const FilterPayload = {
     },
 
     /**
-     * Read the current payload for the given entry from the envelope.
-     * @this {FilterManager}
-     * @param {FilterRegistration} entry The resolved registration describing where the filter lives.
+     * Read the current payload stored at `route`.
+     * @param {FilterManager} manager The filter manager holding the payload.
+     * @param {FilterRoute} route Where the filter lives.
      * @returns {unknown} The stored payload, or `undefined` when absent.
      */
-    read(this: FilterManager, entry: FilterRegistration): unknown {
-        const name: string = String(entry.wireName ?? entry.name);
-        if (entry.scope === FilterScope.Core || entry.scope === FilterScope.Vendor) {
-            return (this.data as Record<string, unknown>)[name];
+    read(manager: FilterManager, route: FilterRoute): unknown {
+        const name: string = String(route.wireName ?? route.name);
+        if (route.scope === FilterScope.Core || route.scope === FilterScope.Vendor) {
+            return (manager.data as Record<string, unknown>)[name];
         }
-        const pf: Record<string, unknown> | undefined = this.data.pluginFilters as Record<string, unknown> | undefined;
+        const pf: Record<string, unknown> | undefined = manager.data.pluginFilters as Record<string, unknown> | undefined;
         if (!pf) return undefined;
-        if (entry.pluginName) {
-            const nested: unknown = pf[String(entry.pluginName)];
+        if (route.pluginName) {
+            const nested: unknown = pf[String(route.pluginName)];
             if (!nested || typeof nested !== "object" || Array.isArray(nested)) return undefined;
             return (nested as Record<string, unknown>)[name];
         }
@@ -141,21 +183,21 @@ export const FilterPayload = {
     },
 
     /**
-     * Remove the filter described by `entry` from the envelope, pruning empty wrappers.
-     * @this {FilterManager}
-     * @param {FilterRegistration} entry The resolved registration describing where the filter lives.
+     * Remove the filter at `route` from the payload, pruning empty wrappers.
+     * @param {FilterManager} manager The filter manager holding the payload.
+     * @param {FilterRoute} route Where the filter lives.
      * @returns {void}
      */
-    clear(this: FilterManager, entry: FilterRegistration): void {
-        const name: string = String(entry.wireName ?? entry.name);
-        if (entry.scope === FilterScope.Core || entry.scope === FilterScope.Vendor) {
-            delete (this.data as Record<string, unknown>)[name];
+    clear(manager: FilterManager, route: FilterRoute): void {
+        const name: string = String(route.wireName ?? route.name);
+        if (route.scope === FilterScope.Core || route.scope === FilterScope.Vendor) {
+            delete (manager.data as Record<string, unknown>)[name];
             return;
         }
-        const pf: Record<string, unknown> | undefined = this.data.pluginFilters as Record<string, unknown> | undefined;
+        const pf: Record<string, unknown> | undefined = manager.data.pluginFilters as Record<string, unknown> | undefined;
         if (!pf) return;
-        if (entry.pluginName) {
-            const nestedKey: string = String(entry.pluginName);
+        if (route.pluginName) {
+            const nestedKey: string = String(route.pluginName);
             const nested: unknown = pf[nestedKey];
             if (!nested || typeof nested !== "object" || Array.isArray(nested)) return;
             const next: Record<string, unknown> = { ...(nested as Record<string, unknown>) };
@@ -165,5 +207,8 @@ export const FilterPayload = {
         } else {
             delete pf[name];
         }
+
+        // Presence is what marks a filter active, so an emptied container must not linger either.
+        if (Object.keys(pf).length === 0) delete manager.data.pluginFilters;
     },
 } as const;

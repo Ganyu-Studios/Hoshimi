@@ -8,7 +8,7 @@ type NonLengthEchoSettings = Omit<EchoSettings, "echoLength">;
 /**
  * Thin facade over the `lavalink-filter-plugin` filters.
  *
- * Each setter delegates to {@link FilterManager.apply}; validation, envelope routing,
+ * Each setter delegates to {@link FilterManager.set}; validation, envelope routing,
  * and node-capability checks are handled by the {@link FilterRegistry}.
  *
  * @class LavalinkPluginFilter
@@ -42,7 +42,7 @@ export class LavalinkPluginFilter {
      * ```
      */
     public async setEcho(settings: Partial<NonLengthEchoSettings> = DefaultFilterPreset.PluginEcho): Promise<FilterManagerStructure> {
-        return this.manager.apply<NonLengthEchoSettings>(FilterType.Echo, {
+        return this.manager.set<NonLengthEchoSettings>(FilterType.Echo, {
             decay: settings.decay ?? 0,
             delay: settings.delay ?? 0,
         });
@@ -62,7 +62,7 @@ export class LavalinkPluginFilter {
     public async setReverb(
         settings: Partial<LavalinkFilterPluginReverbSettings> = DefaultFilterPreset.PluginReverb,
     ): Promise<FilterManagerStructure> {
-        return this.manager.apply<LavalinkFilterPluginReverbSettings>(FilterType.Reverb, {
+        return this.manager.set<LavalinkFilterPluginReverbSettings>(FilterType.Reverb, {
             delays: settings.delays ?? [],
             gains: settings.gains ?? [],
         });
