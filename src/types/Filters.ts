@@ -31,11 +31,6 @@ export enum FilterType {
      */
     Volume = "volume",
     /**
-     * Audio output filter.
-     * @type {string}
-     */
-    AudioOutput = "audioOutput",
-    /**
      * Low pass filter.
      * @type {string}
      */
@@ -60,11 +55,6 @@ export enum FilterType {
      * @type {string}
      */
     Vibrato = "vibrato",
-    /**
-     * Custom filter.
-     * @type {string}
-     */
-    Custom = "custom",
     /**
      * Timescale filter.
      * @type {string}
