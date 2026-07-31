@@ -99,6 +99,38 @@ describe("Queue", () => {
         expect(queue.tracks.map((track) => track.encoded)).toEqual(["a", "b", "c"]);
     });
 
+    it("move persists and notifies exactly once", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const queue = player.queue;
+
+        const save = vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+
+        const [a, b] = [mockedTrack("a"), mockedTrack("b")];
+        await queue.add([a, b] as never);
+
+        const emit = vi.spyOn(manager, "emit");
+        save.mockClear();
+
+        await queue.move(b as never, 0);
+
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(emit.mock.calls.filter(([event]) => event === "queueUpdate")).toHaveLength(1);
+    });
+
+    it("splice inserts into an empty queue without duplicating", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const queue = player.queue;
+        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+
+        await queue.splice(0, 0, mockedTrack("a") as never);
+
+        expect(queue.tracks.map((track) => track.encoded)).toEqual(["a"]);
+    });
+
     it("toJSON trims history to maxHistory without mutating it", () => {
         const manager = createRealManager({ queueOptions: { maxHistory: 2 } } as never);
         createRealNode(manager);

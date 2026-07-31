@@ -348,13 +348,15 @@ export class Queue {
         const index: number = this.tracks.indexOf(track);
         if (index === -1) return this;
 
-        await this.splice(index, 1);
+        // Moved in place rather than through splice()/add(): each of those emits and persists on its
+        // own, so a single move used to cost three storage writes and three queueUpdate events.
+        this.tracks.splice(index, 1);
 
         // `to` is a 0-based index into the queue without the moved track; clamped so an out of range
-        // position lands at the start or the end instead of silently falling back to a push.
+        // position lands at the start or the end of the queue.
         const position: number = Math.max(0, Math.min(to, this.tracks.length));
 
-        await this.add(track, position);
+        this.tracks.splice(position, 0, track);
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
         this.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Move] Moved track ${track.info.title} to position ${to}.`);
@@ -388,8 +390,9 @@ export class Queue {
         deleteCount: number,
         tracks: TrackResolvableStructure | TrackResolvableStructure[] = [],
     ): Promise<TrackResolvableStructure[]> {
-        if (!this.size && tracks) await this.add(tracks);
-
+        // No empty-queue special case: `Array.prototype.splice` inserts into an empty array just fine.
+        // Routing through add() first appended the tracks and then inserted them again (duplicating
+        // every one of them), and did so even for the default empty `tracks`.
         const spliced: TrackResolvableStructure[] = this.tracks.splice(start, deleteCount, ...flatten(tracks));
 
         this.player.manager.emit(EventNames.QueueUpdate, this.player, this);
