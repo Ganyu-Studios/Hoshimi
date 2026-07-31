@@ -44,8 +44,8 @@ async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Prom
         );
     }
 
-    if (this.loop === LoopMode.Track && this.queue.current) this.queue.unshift(this.queue.current);
-    if (this.loop === LoopMode.Queue && this.queue.current) this.queue.add(this.queue.current);
+    if (this.loop === LoopMode.Track && this.queue.current) await this.queue.unshift(this.queue.current);
+    if (this.loop === LoopMode.Queue && this.queue.current) await this.queue.add(this.queue.current);
 
     if (!this.queue.current && updateCurrent) this.queue.current = await this.queue.utils.build(await this.queue.shift());
 

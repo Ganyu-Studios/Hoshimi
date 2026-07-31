@@ -1,6 +1,6 @@
 import { NodeError } from "../classes/Errors";
 import type { Node } from "../classes/node/Node";
-import { FilterType } from "../types/Filters";
+import { type FilterPayloads, FilterType } from "../types/Filters";
 import { DebugLevels, EventNames, type Hint, type RestOrArray } from "../types/Manager";
 import { PluginNames } from "../types/Node";
 import { normalize, toArray } from "../util/functions/utils";
@@ -11,7 +11,8 @@ import { PluginCapabilities, PluginRegistry, type RegistryCapability, type Regis
  */
 export enum FilterScope {
     /**
-     * Built-in Lavalink filter. Lives at the top level of the `filters` payload.
+     * Filter that lives at the top level of the `filters` payload: the Lavalink built-ins, and anything a
+     * fork exposes alongside them.
      */
     Core = "core",
     /**
@@ -20,41 +21,26 @@ export enum FilterScope {
      * When `pluginName` is omitted the filter is placed flat at `pluginFilters[name]` (legacy convention used by lavadspx-plugin and similar).
      */
     Plugin = "plugin",
-    /**
-     * Filter exclusive to a Lavalink fork (e.g. Nodelink). Lives at the top level of `filters` but only applies on the matching fork.
-     */
-    Vendor = "vendor",
 }
 
 /**
- * Custom filter names for Hoshimi.
+ * Custom filters for Hoshimi: the key is the filter name, the value is the payload it takes.
  *
- * Extend this interface via module augmentation to provide custom filter names with autocompletion.
+ * Extend this interface via module augmentation to get autocompletion for the name and a checked payload
+ * in `FilterManager.set` / `FilterManager.get`. Registering the filter is a separate, optional step that
+ * buys envelope routing and node validation; this only adds types.
  * @example
  * ```ts
  * declare module "hoshimi" {
  *   interface CustomizableFilters {
- *     forkEcho: "fork-echo";
+ *     forkEcho: { decay: number; delay: number };
  *   }
  * }
+ *
+ * await player.filterManager.set("forkEcho", { decay: 0.5, delay: 200 }, { top: true });
  * ```
  */
 export interface CustomizableFilters {}
-
-/**
- * Custom vendor (fork) identifiers for Hoshimi.
- *
- * Extend this interface via module augmentation to provide custom vendor identifiers with autocompletion.
- * @example
- * ```ts
- * declare module "hoshimi" {
- *   interface CustomizableVendors {
- *     myFork: "my-fork";
- *   }
- * }
- * ```
- */
-export interface CustomizableVendors {}
 
 /**
  * The custom filter name keys provided by users via module augmentation.
@@ -62,24 +48,24 @@ export interface CustomizableVendors {}
 export type FilterNameKey = keyof CustomizableFilters;
 
 /**
- * The custom vendor name keys provided by users via module augmentation.
- */
-export type VendorNameKey = keyof CustomizableVendors;
-
-/**
  * The full filter name accepted by the filter registry.
  */
 export type RegistryFilterName = FilterType | Hint<FilterNameKey>;
 
 /**
- * The vendor identifier accepted by the filter registry.
+ * The payload a filter takes: whatever {@link CustomizableFilters} declares for it, else the built-in
+ * shape from {@link FilterPayloads}, else `unknown` — so a filter nobody declared accepts any payload.
  */
-export type RegistryVendorName = "nodelink" | Hint<VendorNameKey>;
+export type PayloadOf<K> = K extends keyof CustomizableFilters
+    ? CustomizableFilters[K]
+    : K extends keyof FilterPayloads
+      ? FilterPayloads[K]
+      : unknown;
 
 /**
  * Registration options for a filter.
  */
-export interface FilterRegistration<TPayload = unknown> {
+export interface FilterRegistration {
     /**
      * The canonical filter name. Used as the registry identity/index key.
      * Unless {@link FilterRegistration.wireName} is set, it is also the key written into the wire payload.
@@ -112,24 +98,19 @@ export interface FilterRegistration<TPayload = unknown> {
      */
     capability?: RegistryCapability;
     /**
-     * Forks that implement this filter — required when `scope === FilterScope.Vendor`.
-     */
-    vendors?: RegistryVendorName[];
-    /**
      * Alternative names that should resolve to this same filter (e.g. fork renames sharing the same payload shape).
      * Aliases that collide with an already-registered canonical name are ignored to avoid hijacking.
      */
     aliases?: string[];
-    /**
-     * Predicate that returns `true` when the given payload represents the "off" state.
-     * Used by the filter manager to derive `isEnabled(name)` and to short-circuit no-op writes.
-     */
-    isDefault?: (payload: TPayload) => boolean;
-    /**
-     * The payload written when the filter is reset/cleared. If omitted, the manager will simply remove the key.
-     */
-    defaultPayload?: TPayload;
 }
+
+/**
+ * The envelope coordinates of a filter: everything needed to place its payload on the wire.
+ *
+ * A {@link FilterRegistration} satisfies it, and so does a synthetic route built on the fly for a
+ * filter that was never registered (see `FilterManager.set`).
+ */
+export type FilterRoute = Pick<FilterRegistration, "name" | "wireName" | "scope" | "pluginName">;
 
 /**
  * Options for validating that a node can host a registered filter.
@@ -206,14 +187,6 @@ function pickByNodeContext(candidates: CanonicalEntry[], node: Node): CanonicalE
 
     const installedPlugins = node.info?.plugins ?? [];
 
-    if (node.isNodelink()) {
-        const vendor: CanonicalEntry | undefined = candidates.find(
-            (entry): boolean =>
-                entry.scope === FilterScope.Vendor && (entry.vendors?.some((v): boolean => normalize(String(v)) === "nodelink") ?? false),
-        );
-        if (vendor) return vendor;
-    }
-
     const core: CanonicalEntry | undefined = candidates.find((entry): boolean => entry.scope === FilterScope.Core);
     if (core) return core;
 
@@ -229,25 +202,15 @@ function pickByNodeContext(candidates: CanonicalEntry[], node: Node): CanonicalE
 }
 
 /**
- * Identity helper that preserves the inferred `TPayload` of a single filter registration.
+ * Identity helper for a single filter registration.
  *
- * Use inside `FilterRegistry.register([ ... ])` so each element keeps its own typed
- * `isDefault` and `defaultPayload` instead of collapsing to `FilterRegistration<unknown>`
- * (which happens because function parameters are contravariant under `strictFunctionTypes`).
- *
- * @example
- * ```ts
- * FilterRegistry.register([
- *   defineFilter({
- *     name: "boost",
- *     scope: FilterScope.Plugin,
- *     defaultPayload: { gain: 0 },
- *     isDefault: (p) => p.gain === 0, // p: { gain: number }
- *   }),
- * ]);
- * ```
+ * @deprecated Now a plain pass-through. It existed to preserve the inferred payload type of the
+ * `isDefault` predicate inside a batch registration; predicates are gone (a filter is active by the
+ * presence of its key), so registrations can be passed to {@link FilterRegistry.register} as-is.
+ * @param {FilterRegistration} registration The registration to return unchanged.
+ * @returns {FilterRegistration} The same registration.
  */
-export function defineFilter<TPayload>(registration: FilterRegistration<TPayload>): FilterRegistration<TPayload> {
+export function defineFilter(registration: FilterRegistration): FilterRegistration {
     return registration;
 }
 
@@ -258,34 +221,28 @@ export const FilterRegistry = {
     /**
      * Register one or multiple filter definitions.
      *
-     * Two call shapes:
-     * - **Single registration**: the payload type is inferred per call from `defaultPayload`
-     *   or from an annotated `isDefault` parameter — giving you typed predicates without manual `<T>`.
-     * - **Batch (rest args or single array)**: each element accepts `FilterRegistration<any>`
-     *   to bypass the contravariance of `isDefault`. For typed predicates inside a batch,
-     *   wrap each element with {@link defineFilter} — that preserves per-element inference.
+     * Registration is optional: `FilterManager.set` can write any filter, and only needs the registry to
+     * route and validate the ones it knows. Register a filter to get envelope routing by name, node
+     * validation, alias resolution and fork gating for free.
      *
+     * @param {RestOrArray<FilterRegistration>} registrations The registrations, as rest args or one array.
      * @returns {string[]} The canonical filter names that were registered (or already present).
      * @example
      * ```ts
-     * // Single — T inferred from defaultPayload
      * FilterRegistry.register({
      *   name: "boost",
      *   scope: FilterScope.Plugin,
      *   pluginName: "my-fork-plugin",
      *   capability: "fork-filters",
-     *   defaultPayload: { gain: 0 },
-     *   isDefault: (p) => p.gain === 0, // p: { gain: number }
      * });
      *
-     * // Batch — wrap each element to preserve its payload type
      * FilterRegistry.register([
-     *   defineFilter({ name: "a", scope: FilterScope.Core, isDefault: (v: number) => v === 1 }),
-     *   defineFilter({ name: "b", scope: FilterScope.Core, isDefault: (v: number) => v === 0 }),
+     *   { name: "forkEcho", scope: FilterScope.Core },
+     *   { name: "forkReverb", scope: FilterScope.Core },
      * ]);
      * ```
      */
-    register: ((...registrations: RestOrArray<FilterRegistration<any>>): string[] => {
+    register(...registrations: RestOrArray<FilterRegistration>): string[] {
         const results: string[] = [];
 
         for (const registration of toArray(registrations)) {
@@ -303,10 +260,7 @@ export const FilterRegistry = {
 
             const duplicate: boolean = existing.some(
                 (e): boolean =>
-                    e.scope === entry.scope &&
-                    normalize(String(e.pluginName ?? "")) === normalize(String(entry.pluginName ?? "")) &&
-                    (e.vendors ?? []).map((v): string => normalize(String(v))).join(",") ===
-                        (entry.vendors ?? []).map((v): string => normalize(String(v))).join(","),
+                    e.scope === entry.scope && normalize(String(e.pluginName ?? "")) === normalize(String(entry.pluginName ?? "")),
             );
             if (!duplicate) existing.push(entry);
 
@@ -321,9 +275,6 @@ export const FilterRegistry = {
         }
 
         return results;
-    }) as {
-        <TPayload = unknown>(registration: FilterRegistration<TPayload>): string[];
-        (...registrations: RestOrArray<FilterRegistration<any>>): string[];
     },
 
     /**
@@ -358,64 +309,29 @@ export const FilterRegistry = {
     },
 
     /**
-     * Get every registration for a name or alias, regardless of node context.
-     * @param {RegistryFilterName} name The filter name or alias.
-     * @returns {FilterRegistration[]} The full list of registrations.
+     * Whether the given key is the name of a plugin that owns nested filters, i.e. whether
+     * `pluginFilters[key]` is an envelope rather than a filter payload.
+     * @param {string} key The candidate `pluginFilters` key.
+     * @returns {boolean} Whether any registration nests its filters under this plugin name.
      */
-    getAll(name: RegistryFilterName): FilterRegistration[] {
-        return getEntries(String(name)).slice();
-    },
-
-    /**
-     * Whether a payload represents the default (off) state for the named filter.
-     * Returns `true` for `null`/`undefined` payloads when no `isDefault` predicate was registered.
-     * @param {RegistryFilterName} name The filter name or alias.
-     * @param {unknown} payload The payload to inspect.
-     * @returns {boolean} Whether the payload is the default/off state.
-     */
-    isDefault(name: RegistryFilterName, payload: unknown): boolean {
-        const entries: CanonicalEntry[] = getEntries(String(name));
-        // Prefer an entry that actually declares a predicate; fall back to the first entry otherwise.
-        const entry: CanonicalEntry | undefined = entries.find((e): boolean => typeof e.isDefault === "function") ?? entries[0];
-        if (!entry?.isDefault) return payload === undefined || payload === null;
-        return entry.isDefault(payload);
-    },
-
-    /**
-     * Whether the given key is the wire key of any registered filter (as opposed to a plugin-name wrapper
-     * that holds nested filters inside `pluginFilters`).
-     * @param {string} key The candidate wire key.
-     * @returns {boolean} Whether any registration writes to this wire key.
-     */
-    isWireKey(key: string): boolean {
+    isPluginName(key: string): boolean {
         const target: string = keyOf(key);
         for (const entries of entriesByName.values()) {
             for (const entry of entries) {
-                if (keyOf(String(entry.wireName ?? entry.name)) === target) return true;
+                if (entry.pluginName && keyOf(String(entry.pluginName)) === target) return true;
             }
         }
         return false;
     },
 
     /**
-     * Whether a payload written flat under `pluginFilters[wireKey]` is in its default (off) state.
-     * Resolves the flat plugin registration (scope {@link FilterScope.Plugin}, no `pluginName`) by wire key,
-     * so a filter that shares a wire key with a nested one (e.g. `echo`) is evaluated with the correct predicate.
-     * @param {string} wireKey The flat key under `pluginFilters`.
-     * @param {unknown} payload The payload to inspect.
-     * @returns {boolean} Whether the payload is the default/off state.
+     * Whether the registry knows a name at all, regardless of node context. Distinguishes "never
+     * registered" from "registered but not resolvable on this node".
+     * @param {RegistryFilterName} name The filter name (or alias).
+     * @returns {boolean} Whether any registration exists under that name.
      */
-    isDefaultFlatPlugin(wireKey: string, payload: unknown): boolean {
-        const target: string = keyOf(wireKey);
-        for (const entries of entriesByName.values()) {
-            for (const entry of entries) {
-                if (entry.scope === FilterScope.Plugin && !entry.pluginName && keyOf(String(entry.wireName ?? entry.name)) === target) {
-                    if (!entry.isDefault) return payload === undefined || payload === null;
-                    return entry.isDefault(payload);
-                }
-            }
-        }
-        return this.isDefault(wireKey, payload);
+    isKnown(name: RegistryFilterName): boolean {
+        return getEntries(String(name)).length > 0;
     },
 
     /**
@@ -446,35 +362,6 @@ export const FilterRegistry = {
      */
     getFilters(): string[] {
         return canonicalFilters.slice();
-    },
-
-    /**
-     * Returns all canonical filter names that have at least one entry of the given scope.
-     * @param {FilterScope} scope The scope to filter by.
-     * @returns {string[]} The matching canonical names.
-     */
-    getByScope(scope: FilterScope): string[] {
-        const out: string[] = [];
-        for (const name of canonicalFilters) {
-            const entries: CanonicalEntry[] = entriesByName.get(keyOf(name)) ?? [];
-            if (entries.some((e): boolean => e.scope === scope)) out.push(name);
-        }
-        return out;
-    },
-
-    /**
-     * Returns all canonical filter names provided by a specific plugin.
-     * @param {RegistryPluginName} pluginName The plugin name to filter by.
-     * @returns {string[]} The matching canonical names.
-     */
-    getByPlugin(pluginName: RegistryPluginName): string[] {
-        const target: string = normalize(String(pluginName));
-        const out: string[] = [];
-        for (const name of canonicalFilters) {
-            const entries: CanonicalEntry[] = entriesByName.get(keyOf(name)) ?? [];
-            if (entries.some((e): boolean => normalize(String(e.pluginName ?? "")) === target)) out.push(name);
-        }
-        return out;
     },
 
     /**
@@ -548,16 +435,6 @@ export const FilterRegistry = {
             });
         }
 
-        if (entry.scope === FilterScope.Vendor) {
-            if (!options.node.isNodelink()) {
-                throw new NodeError({
-                    id: options.node.id,
-                    message: `Filter '${String(entry.name)}' is vendor-scoped and node ${options.node.id} is not a recognised fork.`,
-                });
-            }
-            return;
-        }
-
         const advertised: boolean =
             info.filters?.some((f): boolean => normalize(f) === normalize(String(entry.wireName ?? entry.name))) ?? false;
 
@@ -605,140 +482,45 @@ export const FilterRegistry = {
     },
 } as const;
 
-// Pre-register built-in filters.
+// Pre-register built-in filters. Plain objects: registration only describes where a filter lives and
+// what the node must provide, since a filter is active by the presence of its key.
 FilterRegistry.register([
     // Core (Lavalink built-ins exposed in `filters.<name>`).
-    defineFilter({
-        name: FilterType.Volume,
-        scope: FilterScope.Core,
-        isDefault: (v: number): boolean => v === 1,
-    }),
-    defineFilter({
-        name: FilterType.LowPass,
-        scope: FilterScope.Core,
-        isDefault: (p: { smoothing?: number } | null | undefined): boolean => !p || (p.smoothing ?? 0) === 0,
-    }),
-    defineFilter({
-        name: FilterType.Karaoke,
-        scope: FilterScope.Core,
-        // Off when absent or every parameter is zero (the neutral payload in DefaultPlayerFilters).
-        isDefault: (p: { level?: number; monoLevel?: number; filterBand?: number; filterWidth?: number } | null | undefined): boolean =>
-            !p || ((p.level ?? 0) === 0 && (p.monoLevel ?? 0) === 0 && (p.filterBand ?? 0) === 0 && (p.filterWidth ?? 0) === 0),
-    }),
-    defineFilter({
-        name: FilterType.Rotation,
-        scope: FilterScope.Core,
-        isDefault: (p: { rotationHz?: number } | null | undefined): boolean => !p || (p.rotationHz ?? 0) === 0,
-    }),
-    defineFilter({
-        name: FilterType.Tremolo,
-        scope: FilterScope.Core,
-        isDefault: (p: { depth?: number } | null | undefined): boolean => !p || (p.depth ?? 0) === 0,
-    }),
-    defineFilter({
-        name: FilterType.Vibrato,
-        scope: FilterScope.Core,
-        isDefault: (p: { depth?: number } | null | undefined): boolean => !p || (p.depth ?? 0) === 0,
-    }),
-    defineFilter({
-        name: FilterType.Timescale,
-        scope: FilterScope.Core,
-        isDefault: (p: { speed?: number; pitch?: number; rate?: number } | null | undefined): boolean =>
-            !p || ((p.speed ?? 1) === 1 && (p.pitch ?? 1) === 1 && (p.rate ?? 1) === 1),
-    }),
-    defineFilter({
-        name: FilterType.Distortion,
-        scope: FilterScope.Core,
-        // Off when absent or the identity transform (all offsets 0 and all scales 1), matching DefaultPlayerFilters.
-        isDefault: (
-            p:
-                | {
-                      sinOffset?: number;
-                      sinScale?: number;
-                      cosOffset?: number;
-                      cosScale?: number;
-                      tanOffset?: number;
-                      tanScale?: number;
-                      offset?: number;
-                      scale?: number;
-                  }
-                | null
-                | undefined,
-        ): boolean =>
-            !p ||
-            ((p.sinOffset ?? 0) === 0 &&
-                (p.cosOffset ?? 0) === 0 &&
-                (p.tanOffset ?? 0) === 0 &&
-                (p.offset ?? 0) === 0 &&
-                (p.sinScale ?? 1) === 1 &&
-                (p.cosScale ?? 1) === 1 &&
-                (p.tanScale ?? 1) === 1 &&
-                (p.scale ?? 1) === 1),
-    }),
-    defineFilter({
-        name: FilterType.Equalizer,
-        scope: FilterScope.Core,
-        isDefault: (p: ReadonlyArray<{ band: number; gain: number }> | null | undefined): boolean =>
-            !p || p.length === 0 || p.every((b): boolean => b.gain === 0),
-    }),
-    defineFilter({
-        name: FilterType.ChannelMix,
-        scope: FilterScope.Core,
-        // Stereo default ({1,0,0,1}). Anything else is considered active.
-        isDefault: (
-            p: { leftToLeft?: number; leftToRight?: number; rightToLeft?: number; rightToRight?: number } | null | undefined,
-        ): boolean =>
-            !p || ((p.leftToLeft ?? 1) === 1 && (p.leftToRight ?? 0) === 0 && (p.rightToLeft ?? 0) === 0 && (p.rightToRight ?? 1) === 1),
-    }),
+    { name: FilterType.Volume, scope: FilterScope.Core },
+    { name: FilterType.LowPass, scope: FilterScope.Core },
+    { name: FilterType.Karaoke, scope: FilterScope.Core },
+    { name: FilterType.Rotation, scope: FilterScope.Core },
+    { name: FilterType.Tremolo, scope: FilterScope.Core },
+    { name: FilterType.Vibrato, scope: FilterScope.Core },
+    { name: FilterType.Timescale, scope: FilterScope.Core },
+    { name: FilterType.Distortion, scope: FilterScope.Core },
+    { name: FilterType.Equalizer, scope: FilterScope.Core },
+    { name: FilterType.ChannelMix, scope: FilterScope.Core },
 
     // Plugin: lavalink-filter-plugin (nested under `pluginFilters["lavalink-filter-plugin"]`).
-    defineFilter({
+    {
         name: FilterType.Echo,
         scope: FilterScope.Plugin,
         pluginName: PluginNames.FilterPlugin,
         capability: PluginCapabilities.Filters,
-        isDefault: (p: { delay?: number; decay?: number } | null | undefined): boolean =>
-            !p || ((p.delay ?? 0) === 0 && (p.decay ?? 0) === 0),
-    }),
-    defineFilter({
+    },
+    {
         name: FilterType.Reverb,
         scope: FilterScope.Plugin,
         pluginName: PluginNames.FilterPlugin,
         capability: PluginCapabilities.Filters,
-        isDefault: (p: { delays?: number[]; gains?: number[] } | null | undefined): boolean =>
-            !p || ((p.delays?.length ?? 0) === 0 && (p.gains?.length ?? 0) === 0),
-    }),
+    },
 
     // Plugin: lavadspx-plugin (flat under `pluginFilters.<name>`).
-    defineFilter({
-        name: FilterType.DSPXLowpass,
-        scope: FilterScope.Plugin,
-        capability: PluginCapabilities.Dspx,
-        isDefault: (p: { boostFactor?: number; cutoffFrequency?: number } | null | undefined): boolean =>
-            !p || ((p.boostFactor ?? 0) === 0 && (p.cutoffFrequency ?? 0) === 0),
-    }),
-    defineFilter({
-        name: FilterType.DSPXHighpass,
-        scope: FilterScope.Plugin,
-        capability: PluginCapabilities.Dspx,
-        isDefault: (p: { boostFactor?: number; cutoffFrequency?: number } | null | undefined): boolean =>
-            !p || ((p.boostFactor ?? 0) === 0 && (p.cutoffFrequency ?? 0) === 0),
-    }),
-    defineFilter({
+    { name: FilterType.DSPXLowpass, scope: FilterScope.Plugin, capability: PluginCapabilities.Dspx },
+    { name: FilterType.DSPXHighpass, scope: FilterScope.Plugin, capability: PluginCapabilities.Dspx },
+    {
         name: FilterType.DSPXEcho,
-        // Written flat as `pluginFilters.echo`; distinct canonical name avoids colliding with the
+        // Written flat as `pluginFilters.echo`; a distinct canonical name avoids colliding with the
         // nested `lavalink-filter-plugin` echo (see FilterType.Echo above).
         wireName: FilterType.Echo,
         scope: FilterScope.Plugin,
         capability: PluginCapabilities.Dspx,
-        isDefault: (p: { echoLength?: number; decay?: number } | null | undefined): boolean =>
-            !p || ((p.echoLength ?? 0) === 0 && (p.decay ?? 0) === 0),
-    }),
-    defineFilter({
-        name: FilterType.DSPXNormalization,
-        scope: FilterScope.Plugin,
-        capability: PluginCapabilities.Dspx,
-        isDefault: (p: { maxAmplitude?: number; adaptive?: boolean } | null | undefined): boolean =>
-            !p || ((p.maxAmplitude ?? 0) === 0 && !(p.adaptive ?? false)),
-    }),
+    },
+    { name: FilterType.DSPXNormalization, scope: FilterScope.Plugin, capability: PluginCapabilities.Dspx },
 ]);

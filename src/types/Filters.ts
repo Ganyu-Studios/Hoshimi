@@ -31,11 +31,6 @@ export enum FilterType {
      */
     Volume = "volume",
     /**
-     * Audio output filter.
-     * @type {string}
-     */
-    AudioOutput = "audioOutput",
-    /**
      * Low pass filter.
      * @type {string}
      */
@@ -60,11 +55,6 @@ export enum FilterType {
      * @type {string}
      */
     Vibrato = "vibrato",
-    /**
-     * Custom filter.
-     * @type {string}
-     */
-    Custom = "custom",
     /**
      * Timescale filter.
      * @type {string}
@@ -116,6 +106,48 @@ export enum FilterType {
      * @type {string}
      */
     Equalizer = "equalizer",
+}
+
+/**
+ * Options for `FilterManager.set`, controlling where the payload is written and whether the node is
+ * checked for support.
+ *
+ * | given | envelope | `validate` default |
+ * | --- | --- | --- |
+ * | nothing, registered filter | whatever the registry resolves | `true` |
+ * | nothing, unknown filter | `pluginFilters[name]` (flat) | `false` |
+ * | `plugin: true` | `pluginFilters[name]` (flat) | `false` |
+ * | `plugin: "some-plugin"` | `pluginFilters["some-plugin"][name]` | `false` |
+ * | `top: true` | `filters[name]` (top level) | `false` |
+ *
+ * Passing a routing option always wins over the registry, so an explicit envelope can be forced for a
+ * registered name too.
+ */
+export interface SetFilterOptions {
+    /**
+     * Write the filter under `pluginFilters`: `true` places it flat, a plugin name nests it under that
+     * plugin (the shape the Lavalink spec defines for plugin filters).
+     * @type {string | true | undefined}
+     */
+    plugin?: string | true;
+    /**
+     * Write the filter at the top level of the payload, next to the built-in Lavalink filters — where a
+     * fork exposes its own filters.
+     *
+     * Hoshimi does not check which server it is talking to: whether a fork-specific filter is safe to send
+     * is the node's business, so pointing a player at the right node is the caller's. Registering the
+     * filter (scope {@link FilterScope.Core}) buys routing by name and a check against the node's
+     * advertised list, when the fork does advertise it.
+     * @type {boolean | undefined}
+     */
+    top?: boolean;
+    /**
+     * Whether to check that the node advertises the filter (and installs its backing plugin) before
+     * writing. Only meaningful for registered filters — there is nothing to check an unknown key
+     * against. See the table above for the defaults.
+     * @type {boolean | undefined}
+     */
+    validate?: boolean;
 }
 
 /**
@@ -546,119 +578,29 @@ export interface FilterPluginPassSettings {
 }
 
 /**
- * The active filters on the player.
+ * The payload each built-in filter takes, used to type `FilterManager.set` and `FilterManager.get`.
+ *
+ * Keep an entry per {@link FilterType} member. A name missing from here (and from `CustomizableFilters`)
+ * resolves to `unknown`, which is what lets unregistered filters be set with any payload.
+ *
+ * Note `Echo` and `DSPXEcho` differ: both are written to the wire as `echo`, but the
+ * `lavalink-filter-plugin` one takes `{ delay, decay }` and the `lavadspx-plugin` one `{ echoLength, decay }`.
  */
-export interface EnabledPlayerFilters {
-    /**
-     * Check if any custom filter is enabled
-     * @type {boolean}
-     */
-    custom: boolean;
-    /**
-     * Check if the nightcore filter is enabled or not.
-     * @type {boolean}
-     */
-    nightcore: boolean;
-    /**
-     * Check if the vaporwave filter is enabled or not.
-     * @type {boolean}
-     */
-    vaporwave: boolean;
-    /**
-     * Check if the rotation filter is enabled or not.
-     * @type {boolean}
-     */
-    rotation: boolean;
-    /**
-     * Check if the karaoke filter is enabled or not.
-     * @type {boolean}
-     */
-    karaoke: boolean;
-    /**
-     * Check if the tremolo filter is enabled or not.
-     * @type {boolean}
-     */
-    tremolo: boolean;
-    /**
-     * Check if the vibrato filter is enabled or not.
-     * @type {boolean}
-     */
-    vibrato: boolean;
-    /**
-     * Check if the low pass filter is enabled or not.
-     * @type {boolean}
-     */
-    lowPass: boolean;
-    /**
-     * Set the audio output mode.
-     * @type {AudioOutput}
-     */
-    audioOutput: AudioOutput;
-    /**
-     * Check if the volume filter is enabled or not.
-     * @type {boolean}
-     */
-    volume: boolean;
-    /**
-     * Check if the distortion filter is enabled or not.
-     * @type {boolean}
-     */
-    distortion: boolean;
-    /**
-     * Check if the timescale filter is enabled or not.
-     * @type {boolean}
-     */
-    timescale: boolean;
-    /**
-     * The lavalink filter plugin enabled filters.
-     * @type {EnabledLavalinkFilters}
-     */
-    lavalinkFilterPlugin: EnabledLavalinkFilters;
-    /**
-     * The lavadspx plugin enabled filters.
-     * @type {EnabledDSPXPluginFilters}
-     */
-    lavalinkLavaDspxPlugin: EnabledDSPXPluginFilters;
-}
-
-/**
- * The enabled filters for the lavalink filter plugin.
- */
-export interface EnabledLavalinkFilters {
-    /**
-     * Check if the echo filter is enabled or not.
-     * @type {boolean}
-     */
-    echo: boolean;
-    /**
-     * Check if the reverb filter is enabled or not.
-     * @type {boolean}
-     */
-    reverb: boolean;
-}
-
-/**
- * The enabled filters for the lavadspx plugin.
- */
-export interface EnabledDSPXPluginFilters {
-    /**
-     * Check if the low pass filter is enabled or not.
-     * @type {boolean}
-     */
-    lowPass: boolean;
-    /**
-     * Check if the high pass filter is enabled or not.
-     * @type {boolean}
-     */
-    highPass: boolean;
-    /**
-     * Check if the normalization filter is enabled or not.
-     * @type {boolean}
-     */
-    normalization: boolean;
-    /**
-     * Check if the echo filter is enabled or not.
-     * @type {boolean}
-     */
-    echo: boolean;
+export interface FilterPayloads {
+    [FilterType.Volume]: number;
+    [FilterType.Equalizer]: EQBandSettings[];
+    [FilterType.Karaoke]: KaraokeSettings;
+    [FilterType.Timescale]: TimescaleSettings;
+    [FilterType.Tremolo]: FreqSettings;
+    [FilterType.Vibrato]: FreqSettings;
+    [FilterType.Rotation]: RotationSettings;
+    [FilterType.Distortion]: DistortionSettings;
+    [FilterType.ChannelMix]: ChannelMixSettings;
+    [FilterType.LowPass]: LowPassSettings;
+    [FilterType.Echo]: LavalinkFilterPluginEchoSettings;
+    [FilterType.Reverb]: LavalinkFilterPluginReverbSettings;
+    [FilterType.DSPXLowpass]: Partial<FilterPluginPassSettings>;
+    [FilterType.DSPXHighpass]: Partial<FilterPluginPassSettings>;
+    [FilterType.DSPXEcho]: EchoSettings;
+    [FilterType.DSPXNormalization]: NormalizationSettings;
 }

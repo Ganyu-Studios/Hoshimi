@@ -311,6 +311,13 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                         return;
                     }
 
+                    // Voice state updates arrive for every member of the guild; patching on someone
+                    // else's payload would overwrite the client session id with a foreign one.
+                    if ("user_id" in data && data.user_id !== this.options.client.id) {
+                        this.debug(DebugLevels.Player, "[Player] -> [Voice] The user id does not match the client id.");
+                        return;
+                    }
+
                     // this is the most funny thing i've ever made.
                     if ("session_id" in data && "channel_id" in data)
                         player.voice.patch({ channelId: data.channel_id, sessionId: data.session_id });
@@ -339,11 +346,6 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                             `[Player] -> [Voice] Updated the player voice for: ${data.guild_id} | Session: ${player.voice.sessionId} | Token: ${data.token} | Endpoint: ${data.endpoint}`,
                         );
 
-                        return;
-                    }
-
-                    if (data.user_id !== this.options.client.id) {
-                        this.debug(DebugLevels.Player, "[Player] -> [Voice] The user id does not match the client id.");
                         return;
                     }
 
@@ -438,7 +440,10 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
             ...info,
         };
 
-        if (!this.options.client.id) throw new ManagerError("You must provide the client id.");
+        // The default id is a placeholder meant to be overwritten by `info`: still holding it here means
+        // no real client id was ever provided, and the node would connect with `User-Id: 0`.
+        if (!this.options.client.id || this.options.client.id === HoshimiDefaultOptions.client.id)
+            throw new ManagerError("You must provide the client id.");
         if (typeof this.options.client.id !== "string") throw new OptionError("The client info 'info.client.id': must be a string.");
 
         let amount: number = 0;

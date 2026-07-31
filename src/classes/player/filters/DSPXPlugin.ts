@@ -5,7 +5,7 @@ import { DefaultFilterPreset } from "../../../util/constants";
 /**
  * Thin facade over the `lavadspx-plugin` filters.
  *
- * Each setter delegates to {@link FilterManager.apply}; validation, envelope routing,
+ * Each setter delegates to {@link FilterManager.set}; validation, envelope routing,
  * and node-capability checks are handled by the {@link FilterRegistry}.
  *
  * @class DSPXPluginFilter
@@ -37,7 +37,7 @@ export class DSPXPluginFilter {
     public async setLowPass(
         settings: Partial<FilterPluginPassSettings> = DefaultFilterPreset.DSPXLowPass,
     ): Promise<FilterManagerStructure> {
-        return this.manager.apply<FilterPluginPassSettings>(FilterType.DSPXLowpass, {
+        return this.manager.set(FilterType.DSPXLowpass, {
             boostFactor: settings.boostFactor ?? 0,
             cutoffFrequency: settings.cutoffFrequency ?? 0,
         });
@@ -49,7 +49,7 @@ export class DSPXPluginFilter {
     public async setHighPass(
         settings: Partial<FilterPluginPassSettings> = DefaultFilterPreset.DSPXHighPass,
     ): Promise<FilterManagerStructure> {
-        return this.manager.apply<FilterPluginPassSettings>(FilterType.DSPXHighpass, {
+        return this.manager.set(FilterType.DSPXHighpass, {
             boostFactor: settings.boostFactor ?? 0,
             cutoffFrequency: settings.cutoffFrequency ?? 0,
         });
@@ -61,13 +61,13 @@ export class DSPXPluginFilter {
     public async setNormalization(
         settings: Partial<NormalizationSettings> = DefaultFilterPreset.DSPXNormalization,
     ): Promise<FilterManagerStructure> {
-        return this.manager.apply<NormalizationSettings>(FilterType.DSPXNormalization, { ...settings } as NormalizationSettings);
+        return this.manager.set(FilterType.DSPXNormalization, { ...settings } as NormalizationSettings);
     }
 
     /**
      * Set the DSPX echo filter (idempotent).
      */
     public async setEcho(settings: Partial<EchoSettings> = DefaultFilterPreset.DSPXEcho): Promise<FilterManagerStructure> {
-        return this.manager.apply<EchoSettings>(FilterType.DSPXEcho, { ...settings } as EchoSettings);
+        return this.manager.set(FilterType.DSPXEcho, { ...settings } as EchoSettings);
     }
 }

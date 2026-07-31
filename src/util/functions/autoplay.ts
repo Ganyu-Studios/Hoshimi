@@ -54,10 +54,12 @@ export async function autoplayFn(player: PlayerStructure, lastTrack: TrackResolv
                 requester: lastTrack.requester,
             });
 
-            if (tracks.length) {
-                const index: number = Math.floor(Math.random() * tracks.length);
+            const candidates: TrackStructure[] = filter(tracks);
 
-                const track: TrackStructure | undefined = filter(tracks)[index];
+            if (candidates.length) {
+                const index: number = Math.floor(Math.random() * candidates.length);
+
+                const track: TrackStructure | undefined = candidates[index];
                 if (!track) return;
 
                 await player.queue.add(track);
@@ -70,9 +72,12 @@ export async function autoplayFn(player: PlayerStructure, lastTrack: TrackResolv
             const query = `https://www.youtube.com/watch?v=${lastTrack.info.identifier}&list=RD${lastTrack.info.identifier}`;
             const search: QueryResult = await player.search({ query, requester: lastTrack.requester });
 
-            if (search.tracks.length) {
-                const random: number = Math.floor(Math.random() * search.tracks.length);
-                const tracks: TrackStructure[] = filter(search.tracks).slice(random, random + limit);
+            const candidates: TrackStructure[] = filter(search.tracks);
+
+            if (candidates.length) {
+                // Start from a random offset, pulled back so a start near the end still yields up to `limit`.
+                const start: number = Math.max(0, Math.min(Math.floor(Math.random() * candidates.length), candidates.length - limit));
+                const tracks: TrackStructure[] = candidates.slice(start, start + limit);
 
                 await player.queue.add(tracks);
             }

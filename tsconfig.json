@@ -1,9 +1,6 @@
 {
     /* from https://github.com/total-typescript/tsconfig - bundler/no-dom/app */
     "compilerOptions": {
-        "rootDir": "src",
-        "outDir": "dist",
-
         /* Base Options: */
         "esModuleInterop": true,
         "skipLibCheck": true,
@@ -31,6 +28,6 @@
         /* If your code doesn't run in the DOM: */
         "lib": ["es2022"]
     },
-    "include": ["src"],
+    "include": ["src", "tests"],
     "exclude": ["node_modules", "dist"]
 }

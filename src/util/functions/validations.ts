@@ -2,10 +2,39 @@ import { OptionError } from "../../classes/Errors";
 import { QueueStorageAdapter } from "../../classes/storage/adapters/QueueAdapter";
 import { type ParsedQuery, SourceRegistry } from "../../registry/SourceRegistry";
 import type { HoshimiOptions, SearchSource } from "../../types/Manager";
-import type { NodeOptions, PlayerMoveFilter, SearchQuery, SourceName } from "../../types/Node";
+import type { NodeOptions, NodeSortFilter, SearchQuery, SourceName } from "../../types/Node";
 import type { PlayerOptions } from "../../types/Player";
 import { UrlRegex } from "../constants";
 import { isPlainObject } from "./utils";
+
+/**
+ *
+ * Check whether an optional numeric option is a non-negative integer.
+ *
+ * Every numeric option in Hoshimi is a millisecond timeout, a second timeout, a counter or a size, so
+ * `NaN`, `Infinity`, fractional and negative values are always wrong — and they fail silently rather
+ * than loudly: `slice(0, NaN)` empties the history, `retryAmount: NaN` never reaches `0` so the node
+ * reconnects forever, and `heartbeat.interval: NaN` disables the heartbeat without a word.
+ * @param {unknown} value The value to check.
+ * @returns {boolean} True when the value is absent or a non-negative integer.
+ */
+function isOptionalNonNegativeInteger(value: unknown): boolean {
+    if (typeof value === "undefined") return true;
+    return Number.isInteger(value) && (value as number) >= 0;
+}
+
+/**
+ *
+ * Assert that an optional manager option is a non-negative integer.
+ * @param {unknown} value The value to validate.
+ * @param {string} option The dotted option path, used in the error message.
+ * @throws {OptionError} If the value is present and not a non-negative integer.
+ * @returns {void}
+ */
+function assertNonNegativeInteger(value: unknown, option: string): void {
+    if (isOptionalNonNegativeInteger(value)) return;
+    throw new OptionError(`The manager option '${option}' must be a non-negative integer.`);
+}
 
 /**
  *
@@ -16,18 +45,19 @@ import { isPlainObject } from "./utils";
 function isNode(options: NodeOptions): boolean {
     return (
         typeof options.host === "string" &&
-        typeof options.port === "number" &&
+        Number.isInteger(options.port) &&
+        options.port > 0 &&
+        options.port <= 65535 &&
         typeof options.password === "string" &&
         (typeof options.id === "string" || typeof options.id === "undefined") &&
         (typeof options.secure === "boolean" || typeof options.secure === "undefined") &&
         (typeof options.sessionId === "string" || typeof options.sessionId === "undefined") &&
-        (typeof options.retryAmount === "number" || typeof options.retryAmount === "undefined") &&
-        (typeof options.retryDelay === "number" || typeof options.retryDelay === "undefined") &&
-        (typeof options.restTimeout === "number" || typeof options.restTimeout === "undefined") &&
+        isOptionalNonNegativeInteger(options.retryAmount) &&
+        isOptionalNonNegativeInteger(options.retryDelay) &&
+        isOptionalNonNegativeInteger(options.restTimeout) &&
         (typeof options.heartbeat === "object" || typeof options.heartbeat === "undefined") &&
         (typeof options.closeOnError === "boolean" || typeof options.closeOnError === "undefined") &&
-        (typeof options.heartbeat?.interval === "number" || typeof options.heartbeat?.interval === "undefined") &&
-        (typeof options.heartbeat?.statsTimeout === "number" || typeof options.heartbeat?.statsTimeout === "undefined")
+        isOptionalNonNegativeInteger(options.heartbeat?.interval)
     );
 }
 
@@ -46,8 +76,8 @@ function validateManagerOptions(options: HoshimiOptions): void {
         throw new OptionError("The manager option 'options.defaultSearchSource' Must be a valid search source.");
 
     if (isPlainObject(options.queueOptions)) {
-        if (typeof options.queueOptions.maxHistory !== "undefined" && typeof options.queueOptions.maxHistory !== "number")
-            throw new OptionError("The manager option 'options.queueOptions.maxHistory' must be a number.");
+        assertNonNegativeInteger(options.queueOptions.maxHistory, "options.queueOptions.maxHistory");
+
         if (typeof options.queueOptions.autoplayFn !== "undefined" && typeof options.queueOptions.autoplayFn !== "function")
             throw new OptionError("The manager option 'options.queueOptions.autoplayFn' must be a function.");
         if (typeof options.queueOptions.storage !== "undefined" && !(options.queueOptions.storage instanceof QueueStorageAdapter))
@@ -92,11 +122,9 @@ function validateManagerOptions(options: HoshimiOptions): void {
                 typeof options.nodeOptions.sessionOptions.resumable !== "boolean"
             )
                 throw new OptionError("The manager option 'options.nodeOptions.resumable' must be a boolean.");
-            if (
-                typeof options.nodeOptions.sessionOptions.timeout !== "undefined" &&
-                typeof options.nodeOptions.sessionOptions.timeout !== "number"
-            )
-                throw new OptionError("The manager option 'options.nodeOptions.resumeTimeout' must be a number.");
+
+            assertNonNegativeInteger(options.nodeOptions.sessionOptions.timeout, "options.nodeOptions.sessionOptions.timeout");
+
             if (
                 typeof options.nodeOptions.sessionOptions.byLibrary !== "undefined" &&
                 typeof options.nodeOptions.sessionOptions.byLibrary !== "boolean"
@@ -110,7 +138,7 @@ function validateManagerOptions(options: HoshimiOptions): void {
             if (typeof options.nodeOptions.moveOptions.move !== "undefined" && typeof options.nodeOptions.moveOptions.move !== "boolean")
                 throw new OptionError("The manager option 'options.nodeOptions.moveOptions.move' must be a boolean.");
             if (typeof options.nodeOptions.moveOptions.filterBy !== "undefined") {
-                const filterBy: PlayerMoveFilter = options.nodeOptions.moveOptions.filterBy;
+                const filterBy: NodeSortFilter = options.nodeOptions.moveOptions.filterBy;
                 if (typeof filterBy !== "string" && typeof filterBy !== "function")
                     throw new OptionError(
                         "The manager option 'options.nodeOptions.moveOptions.filterBy' must be a valid NodeSortTypes string or a function.",
@@ -119,16 +147,7 @@ function validateManagerOptions(options: HoshimiOptions): void {
         }
 
         if (isPlainObject(options.nodeOptions.heartbeatOptions)) {
-            if (
-                typeof options.nodeOptions.heartbeatOptions.interval !== "undefined" &&
-                typeof options.nodeOptions.heartbeatOptions.interval !== "number"
-            )
-                throw new OptionError("The manager option 'options.nodeOptions.heartbeatOptions.interval' must be a number.");
-            if (
-                typeof options.nodeOptions.heartbeatOptions.statsTimeout !== "undefined" &&
-                typeof options.nodeOptions.heartbeatOptions.statsTimeout !== "number"
-            )
-                throw new OptionError("The manager option 'options.nodeOptions.heartbeatOptions.statsTimeout' must be a number.");
+            assertNonNegativeInteger(options.nodeOptions.heartbeatOptions.interval, "options.nodeOptions.heartbeatOptions.interval");
         }
 
         if (typeof options.nodeOptions.userAgent !== "undefined" && typeof options.nodeOptions.userAgent !== "string")
@@ -136,10 +155,8 @@ function validateManagerOptions(options: HoshimiOptions): void {
     }
 
     if (isPlainObject(options.restOptions)) {
-        if (typeof options.restOptions.resumeTimeout !== "undefined" && typeof options.restOptions.resumeTimeout !== "number")
-            throw new OptionError("The manager option 'options.restOptions.resumeTimeout' must be a number.");
-        if (typeof options.restOptions.restTimeout !== "undefined" && typeof options.restOptions.restTimeout !== "number")
-            throw new OptionError("The manager option 'options.restOptions.restTimeout' must be a number.");
+        assertNonNegativeInteger(options.restOptions.resumeTimeout, "options.restOptions.resumeTimeout");
+        assertNonNegativeInteger(options.restOptions.restTimeout, "options.restOptions.restTimeout");
     }
 }
 
@@ -162,14 +179,15 @@ function validateQuery(search: SearchQuery): string {
 
     const query: string = search.query.trim();
 
+    // A plain URL goes to the node untouched. This has to be checked before parsing a source prefix:
+    // `http://x.com/a.mp3` matches the registered `http` source and would lose its scheme.
+    if (UrlRegex.test(query)) return query;
+
     const parsed: ParsedQuery | null = SourceRegistry.parseQuery(query);
     if (parsed) {
         if (UrlRegex.test(parsed.value)) return parsed.value;
         return SourceRegistry.createIdentifier(parsed.source, parsed.value);
     }
-
-    const isUrl: boolean = UrlRegex.test(query);
-    if (isUrl) return query;
 
     return SourceRegistry.createIdentifier(search.source, query);
 }
@@ -190,8 +208,10 @@ function validatePlayerOptions(options: PlayerOptions): void {
         throw new OptionError("The player option 'options.selfDeaf' Must be a boolean.");
     if (typeof options.selfMute !== "undefined" && typeof options.selfMute !== "boolean")
         throw new OptionError("The player option 'options.selfMute' Mute must be a boolean.");
-    if (typeof options.volume !== "undefined" && typeof options.volume !== "number")
-        throw new OptionError("The player option 'options.volume' Must be a number.");
+    // Not the integer helper: `Player.setVolume` rounds and clamps, so a fractional volume is valid.
+    // NaN, Infinity and negatives are not — they would reach the node as a broken volume.
+    if (typeof options.volume !== "undefined" && (!Number.isFinite(options.volume) || options.volume < 0))
+        throw new OptionError("The player option 'options.volume' must be a non-negative number.");
 }
 
 /**

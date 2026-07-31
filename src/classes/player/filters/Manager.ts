@@ -1,4 +1,4 @@
-import { FilterRegistry, type RegistryFilterName } from "../../../registry/FiltersRegistry";
+import { type FilterRegistration, FilterRegistry, type PayloadOf, type RegistryFilterName } from "../../../registry/FiltersRegistry";
 import {
     AudioOutput,
     type ChannelMixSettings,
@@ -8,12 +8,13 @@ import {
     FilterType,
     type KaraokeSettings,
     type LowPassSettings,
+    type SetFilterOptions,
     type TimescaleSettings,
     type TremoloSettings,
 } from "../../../types/Filters";
 import type { RestOrArray } from "../../../types/Manager";
 import type { PlayerStructure } from "../../../types/Structures";
-import { AudioOutputData, DefaultFilterPreset, DefaultPlayerFilters } from "../../../util/constants";
+import { AudioOutputData, DefaultFilterPreset } from "../../../util/constants";
 import { FilterPayload } from "../../../util/functions/filters";
 import { PlayerError } from "../../Errors";
 import { DSPXPluginFilter } from "./DSPXPlugin";
@@ -22,14 +23,16 @@ import { LavalinkPluginFilter } from "./LavalinkPlugin";
 /**
  * Class representing a filter manager for a player.
  *
- * Backed by the {@link FilterRegistry}: filter writes and lookups go through the registry,
- * which knows the canonical name, scope (Core/Plugin/Vendor), payload envelope, and default-state predicate.
+ * A filter is active when its key is present in the payload, and inactive when it is absent: there is
+ * no neutral "off" payload. {@link FilterManager.set} writes a key, {@link FilterManager.clear} removes
+ * it, and {@link FilterManager.isEnabled} is presence.
  *
- * The previous `filters: EnabledPlayerFilters` toggle object has been removed; every "is X active"
- * question is derived on-demand from {@link FilterRegistry.isDefault} against the current payload.
+ * {@link FilterRegistry} routes the filters it knows to their envelope (top level, flat `pluginFilters`,
+ * or nested under a plugin) and validates them against the node. Filters it does not know can still be
+ * set: their envelope comes from {@link SetFilterOptions} instead, so no registration is required.
  *
- * The commit/envelope internals live in {@link FilterPayload} (util/functions/filters) as `this`-helpers
- * invoked with `.call(this)`, rather than private members, matching the project convention.
+ * The commit/envelope internals live in {@link FilterPayload} (util/functions/filters), which takes the
+ * manager as an argument rather than through `this` — no private members, matching the project convention.
  *
  * @class FilterManager
  */
@@ -50,11 +53,12 @@ export class FilterManager {
     public readonly bands: EQBandSettings[] = [];
 
     /**
-     * The current filter payload (wire-bound). Mutated by {@link apply} and {@link clear}.
+     * The current filter payload (wire-bound). Starts empty: a key is only present while its filter is
+     * active. Mutated by {@link FilterManager.set} and {@link FilterManager.clear}.
      * @type {FilterSettings}
      * @public
      */
-    public data: FilterSettings = structuredClone(DefaultPlayerFilters);
+    public data: FilterSettings = {};
 
     /**
      * Thin facade for filters provided by the `lavalink-filter-plugin`.
@@ -81,8 +85,49 @@ export class FilterManager {
     }
 
     // ============================================================
-    // Generic registry-driven API
+    // Generic API
     // ============================================================
+
+    /**
+     * Set a filter to `payload` and commit.
+     *
+     * Any filter can be set, registered or not: {@link SetFilterOptions} decides the envelope when the
+     * registry does not know the name (or when you want to override what it resolved). Idempotent —
+     * calling repeatedly with the same payload yields the same wire state.
+     * The payload is checked against {@link FilterPayloads} for the built-ins and against
+     * {@link CustomizableFilters} for anything you declared; a name neither knows takes `unknown`.
+     * @param {RegistryFilterName} name The filter name (or alias) to set.
+     * @param {PayloadOf<K>} payload The payload to write.
+     * @param {SetFilterOptions} [options={}] Envelope and validation options.
+     * @returns {Promise<this>} A promise that resolves to the filter manager.
+     * @throws {PlayerError} If `plugin` and `top` are combined, or if validation was requested for a
+     * filter the node does not advertise.
+     * @throws {NodeError} If a registered filter is not supported by the node (unless `validate: false`).
+     * @example
+     * ```ts
+     * await player.filterManager.set(FilterType.Echo, { decay: 0.5, delay: 200 }); // registry routes it
+     * await player.filterManager.set("myFilter", { gain: 2 });                     // pluginFilters.myFilter
+     * await player.filterManager.set("boost", { gain: 2 }, { plugin: "my-plugin" }); // nested
+     * await player.filterManager.set("forkEcho", { decay: 0.5 }, { top: true });   // top level
+     * ```
+     */
+    public async set<K extends RegistryFilterName>(name: K, payload: PayloadOf<K>, options: SetFilterOptions = {}): Promise<this> {
+        const routed: boolean = typeof options.plugin !== "undefined" || options.top === true;
+        const registration: FilterRegistration | null = FilterRegistry.resolve(name, this.player.node);
+
+        // Registered filters are validated by default; an explicit envelope or an unknown name is taken
+        // at face value, since the registry has nothing to say about either.
+        if (options.validate ?? (!routed && registration !== null)) {
+            if (registration) FilterRegistry.validate({ node: this.player.node, name });
+            else if (!this.player.node.info?.filters?.some((filter): boolean => filter === String(name)))
+                throw new PlayerError(`The node ${this.player.node.id} does not advertise the filter '${String(name)}'.`);
+        }
+
+        FilterPayload.write(this, FilterPayload.route(this, name, options), payload);
+        await FilterPayload.commit(this);
+
+        return this;
+    }
 
     /**
      * Commit the current filter payload to the node.
@@ -90,60 +135,74 @@ export class FilterManager {
      */
     public apply(): Promise<this>;
     /**
-     * Set the given filter to `payload` and commit. Idempotent — calling repeatedly
-     * with the same payload yields the same wire state.
+     * Set the given filter to `payload` and commit.
+     * @deprecated Use {@link FilterManager.set} instead, which also takes {@link SetFilterOptions}.
      * @param {RegistryFilterName} name The canonical filter name (or alias) to set.
-     * @param {TPayload} payload The payload to write into the envelope chosen by the registry.
+     * @param {PayloadOf<K>} payload The payload to write into the envelope chosen by the registry.
      * @returns {Promise<this>} A promise that resolves to the filter manager.
-     * @throws {Error} If the filter is not registered, or if the node does not advertise the filter / required plugin.
-     * @example
-     * ```ts
-     * await player.filterManager.apply(FilterType.Echo, { decay: 0.5, delay: 200 });
-     * ```
      */
-    public apply<TPayload>(name: RegistryFilterName, payload: TPayload): Promise<this>;
-    public async apply<TPayload>(name?: RegistryFilterName, payload?: TPayload): Promise<this> {
-        if (typeof name !== "undefined") {
-            FilterRegistry.validate({ node: this.player.node, name });
-            const entry = FilterRegistry.resolve(name, this.player.node);
-            if (!entry) throw new PlayerError(`No registered filter resolves '${String(name)}'.`);
-            FilterPayload.writeToEnvelope.call(this, entry, payload);
-        }
-        await FilterPayload.commit.call(this);
+    public apply<K extends RegistryFilterName>(name: K, payload: PayloadOf<K>): Promise<this>;
+    public async apply(name?: RegistryFilterName, payload?: unknown): Promise<this> {
+        if (typeof name !== "undefined") return this.set(name, payload as PayloadOf<RegistryFilterName>);
+
+        await FilterPayload.commit(this);
         return this;
     }
 
     /**
      * Remove the given filter from the payload and commit.
-     * @param {RegistryFilterName} name The canonical filter name (or alias) to clear.
+     *
+     * Pass the same {@link SetFilterOptions} routing used to set it, so an unregistered filter is cleared
+     * from the envelope it was written to.
+     * @param {RegistryFilterName} name The filter name (or alias) to clear.
+     * @param {SetFilterOptions} [options={}] The routing options used when it was set.
      * @returns {Promise<this>} A promise that resolves to the filter manager.
      * @example
      * ```ts
      * await player.filterManager.clear(FilterType.Karaoke);
+     * await player.filterManager.clear("boost", { plugin: "my-plugin" });
      * ```
      */
-    public async clear(name: RegistryFilterName): Promise<this> {
-        const entry = FilterRegistry.resolve(name, this.player.node);
-        if (entry) FilterPayload.clearFromEnvelope.call(this, entry);
-        await FilterPayload.commit.call(this);
+    public async clear(name: RegistryFilterName, options: SetFilterOptions = {}): Promise<this> {
+        FilterPayload.clear(this, FilterPayload.route(this, name, options));
+        await FilterPayload.commit(this);
+
         return this;
     }
 
     /**
-     * Whether the given filter is currently active (its payload is not the default/off state).
-     * @param {RegistryFilterName} name The canonical filter name (or alias).
-     * @returns {boolean} True if the filter has a non-default payload, false otherwise.
+     * Read the payload a filter is currently set to.
+     *
+     * Typed the same way {@link FilterManager.set} is, so there is no need to reach into
+     * {@link FilterManager.data} and narrow by hand.
+     * @param {RegistryFilterName} name The filter name (or alias).
+     * @param {SetFilterOptions} [options={}] The routing options used when it was set.
+     * @returns {PayloadOf<K> | undefined} The payload, or `undefined` when the filter is not active.
+     * @example
+     * ```ts
+     * const timescale = player.filterManager.get(FilterType.Timescale); // TimescaleSettings | undefined
+     * const boost = player.filterManager.get("boost", { plugin: "my-plugin" });
+     * ```
      */
-    public isEnabled(name: RegistryFilterName): boolean {
-        const entry = FilterRegistry.resolve(name, this.player.node);
-        if (!entry) return false;
-        const payload = FilterPayload.readFromEnvelope.call(this, entry);
-        return !FilterRegistry.isDefault(name, payload);
+    public get<K extends RegistryFilterName>(name: K, options: SetFilterOptions = {}): PayloadOf<K> | undefined {
+        return FilterPayload.read(this, FilterPayload.route(this, name, options)) as PayloadOf<K> | undefined;
+    }
+
+    /**
+     * Whether the given filter is currently active, i.e. whether its key is present in the payload.
+     * @param {RegistryFilterName} name The filter name (or alias).
+     * @param {SetFilterOptions} [options={}] The routing options used when it was set.
+     * @returns {boolean} True if the filter has a payload, false otherwise.
+     */
+    public isEnabled(name: RegistryFilterName, options: SetFilterOptions = {}): boolean {
+        return typeof this.get(name, options) !== "undefined";
     }
 
     /**
      * Returns every active filter name as derived from the current payload.
-     * @returns {string[]} Canonical filter names whose payload is non-default.
+     *
+     * Only covers registered filters; keys written for unregistered ones are not listed.
+     * @returns {string[]} Canonical filter names present in the payload.
      */
     public getEnabled(): string[] {
         return FilterRegistry.getFilters().filter((name): boolean => this.isEnabled(name));
@@ -152,20 +211,21 @@ export class FilterManager {
     /**
      * Backward-compatible alias for {@link isEnabled}.
      * @param {RegistryFilterName} filter The filter to check.
+     * @param {SetFilterOptions} [options={}] The routing options used when it was set.
      * @returns {boolean} True if active.
      */
-    public has(filter: RegistryFilterName): boolean {
-        return this.isEnabled(filter);
+    public has(filter: RegistryFilterName, options: SetFilterOptions = {}): boolean {
+        return this.isEnabled(filter, options);
     }
 
     /**
-     * Reset every filter to its default state and commit.
+     * Drop every filter and commit an empty payload.
      * @returns {Promise<this>} A promise that resolves to the filter manager.
      */
     public async reset(): Promise<this> {
         this.bands.length = 0;
-        this.data = structuredClone(DefaultPlayerFilters);
-        await FilterPayload.commit.call(this);
+        this.data = {};
+        await FilterPayload.commit(this);
         return this;
     }
 
@@ -178,7 +238,7 @@ export class FilterManager {
     }
 
     // ============================================================
-    // Typed convenience setters (idempotent — delegate to apply)
+    // Typed convenience setters (idempotent — delegate to set)
     // ============================================================
 
     /**
@@ -188,7 +248,7 @@ export class FilterManager {
     public async setVolume(volume: number): Promise<this> {
         if (typeof volume !== "number" || Number.isNaN(volume) || volume < 0 || volume > 5)
             throw new PlayerError("Volume must be a number between 0 and 5.");
-        return this.apply<number>(FilterType.Volume, volume);
+        return this.set(FilterType.Volume, volume);
     }
 
     /**
@@ -200,7 +260,7 @@ export class FilterManager {
             throw new PlayerError("Bands must be a non-empty object array containing 'band' and 'gain' properties.");
         for (const { band, gain } of list) this.bands[band] = { band, gain };
         this.data.equalizer = [...this.bands];
-        await FilterPayload.commit.call(this);
+        await FilterPayload.commit(this);
         return this;
     }
 
@@ -209,8 +269,8 @@ export class FilterManager {
      */
     public async clearEQBands(): Promise<this> {
         this.bands.length = 0;
-        this.data.equalizer = [];
-        await FilterPayload.commit.call(this);
+        delete this.data.equalizer;
+        await FilterPayload.commit(this);
         return this;
     }
 
@@ -218,7 +278,7 @@ export class FilterManager {
      * Set the karaoke filter.
      */
     public async setKaraoke(settings: Partial<KaraokeSettings> = DefaultFilterPreset.Karaoke): Promise<this> {
-        return this.apply<KaraokeSettings>(FilterType.Karaoke, {
+        return this.set(FilterType.Karaoke, {
             level: settings.level ?? 0,
             monoLevel: settings.monoLevel ?? 0,
             filterBand: settings.filterBand ?? 0,
@@ -230,7 +290,7 @@ export class FilterManager {
      * Set the tremolo filter.
      */
     public async setTremolo(settings: Partial<TremoloSettings> = DefaultFilterPreset.Tremolo): Promise<this> {
-        return this.apply<TremoloSettings>(FilterType.Tremolo, {
+        return this.set(FilterType.Tremolo, {
             frequency: settings.frequency ?? 0,
             depth: settings.depth ?? 0,
         });
@@ -240,7 +300,7 @@ export class FilterManager {
      * Set the vibrato filter.
      */
     public async setVibrato(settings: Partial<TremoloSettings> = DefaultFilterPreset.Vibrato): Promise<this> {
-        return this.apply<TremoloSettings>(FilterType.Vibrato, {
+        return this.set(FilterType.Vibrato, {
             frequency: settings.frequency ?? 0,
             depth: settings.depth ?? 0,
         });
@@ -250,21 +310,21 @@ export class FilterManager {
      * Set the low-pass filter.
      */
     public async setLowPass(settings: Partial<LowPassSettings> = DefaultFilterPreset.Lowpass): Promise<this> {
-        return this.apply<LowPassSettings>(FilterType.LowPass, { smoothing: settings.smoothing ?? 0 });
+        return this.set(FilterType.LowPass, { smoothing: settings.smoothing ?? 0 });
     }
 
     /**
      * Set the distortion filter.
      */
     public async setDistortion(settings: Partial<DistortionSettings> = DefaultFilterPreset.Distortion): Promise<this> {
-        return this.apply<DistortionSettings>(FilterType.Distortion, { ...settings });
+        return this.set(FilterType.Distortion, { ...settings });
     }
 
     /**
      * Set the timescale filter explicitly.
      */
     public async setTimescale(settings: Partial<TimescaleSettings>): Promise<this> {
-        return this.apply<TimescaleSettings>(FilterType.Timescale, {
+        return this.set(FilterType.Timescale, {
             speed: settings.speed ?? 1,
             pitch: settings.pitch ?? 1,
             rate: settings.rate ?? 1,
@@ -276,7 +336,7 @@ export class FilterManager {
      */
     public async setSpeed(speed: number = 1): Promise<this> {
         const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
-        return this.apply<TimescaleSettings>(FilterType.Timescale, { ...current, speed });
+        return this.set(FilterType.Timescale, { ...current, speed });
     }
 
     /**
@@ -284,7 +344,7 @@ export class FilterManager {
      */
     public async setRate(rate: number = 1): Promise<this> {
         const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
-        return this.apply<TimescaleSettings>(FilterType.Timescale, { ...current, rate });
+        return this.set(FilterType.Timescale, { ...current, rate });
     }
 
     /**
@@ -292,14 +352,14 @@ export class FilterManager {
      */
     public async setPitch(pitch: number = 1): Promise<this> {
         const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
-        return this.apply<TimescaleSettings>(FilterType.Timescale, { ...current, pitch });
+        return this.set(FilterType.Timescale, { ...current, pitch });
     }
 
     /**
      * Apply the Nightcore preset to the timescale filter.
      */
     public async setNightcore(settings: Partial<TimescaleSettings> = DefaultFilterPreset.Nightcore): Promise<this> {
-        return this.apply<TimescaleSettings>(FilterType.Timescale, {
+        return this.set(FilterType.Timescale, {
             speed: settings.speed ?? DefaultFilterPreset.Nightcore.speed,
             pitch: settings.pitch ?? DefaultFilterPreset.Nightcore.pitch,
             rate: settings.rate ?? DefaultFilterPreset.Nightcore.rate,
@@ -310,7 +370,7 @@ export class FilterManager {
      * Apply the Vaporwave preset to the timescale filter.
      */
     public async setVaporwave(settings: Partial<TimescaleSettings> = DefaultFilterPreset.Vaporwave): Promise<this> {
-        return this.apply<TimescaleSettings>(FilterType.Timescale, {
+        return this.set(FilterType.Timescale, {
             speed: settings.speed ?? DefaultFilterPreset.Vaporwave.speed,
             pitch: settings.pitch ?? DefaultFilterPreset.Vaporwave.pitch,
             rate: settings.rate ?? DefaultFilterPreset.Vaporwave.rate,
@@ -349,7 +409,7 @@ export class FilterManager {
     public async setAudioOutput(output: AudioOutput): Promise<this> {
         const outputs: AudioOutput[] = Object.values(AudioOutput);
         if (!outputs.includes(output)) throw new PlayerError(`Audio output must be one of: ${outputs.join(", ")}.`);
-        return this.apply<ChannelMixSettings>(FilterType.ChannelMix, { ...AudioOutputData[output] });
+        return this.set(FilterType.ChannelMix, { ...AudioOutputData[output] });
     }
 
     /**

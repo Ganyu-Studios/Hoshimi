@@ -33,6 +33,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # This publishes to npm on every push to lib, so it does not go out on a red suite.
+      - name: Run tests
+        run: pnpm test
+
       - name: Verify npm token
         run: npm whoami
 

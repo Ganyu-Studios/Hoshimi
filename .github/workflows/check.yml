@@ -1,4 +1,4 @@
-name: Build, Lint, Format & Publish
+name: Test, Lint, Format & Publish
 on:
   push:
   pull_request:
@@ -9,7 +9,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The lowest runtime the README supports, plus the version the other jobs use.
+        node-version: ['22.x', '24.x']
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Redundant today (`prepare` -> `pnpm build` -> `pnpm typecheck`), kept as an explicit gate so the
+      # check does not silently disappear if that lifecycle script ever changes.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test
+
   linter:
+    # Nothing gets pushed back or published off a red test run.
+    needs: test
     runs-on: ubuntu-latest
     permissions:
         contents: write
@@ -47,7 +78,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
-        
+
 
       - name: Publish in pkg.pr.new
         run: pnpx pkg-pr-new publish

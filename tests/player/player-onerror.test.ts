@@ -25,7 +25,7 @@ const endPayload = (guildId: string) =>
 describe("Player onError", () => {
     it("autoDestroy destroys the player on track error", async () => {
         const manager = createRealManager({ playerOptions: { onError: { autoDestroy: true } } });
-        const { trackError } = await import("../../src/util/events/player");
+        const { trackError } = await import("../../src/util/events/player.js");
         const player = createRealPlayer(manager);
 
         const destroySpy = vi.spyOn(player, "destroy").mockResolvedValue();
@@ -37,7 +37,7 @@ describe("Player onError", () => {
 
     it("autoStop halts playback and suppresses the trailing track end", async () => {
         const manager = createRealManager({ playerOptions: { onError: { autoStop: true } } });
-        const { trackEnd, trackError } = await import("../../src/util/events/player");
+        const { trackEnd, trackError } = await import("../../src/util/events/player.js");
         const player = createRealPlayer(manager);
 
         player.playing = true;
@@ -61,7 +61,7 @@ describe("Player onError", () => {
 
     it("default behaviour neither destroys nor stops the player", async () => {
         const manager = createRealManager();
-        const { trackError } = await import("../../src/util/events/player");
+        const { trackError } = await import("../../src/util/events/player.js");
         const player = createRealPlayer(manager);
 
         const destroySpy = vi.spyOn(player, "destroy").mockResolvedValue();
