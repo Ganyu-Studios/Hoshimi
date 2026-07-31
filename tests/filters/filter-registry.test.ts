@@ -1,6 +1,6 @@
 import { describe, expect, it, type Mock } from "vitest";
 import { PlayerError } from "../../src/classes/Errors";
-import { FilterRegistry, FilterScope } from "../../src/registry/FiltersRegistry";
+import { defineFilter, FilterRegistry, FilterScope } from "../../src/registry/FiltersRegistry";
 import { PluginCapabilities } from "../../src/registry/PluginRegistry";
 import { AudioOutput, FilterType } from "../../src/types/Filters";
 import type { FilterManagerStructure } from "../../src/types/Structures";
@@ -88,6 +88,35 @@ describe("FilterRegistry echo disambiguation", () => {
 
         expect(FilterRegistry.resolve(FilterType.DSPXEcho, dspxOnly)).not.toBeNull();
         expect(FilterRegistry.resolve(FilterType.Echo, dspxOnly)).toBeNull();
+    });
+});
+
+describe("FilterRegistry key classification", () => {
+    it("isPluginName only recognises plugins that own nested filters", () => {
+        expect(FilterRegistry.isPluginName("lavalink-filter-plugin")).toBe(true);
+
+        // Flat DSPX filters declare no pluginName, so their keys are filters, not envelopes.
+        expect(FilterRegistry.isPluginName("echo")).toBe(false);
+        expect(FilterRegistry.isPluginName("low-pass")).toBe(false);
+
+        // Never registered: a filter of its own.
+        expect(FilterRegistry.isPluginName("my-fork-plugin")).toBe(false);
+    });
+
+    it("isKnown separates unregistered names from unresolvable ones", () => {
+        expect(FilterRegistry.isKnown(FilterType.Echo)).toBe(true);
+        expect(FilterRegistry.isKnown(FilterType.DSPXEcho)).toBe(true);
+        expect(FilterRegistry.isKnown("myFilter")).toBe(false);
+
+        // Known, yet unresolvable on a node without the backing plugin.
+        expect(FilterRegistry.resolve(FilterType.Echo, fakeNode([], []))).toBeNull();
+        expect(FilterRegistry.isKnown(FilterType.Echo)).toBe(true);
+    });
+
+    it("defineFilter is a pass-through", () => {
+        const registration = { name: "passthrough", scope: FilterScope.Core };
+
+        expect(defineFilter(registration)).toBe(registration);
     });
 });
 
