@@ -117,10 +117,13 @@ await player.filterManager.set(FilterType.Echo, { delay: 200, decay: 0.5 });
 
 player.filterManager.isEnabled(FilterType.Echo); // true
 player.filterManager.getEnabled();               // ["timescale", "echo"]
+player.filterManager.get(FilterType.Timescale);  // TimescaleSettings | undefined
 
 await player.filterManager.clear(FilterType.Echo);
 await player.filterManager.reset();              // drops every filter
 ```
+
+`set` and `get` are typed per filter, so the payload of a built-in is checked for you — `set(FilterType.Volume, { nope: true })` does not compile.
 
 Filters Hoshimi has never heard of work too — a fork's own filters, a plugin you wrote, anything. The
 envelope comes from the options:
@@ -160,6 +163,22 @@ await player.filterManager.set("boost", { gain: 2 }); // routed and validated
 
 `set(name, payload, { validate: false })` skips that check when a node fails to advertise a filter it
 actually supports.
+
+To type a filter of your own, declare its payload — the key is the filter name, the value is what it
+takes. That gives you autocompletion for the name and a checked payload in `set` and `get`:
+
+```typescript
+declare module "hoshimi" {
+    interface CustomizableFilters {
+        forkEcho: { decay: number; delay: number };
+    }
+}
+
+await player.filterManager.set("forkEcho", { decay: 0.5, delay: 200 }, { top: true });
+player.filterManager.get("forkEcho", { top: true }); // { decay: number; delay: number } | undefined
+```
+
+A filter nobody declared takes `unknown`, so ad-hoc payloads keep working without any of this.
 
 ## 💖 Used By
 

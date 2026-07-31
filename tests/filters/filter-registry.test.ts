@@ -267,6 +267,27 @@ describe("FilterManager presence semantics", () => {
         expect(fm.isEnabled(FilterType.Volume)).toBe(true);
     });
 
+    it("get returns the active payload, and undefined once cleared", async () => {
+        const { fm } = setup();
+
+        expect(fm.get(FilterType.Timescale)).toBeUndefined();
+
+        await fm.setNightcore();
+        expect(fm.get(FilterType.Timescale)).toEqual({ ...DefaultFilterPreset.Nightcore });
+
+        await fm.clear(FilterType.Timescale);
+        expect(fm.get(FilterType.Timescale)).toBeUndefined();
+    });
+
+    it("get reads from the envelope the routing options point at", async () => {
+        const { fm } = setup();
+
+        await fm.set("boost", { gain: 2 }, { plugin: "my-plugin" });
+
+        expect(fm.get("boost", { plugin: "my-plugin" })).toEqual({ gain: 2 });
+        expect(fm.get("boost")).toBeUndefined(); // flat envelope, nothing there
+    });
+
     it("clear() removes the key instead of neutralising it", async () => {
         const { fm, spy } = setup();
 

@@ -1,4 +1,4 @@
-import { type FilterRegistration, FilterRegistry, type RegistryFilterName } from "../../../registry/FiltersRegistry";
+import { type FilterRegistration, FilterRegistry, type PayloadOf, type RegistryFilterName } from "../../../registry/FiltersRegistry";
 import {
     AudioOutput,
     type ChannelMixSettings,
@@ -94,8 +94,10 @@ export class FilterManager {
      * Any filter can be set, registered or not: {@link SetFilterOptions} decides the envelope when the
      * registry does not know the name (or when you want to override what it resolved). Idempotent —
      * calling repeatedly with the same payload yields the same wire state.
+     * The payload is checked against {@link FilterPayloads} for the built-ins and against
+     * {@link CustomizableFilters} for anything you declared; a name neither knows takes `unknown`.
      * @param {RegistryFilterName} name The filter name (or alias) to set.
-     * @param {TPayload} payload The payload to write.
+     * @param {PayloadOf<K>} payload The payload to write.
      * @param {SetFilterOptions} [options={}] Envelope and validation options.
      * @returns {Promise<this>} A promise that resolves to the filter manager.
      * @throws {PlayerError} If `plugin` and `top` are combined, or if validation was requested for a
@@ -109,7 +111,7 @@ export class FilterManager {
      * await player.filterManager.set("forkEcho", { decay: 0.5 }, { top: true });   // top level
      * ```
      */
-    public async set<TPayload>(name: RegistryFilterName, payload: TPayload, options: SetFilterOptions = {}): Promise<this> {
+    public async set<K extends RegistryFilterName>(name: K, payload: PayloadOf<K>, options: SetFilterOptions = {}): Promise<this> {
         const routed: boolean = typeof options.plugin !== "undefined" || options.top === true;
         const registration: FilterRegistration | null = FilterRegistry.resolve(name, this.player.node);
 
@@ -136,12 +138,12 @@ export class FilterManager {
      * Set the given filter to `payload` and commit.
      * @deprecated Use {@link FilterManager.set} instead, which also takes {@link SetFilterOptions}.
      * @param {RegistryFilterName} name The canonical filter name (or alias) to set.
-     * @param {TPayload} payload The payload to write into the envelope chosen by the registry.
+     * @param {PayloadOf<K>} payload The payload to write into the envelope chosen by the registry.
      * @returns {Promise<this>} A promise that resolves to the filter manager.
      */
-    public apply<TPayload>(name: RegistryFilterName, payload: TPayload): Promise<this>;
-    public async apply<TPayload>(name?: RegistryFilterName, payload?: TPayload): Promise<this> {
-        if (typeof name !== "undefined") return this.set<TPayload | undefined>(name, payload);
+    public apply<K extends RegistryFilterName>(name: K, payload: PayloadOf<K>): Promise<this>;
+    public async apply(name?: RegistryFilterName, payload?: unknown): Promise<this> {
+        if (typeof name !== "undefined") return this.set(name, payload as PayloadOf<RegistryFilterName>);
 
         await FilterPayload.commit(this);
         return this;
@@ -169,13 +171,31 @@ export class FilterManager {
     }
 
     /**
+     * Read the payload a filter is currently set to.
+     *
+     * Typed the same way {@link FilterManager.set} is, so there is no need to reach into
+     * {@link FilterManager.data} and narrow by hand.
+     * @param {RegistryFilterName} name The filter name (or alias).
+     * @param {SetFilterOptions} [options={}] The routing options used when it was set.
+     * @returns {PayloadOf<K> | undefined} The payload, or `undefined` when the filter is not active.
+     * @example
+     * ```ts
+     * const timescale = player.filterManager.get(FilterType.Timescale); // TimescaleSettings | undefined
+     * const boost = player.filterManager.get("boost", { plugin: "my-plugin" });
+     * ```
+     */
+    public get<K extends RegistryFilterName>(name: K, options: SetFilterOptions = {}): PayloadOf<K> | undefined {
+        return FilterPayload.read(this, FilterPayload.route(this, name, options)) as PayloadOf<K> | undefined;
+    }
+
+    /**
      * Whether the given filter is currently active, i.e. whether its key is present in the payload.
      * @param {RegistryFilterName} name The filter name (or alias).
      * @param {SetFilterOptions} [options={}] The routing options used when it was set.
      * @returns {boolean} True if the filter has a payload, false otherwise.
      */
     public isEnabled(name: RegistryFilterName, options: SetFilterOptions = {}): boolean {
-        return typeof FilterPayload.read(this, FilterPayload.route(this, name, options)) !== "undefined";
+        return typeof this.get(name, options) !== "undefined";
     }
 
     /**
@@ -228,7 +248,7 @@ export class FilterManager {
     public async setVolume(volume: number): Promise<this> {
         if (typeof volume !== "number" || Number.isNaN(volume) || volume < 0 || volume > 5)
             throw new PlayerError("Volume must be a number between 0 and 5.");
-        return this.set<number>(FilterType.Volume, volume);
+        return this.set(FilterType.Volume, volume);
     }
 
     /**
@@ -258,7 +278,7 @@ export class FilterManager {
      * Set the karaoke filter.
      */
     public async setKaraoke(settings: Partial<KaraokeSettings> = DefaultFilterPreset.Karaoke): Promise<this> {
-        return this.set<KaraokeSettings>(FilterType.Karaoke, {
+        return this.set(FilterType.Karaoke, {
             level: settings.level ?? 0,
             monoLevel: settings.monoLevel ?? 0,
             filterBand: settings.filterBand ?? 0,
@@ -270,7 +290,7 @@ export class FilterManager {
      * Set the tremolo filter.
      */
     public async setTremolo(settings: Partial<TremoloSettings> = DefaultFilterPreset.Tremolo): Promise<this> {
-        return this.set<TremoloSettings>(FilterType.Tremolo, {
+        return this.set(FilterType.Tremolo, {
             frequency: settings.frequency ?? 0,
             depth: settings.depth ?? 0,
         });
@@ -280,7 +300,7 @@ export class FilterManager {
      * Set the vibrato filter.
      */
     public async setVibrato(settings: Partial<TremoloSettings> = DefaultFilterPreset.Vibrato): Promise<this> {
-        return this.set<TremoloSettings>(FilterType.Vibrato, {
+        return this.set(FilterType.Vibrato, {
             frequency: settings.frequency ?? 0,
             depth: settings.depth ?? 0,
         });
@@ -290,21 +310,21 @@ export class FilterManager {
      * Set the low-pass filter.
      */
     public async setLowPass(settings: Partial<LowPassSettings> = DefaultFilterPreset.Lowpass): Promise<this> {
-        return this.set<LowPassSettings>(FilterType.LowPass, { smoothing: settings.smoothing ?? 0 });
+        return this.set(FilterType.LowPass, { smoothing: settings.smoothing ?? 0 });
     }
 
     /**
      * Set the distortion filter.
      */
     public async setDistortion(settings: Partial<DistortionSettings> = DefaultFilterPreset.Distortion): Promise<this> {
-        return this.set<DistortionSettings>(FilterType.Distortion, { ...settings });
+        return this.set(FilterType.Distortion, { ...settings });
     }
 
     /**
      * Set the timescale filter explicitly.
      */
     public async setTimescale(settings: Partial<TimescaleSettings>): Promise<this> {
-        return this.set<TimescaleSettings>(FilterType.Timescale, {
+        return this.set(FilterType.Timescale, {
             speed: settings.speed ?? 1,
             pitch: settings.pitch ?? 1,
             rate: settings.rate ?? 1,
@@ -316,7 +336,7 @@ export class FilterManager {
      */
     public async setSpeed(speed: number = 1): Promise<this> {
         const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
-        return this.set<TimescaleSettings>(FilterType.Timescale, { ...current, speed });
+        return this.set(FilterType.Timescale, { ...current, speed });
     }
 
     /**
@@ -324,7 +344,7 @@ export class FilterManager {
      */
     public async setRate(rate: number = 1): Promise<this> {
         const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
-        return this.set<TimescaleSettings>(FilterType.Timescale, { ...current, rate });
+        return this.set(FilterType.Timescale, { ...current, rate });
     }
 
     /**
@@ -332,14 +352,14 @@ export class FilterManager {
      */
     public async setPitch(pitch: number = 1): Promise<this> {
         const current: TimescaleSettings = this.data.timescale ?? { speed: 1, pitch: 1, rate: 1 };
-        return this.set<TimescaleSettings>(FilterType.Timescale, { ...current, pitch });
+        return this.set(FilterType.Timescale, { ...current, pitch });
     }
 
     /**
      * Apply the Nightcore preset to the timescale filter.
      */
     public async setNightcore(settings: Partial<TimescaleSettings> = DefaultFilterPreset.Nightcore): Promise<this> {
-        return this.set<TimescaleSettings>(FilterType.Timescale, {
+        return this.set(FilterType.Timescale, {
             speed: settings.speed ?? DefaultFilterPreset.Nightcore.speed,
             pitch: settings.pitch ?? DefaultFilterPreset.Nightcore.pitch,
             rate: settings.rate ?? DefaultFilterPreset.Nightcore.rate,
@@ -350,7 +370,7 @@ export class FilterManager {
      * Apply the Vaporwave preset to the timescale filter.
      */
     public async setVaporwave(settings: Partial<TimescaleSettings> = DefaultFilterPreset.Vaporwave): Promise<this> {
-        return this.set<TimescaleSettings>(FilterType.Timescale, {
+        return this.set(FilterType.Timescale, {
             speed: settings.speed ?? DefaultFilterPreset.Vaporwave.speed,
             pitch: settings.pitch ?? DefaultFilterPreset.Vaporwave.pitch,
             rate: settings.rate ?? DefaultFilterPreset.Vaporwave.rate,
@@ -389,7 +409,7 @@ export class FilterManager {
     public async setAudioOutput(output: AudioOutput): Promise<this> {
         const outputs: AudioOutput[] = Object.values(AudioOutput);
         if (!outputs.includes(output)) throw new PlayerError(`Audio output must be one of: ${outputs.join(", ")}.`);
-        return this.set<ChannelMixSettings>(FilterType.ChannelMix, { ...AudioOutputData[output] });
+        return this.set(FilterType.ChannelMix, { ...AudioOutputData[output] });
     }
 
     /**

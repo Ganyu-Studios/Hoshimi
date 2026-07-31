@@ -1,6 +1,6 @@
 import { NodeError } from "../classes/Errors";
 import type { Node } from "../classes/node/Node";
-import { FilterType } from "../types/Filters";
+import { type FilterPayloads, FilterType } from "../types/Filters";
 import { DebugLevels, EventNames, type Hint, type RestOrArray } from "../types/Manager";
 import { PluginNames } from "../types/Node";
 import { normalize, toArray } from "../util/functions/utils";
@@ -24,16 +24,20 @@ export enum FilterScope {
 }
 
 /**
- * Custom filter names for Hoshimi.
+ * Custom filters for Hoshimi: the key is the filter name, the value is the payload it takes.
  *
- * Extend this interface via module augmentation to provide custom filter names with autocompletion.
+ * Extend this interface via module augmentation to get autocompletion for the name and a checked payload
+ * in `FilterManager.set` / `FilterManager.get`. Registering the filter is a separate, optional step that
+ * buys envelope routing and node validation; this only adds types.
  * @example
  * ```ts
  * declare module "hoshimi" {
  *   interface CustomizableFilters {
- *     forkEcho: "fork-echo";
+ *     forkEcho: { decay: number; delay: number };
  *   }
  * }
+ *
+ * await player.filterManager.set("forkEcho", { decay: 0.5, delay: 200 }, { top: true });
  * ```
  */
 export interface CustomizableFilters {}
@@ -47,6 +51,16 @@ export type FilterNameKey = keyof CustomizableFilters;
  * The full filter name accepted by the filter registry.
  */
 export type RegistryFilterName = FilterType | Hint<FilterNameKey>;
+
+/**
+ * The payload a filter takes: whatever {@link CustomizableFilters} declares for it, else the built-in
+ * shape from {@link FilterPayloads}, else `unknown` — so a filter nobody declared accepts any payload.
+ */
+export type PayloadOf<K> = K extends keyof CustomizableFilters
+    ? CustomizableFilters[K]
+    : K extends keyof FilterPayloads
+      ? FilterPayloads[K]
+      : unknown;
 
 /**
  * Registration options for a filter.

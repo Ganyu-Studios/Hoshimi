@@ -42,7 +42,7 @@ export class LavalinkPluginFilter {
      * ```
      */
     public async setEcho(settings: Partial<NonLengthEchoSettings> = DefaultFilterPreset.PluginEcho): Promise<FilterManagerStructure> {
-        return this.manager.set<NonLengthEchoSettings>(FilterType.Echo, {
+        return this.manager.set(FilterType.Echo, {
             decay: settings.decay ?? 0,
             delay: settings.delay ?? 0,
         });
@@ -62,7 +62,7 @@ export class LavalinkPluginFilter {
     public async setReverb(
         settings: Partial<LavalinkFilterPluginReverbSettings> = DefaultFilterPreset.PluginReverb,
     ): Promise<FilterManagerStructure> {
-        return this.manager.set<LavalinkFilterPluginReverbSettings>(FilterType.Reverb, {
+        return this.manager.set(FilterType.Reverb, {
             delays: settings.delays ?? [],
             gains: settings.gains ?? [],
         });

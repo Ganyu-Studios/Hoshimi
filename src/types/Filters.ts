@@ -576,3 +576,31 @@ export interface FilterPluginPassSettings {
      */
     boostFactor: number;
 }
+
+/**
+ * The payload each built-in filter takes, used to type `FilterManager.set` and `FilterManager.get`.
+ *
+ * Keep an entry per {@link FilterType} member. A name missing from here (and from `CustomizableFilters`)
+ * resolves to `unknown`, which is what lets unregistered filters be set with any payload.
+ *
+ * Note `Echo` and `DSPXEcho` differ: both are written to the wire as `echo`, but the
+ * `lavalink-filter-plugin` one takes `{ delay, decay }` and the `lavadspx-plugin` one `{ echoLength, decay }`.
+ */
+export interface FilterPayloads {
+    [FilterType.Volume]: number;
+    [FilterType.Equalizer]: EQBandSettings[];
+    [FilterType.Karaoke]: KaraokeSettings;
+    [FilterType.Timescale]: TimescaleSettings;
+    [FilterType.Tremolo]: FreqSettings;
+    [FilterType.Vibrato]: FreqSettings;
+    [FilterType.Rotation]: RotationSettings;
+    [FilterType.Distortion]: DistortionSettings;
+    [FilterType.ChannelMix]: ChannelMixSettings;
+    [FilterType.LowPass]: LowPassSettings;
+    [FilterType.Echo]: LavalinkFilterPluginEchoSettings;
+    [FilterType.Reverb]: LavalinkFilterPluginReverbSettings;
+    [FilterType.DSPXLowpass]: Partial<FilterPluginPassSettings>;
+    [FilterType.DSPXHighpass]: Partial<FilterPluginPassSettings>;
+    [FilterType.DSPXEcho]: EchoSettings;
+    [FilterType.DSPXNormalization]: NormalizationSettings;
+}
