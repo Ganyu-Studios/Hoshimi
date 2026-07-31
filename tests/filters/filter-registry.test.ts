@@ -137,7 +137,7 @@ describe("FilterManager envelope routing", () => {
         await fm.plugin.setEcho({ delay: 4, decay: 0.8 });
 
         const pf = fm.data.pluginFilters as Record<string, Record<string, unknown>>;
-        expect(pf["lavalink-filter-plugin"].echo).toEqual({ delay: 4, decay: 0.8 });
+        expect(pf["lavalink-filter-plugin"]!.echo).toEqual({ delay: 4, decay: 0.8 });
         expect(pf.echo).toBeUndefined(); // the flat dspx echo is never created
     });
 
