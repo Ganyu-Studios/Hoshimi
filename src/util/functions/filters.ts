@@ -1,12 +1,6 @@
 import { PlayerError } from "../../classes/Errors";
 import type { FilterManager } from "../../classes/player/filters/Manager";
-import {
-    type FilterRegistration,
-    FilterRegistry,
-    type FilterRoute,
-    FilterScope,
-    type RegistryFilterName,
-} from "../../registry/FiltersRegistry";
+import { FilterRegistry, type FilterRoute, FilterScope, type RegistryFilterName } from "../../registry/FiltersRegistry";
 import type { FilterSettings, SetFilterOptions } from "../../types/Filters";
 
 /**
@@ -70,17 +64,15 @@ export const FilterPayload = {
             if (Object.keys(hostable).length === 0) delete filters.pluginFilters;
         }
 
-        // Drop top-level filters the node does not advertise (vendor-scoped on a recognised fork is kept).
-        // Only once the node has actually reported its filter list: an absent one means "unknown", not
-        // "advertises nothing". Keys the registry does not know are left alone — the same treatment flat
-        // plugin filters get in canHostFlatPlugin — so an ad-hoc filter is never silently dropped.
+        // Drop top-level filters the node does not advertise, but only once it has actually reported its
+        // filter list: an absent one means "unknown", not "advertises nothing". Keys the registry does not
+        // know are left alone — the same treatment flat plugin filters get in canHostFlatPlugin — so a
+        // fork-specific or ad-hoc filter is never silently dropped.
         const advertised: ReadonlyArray<string> | undefined = manager.player.node.info?.filters;
         if (advertised) {
             for (const key of Object.keys(filters)) {
                 if (key === "pluginFilters") continue;
-                const entry: FilterRegistration | null = FilterRegistry.resolve(key, manager.player.node);
-                if (!entry) continue;
-                if (entry.scope === FilterScope.Vendor && manager.player.node.isNodelink()) continue;
+                if (!FilterRegistry.isKnown(key)) continue;
                 if (!advertised.some((f): boolean => f === key)) {
                     delete (filters as Record<string, unknown>)[key];
                 }
@@ -124,7 +116,7 @@ export const FilterPayload = {
         if (typeof options.plugin !== "undefined" && options.top)
             throw new PlayerError("The filter options 'plugin' and 'top' are mutually exclusive.");
 
-        if (options.top) return { name: key, scope: FilterScope.Vendor };
+        if (options.top) return { name: key, scope: FilterScope.Core };
         if (typeof options.plugin !== "undefined") {
             if (typeof options.plugin === "string") return { name: key, scope: FilterScope.Plugin, pluginName: options.plugin };
             return { name: key, scope: FilterScope.Plugin };
@@ -142,7 +134,7 @@ export const FilterPayload = {
      */
     write(manager: FilterManager, route: FilterRoute, payload: unknown): void {
         const name: string = String(route.wireName ?? route.name);
-        if (route.scope === FilterScope.Core || route.scope === FilterScope.Vendor) {
+        if (route.scope === FilterScope.Core) {
             (manager.data as Record<string, unknown>)[name] = payload;
             return;
         }
@@ -169,7 +161,7 @@ export const FilterPayload = {
      */
     read(manager: FilterManager, route: FilterRoute): unknown {
         const name: string = String(route.wireName ?? route.name);
-        if (route.scope === FilterScope.Core || route.scope === FilterScope.Vendor) {
+        if (route.scope === FilterScope.Core) {
             return (manager.data as Record<string, unknown>)[name];
         }
         const pf: Record<string, unknown> | undefined = manager.data.pluginFilters as Record<string, unknown> | undefined;
@@ -190,7 +182,7 @@ export const FilterPayload = {
      */
     clear(manager: FilterManager, route: FilterRoute): void {
         const name: string = String(route.wireName ?? route.name);
-        if (route.scope === FilterScope.Core || route.scope === FilterScope.Vendor) {
+        if (route.scope === FilterScope.Core) {
             delete (manager.data as Record<string, unknown>)[name];
             return;
         }

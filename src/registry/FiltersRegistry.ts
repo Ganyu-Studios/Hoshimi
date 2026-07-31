@@ -11,7 +11,8 @@ import { PluginCapabilities, PluginRegistry, type RegistryCapability, type Regis
  */
 export enum FilterScope {
     /**
-     * Built-in Lavalink filter. Lives at the top level of the `filters` payload.
+     * Filter that lives at the top level of the `filters` payload: the Lavalink built-ins, and anything a
+     * fork exposes alongside them.
      */
     Core = "core",
     /**
@@ -20,10 +21,6 @@ export enum FilterScope {
      * When `pluginName` is omitted the filter is placed flat at `pluginFilters[name]` (legacy convention used by lavadspx-plugin and similar).
      */
     Plugin = "plugin",
-    /**
-     * Filter exclusive to a Lavalink fork (e.g. Nodelink). Lives at the top level of `filters` but only applies on the matching fork.
-     */
-    Vendor = "vendor",
 }
 
 /**
@@ -42,39 +39,14 @@ export enum FilterScope {
 export interface CustomizableFilters {}
 
 /**
- * Custom vendor (fork) identifiers for Hoshimi.
- *
- * Extend this interface via module augmentation to provide custom vendor identifiers with autocompletion.
- * @example
- * ```ts
- * declare module "hoshimi" {
- *   interface CustomizableVendors {
- *     myFork: "my-fork";
- *   }
- * }
- * ```
- */
-export interface CustomizableVendors {}
-
-/**
  * The custom filter name keys provided by users via module augmentation.
  */
 export type FilterNameKey = keyof CustomizableFilters;
 
 /**
- * The custom vendor name keys provided by users via module augmentation.
- */
-export type VendorNameKey = keyof CustomizableVendors;
-
-/**
  * The full filter name accepted by the filter registry.
  */
 export type RegistryFilterName = FilterType | Hint<FilterNameKey>;
-
-/**
- * The vendor identifier accepted by the filter registry.
- */
-export type RegistryVendorName = "nodelink" | Hint<VendorNameKey>;
 
 /**
  * Registration options for a filter.
@@ -111,14 +83,6 @@ export interface FilterRegistration {
      * Recommended whenever `scope === FilterScope.Plugin`.
      */
     capability?: RegistryCapability;
-    /**
-     * Forks that implement this filter — required when `scope === FilterScope.Vendor`.
-     *
-     * Only `"nodelink"` is honoured at resolution time: {@link FilterRegistry.resolve} gates vendor
-     * entries on `node.isNodelink()`, so a registration listing another fork will never be picked. For
-     * other forks, write the filter at the top level with `set(name, payload, { top: true })`.
-     */
-    vendors?: RegistryVendorName[];
     /**
      * Alternative names that should resolve to this same filter (e.g. fork renames sharing the same payload shape).
      * Aliases that collide with an already-registered canonical name are ignored to avoid hijacking.
@@ -209,14 +173,6 @@ function pickByNodeContext(candidates: CanonicalEntry[], node: Node): CanonicalE
 
     const installedPlugins = node.info?.plugins ?? [];
 
-    if (node.isNodelink()) {
-        const vendor: CanonicalEntry | undefined = candidates.find(
-            (entry): boolean =>
-                entry.scope === FilterScope.Vendor && (entry.vendors?.some((v): boolean => normalize(String(v)) === "nodelink") ?? false),
-        );
-        if (vendor) return vendor;
-    }
-
     const core: CanonicalEntry | undefined = candidates.find((entry): boolean => entry.scope === FilterScope.Core);
     if (core) return core;
 
@@ -267,8 +223,8 @@ export const FilterRegistry = {
      * });
      *
      * FilterRegistry.register([
-     *   { name: "forkEcho", scope: FilterScope.Vendor, vendors: ["nodelink"] },
-     *   { name: "forkReverb", scope: FilterScope.Vendor, vendors: ["nodelink"] },
+     *   { name: "forkEcho", scope: FilterScope.Core },
+     *   { name: "forkReverb", scope: FilterScope.Core },
      * ]);
      * ```
      */
@@ -290,10 +246,7 @@ export const FilterRegistry = {
 
             const duplicate: boolean = existing.some(
                 (e): boolean =>
-                    e.scope === entry.scope &&
-                    normalize(String(e.pluginName ?? "")) === normalize(String(entry.pluginName ?? "")) &&
-                    (e.vendors ?? []).map((v): string => normalize(String(v))).join(",") ===
-                        (entry.vendors ?? []).map((v): string => normalize(String(v))).join(","),
+                    e.scope === entry.scope && normalize(String(e.pluginName ?? "")) === normalize(String(entry.pluginName ?? "")),
             );
             if (!duplicate) existing.push(entry);
 
@@ -466,16 +419,6 @@ export const FilterRegistry = {
                 id: options.node.id,
                 message: `No registered filter resolves '${String(options.name)}' on node ${options.node.id}.`,
             });
-        }
-
-        if (entry.scope === FilterScope.Vendor) {
-            if (!options.node.isNodelink()) {
-                throw new NodeError({
-                    id: options.node.id,
-                    message: `Filter '${String(entry.name)}' is vendor-scoped and node ${options.node.id} is not a recognised fork.`,
-                });
-            }
-            return;
         }
 
         const advertised: boolean =

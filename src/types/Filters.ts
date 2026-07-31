@@ -141,9 +141,13 @@ export interface SetFilterOptions {
      */
     plugin?: string | true;
     /**
-     * Write the filter at the top level of the payload, next to the built-in Lavalink filters. This is
-     * where fork-specific filters live; prefer registering them with {@link FilterScope.Vendor} when the
-     * fork is known, so they get validation and per-node gating.
+     * Write the filter at the top level of the payload, next to the built-in Lavalink filters — where a
+     * fork exposes its own filters.
+     *
+     * Hoshimi does not check which server it is talking to: whether a fork-specific filter is safe to send
+     * is the node's business, so pointing a player at the right node is the caller's. Registering the
+     * filter (scope {@link FilterScope.Core}) buys routing by name and a check against the node's
+     * advertised list, when the fork does advertise it.
      * @type {boolean | undefined}
      */
     top?: boolean;
