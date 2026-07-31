@@ -42,7 +42,9 @@ export class PlayerMemoryStorage<
     }
 
     public values<K extends StorageKeys[], V extends StorageValues<K[number]>>(): Awaitable<V[]> {
-        return [...this.internal.values()] as never as V[];
+        return [...this.internal.entries()]
+            .filter(([key]): boolean => !this.isInternal(this.strip(key as string)))
+            .map(([, value]) => value) as never as V[];
     }
 
     public entries<K extends StorageKeys[], V extends StorageValues<K[number]>>(): Awaitable<[K, V][]> {
