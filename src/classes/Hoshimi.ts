@@ -440,7 +440,10 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
             ...info,
         };
 
-        if (!this.options.client.id) throw new ManagerError("You must provide the client id.");
+        // The default id is a placeholder meant to be overwritten by `info`: still holding it here means
+        // no real client id was ever provided, and the node would connect with `User-Id: 0`.
+        if (!this.options.client.id || this.options.client.id === HoshimiDefaultOptions.client.id)
+            throw new ManagerError("You must provide the client id.");
         if (typeof this.options.client.id !== "string") throw new OptionError("The client info 'info.client.id': must be a string.");
 
         let amount: number = 0;

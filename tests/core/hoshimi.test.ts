@@ -25,6 +25,19 @@ describe("Hoshimi", () => {
         expect(new Hoshimi({ ...createOptions(), queueOptions: { maxHistory: 10 } } as never).options.queueOptions.maxHistory).toBe(10);
     });
 
+    it("init rejects a missing client id and the placeholder default", () => {
+        const manager = new Hoshimi(createOptions());
+
+        expect(manager.options.client.id).toBe(HoshimiDefaultOptions.client.id);
+
+        expect(() => manager.init({} as never)).toThrow(ManagerError);
+        expect(() => manager.init({ id: HoshimiDefaultOptions.client.id })).toThrow(ManagerError);
+        expect(() => manager.init({ id: "" })).toThrow(ManagerError);
+
+        expect(manager.ready).toBe(false);
+        expect(manager.nodeManager.nodes.size).toBe(0);
+    });
+
     it("sets default options when constructed", () => {
         const manager = new Hoshimi(createOptions());
 
