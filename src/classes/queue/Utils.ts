@@ -93,7 +93,7 @@ export class QueueUtils {
      */
     public save(): Awaitable<void> {
         const max: number = this.options.maxHistory;
-        const length: number = this.queue.tracks.length;
+        const length: number = this.queue.history.length;
 
         if (length > max) this.queue.history.splice(0, length - max);
 
