@@ -18,7 +18,4 @@ minimumReleaseAgeExclude:
   - lint-staged@17.2.0 || 17.3.0
   - verkit@0.3.0
 
-# The root is the published package. Without it listed, pnpm reports a workspace with zero packages
-# and changesets cannot find `hoshimi` to version.
-packages:
-  - .
+packages: []
