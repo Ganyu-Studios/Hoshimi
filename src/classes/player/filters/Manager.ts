@@ -107,7 +107,7 @@ export class FilterManager {
             FilterRegistry.validate({ node: this.player.node, name });
             const entry = FilterRegistry.resolve(name, this.player.node);
             if (!entry) throw new PlayerError(`No registered filter resolves '${String(name)}'.`);
-            FilterPayload.writeToEnvelope.call(this, entry, payload);
+            FilterPayload.write.call(this, entry, payload);
         }
         await FilterPayload.commit.call(this);
         return this;
@@ -124,7 +124,7 @@ export class FilterManager {
      */
     public async clear(name: RegistryFilterName): Promise<this> {
         const entry = FilterRegistry.resolve(name, this.player.node);
-        if (entry) FilterPayload.clearFromEnvelope.call(this, entry);
+        if (entry) FilterPayload.clear.call(this, entry);
         await FilterPayload.commit.call(this);
         return this;
     }
@@ -137,7 +137,7 @@ export class FilterManager {
     public isEnabled(name: RegistryFilterName): boolean {
         const entry = FilterRegistry.resolve(name, this.player.node);
         if (!entry) return false;
-        const payload = FilterPayload.readFromEnvelope.call(this, entry);
+        const payload = FilterPayload.read.call(this, entry);
         return !FilterRegistry.isDefault(name, payload);
     }
 
