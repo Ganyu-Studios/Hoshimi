@@ -273,4 +273,33 @@ describe("FilterManager capability pruning on commit", () => {
 
         expect(sentFilters(spy)).toEqual({ pluginFilters: { echo: { echoLength: 0.5, decay: 0.5 } } });
     });
+
+    it("keeps top-level filters when the node has not reported its info yet", async () => {
+        const { node, fm, spy } = setup();
+
+        fm.data.timescale = { speed: 1.29, pitch: 1.29, rate: 0.94 };
+        fm.data.rotation = { rotationHz: 0.2 };
+
+        // Not ready yet: no /v4/info response, so the advertised list is unknown, not empty.
+        node.info = null;
+        spy.mockClear();
+
+        await fm.apply();
+
+        expect(sentFilters(spy)).toEqual({
+            timescale: { speed: 1.29, pitch: 1.29, rate: 0.94 },
+            rotation: { rotationHz: 0.2 },
+        });
+    });
+
+    it("still drops top-level filters the node reports it does not support", async () => {
+        const { fm, spy } = setup({ filters: ["volume", "equalizer"] });
+
+        fm.data.timescale = { speed: 1.29, pitch: 1.29, rate: 0.94 };
+        spy.mockClear();
+
+        await fm.apply();
+
+        expect(sentFilters(spy)).toEqual({});
+    });
 });

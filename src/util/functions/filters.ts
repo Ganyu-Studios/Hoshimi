@@ -74,13 +74,18 @@ export const FilterPayload = {
         }
 
         // Drop top-level filters the node does not advertise (vendor-scoped on a recognised fork is kept).
-        const advertised: ReadonlyArray<string> = this.player.node.info?.filters ?? [];
-        for (const key of Object.keys(filters)) {
-            if (key === "pluginFilters") continue;
-            const entry: FilterRegistration | null = FilterRegistry.resolve(key, this.player.node);
-            if (entry?.scope === FilterScope.Vendor && this.player.node.isNodelink()) continue;
-            if (!advertised.some((f): boolean => f === key)) {
-                delete (filters as Record<string, unknown>)[key];
+        // Like the plugin pruning above, only once the node has actually reported its filter list: an
+        // absent one means "unknown", not "advertises nothing", and treating it as empty wiped the whole
+        // payload on a not-yet-ready node.
+        const advertised: ReadonlyArray<string> | undefined = this.player.node.info?.filters;
+        if (advertised) {
+            for (const key of Object.keys(filters)) {
+                if (key === "pluginFilters") continue;
+                const entry: FilterRegistration | null = FilterRegistry.resolve(key, this.player.node);
+                if (entry?.scope === FilterScope.Vendor && this.player.node.isNodelink()) continue;
+                if (!advertised.some((f): boolean => f === key)) {
+                    delete (filters as Record<string, unknown>)[key];
+                }
             }
         }
 
