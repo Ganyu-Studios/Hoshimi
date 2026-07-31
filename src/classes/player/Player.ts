@@ -441,7 +441,16 @@ export class Player {
             await this.queue.splice(0, to - 1);
         }
 
-        if (!this.isPlaying() && !this.queue.current) return this.play();
+        if (!this.isPlaying() && !this.queue.current) {
+            // Reachable only with `throwError: false` (an empty queue already threw above). Playing
+            // here would hand `play()` a null track and surface a ResolveError the caller opted out of.
+            if (this.queue.isEmpty()) {
+                this.manager.debug(DebugLevels.Player, `[Player] -> [Skip] Nothing left to play for guild: ${this.guildId}`);
+                return;
+            }
+
+            return this.play();
+        }
 
         this.manager.debug(DebugLevels.Player, `[Player] -> [Skip] Skipping to next track for guild: ${this.guildId}`);
 
