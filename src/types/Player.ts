@@ -65,6 +65,33 @@ export enum LoopMode {
 }
 
 /**
+ * The player subsystem a payload is being handled by, used as the second tag of a
+ * `[Player] -> [<scope>]` debug line.
+ */
+export enum PlayerScope {
+    /**
+     * Scope for the track start handling.
+     */
+    Start = "Start",
+    /**
+     * Scope for the track end handling.
+     */
+    End = "End",
+    /**
+     * Scope for the stuck track handling.
+     */
+    Stuck = "Stuck",
+    /**
+     * Scope for the track exception handling.
+     */
+    Error = "Error",
+    /**
+     * Scope for the voice state and voice server handling.
+     */
+    Voice = "Voice",
+}
+
+/**
  * The types of player events.
  */
 export enum PlayerEventType {

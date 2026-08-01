@@ -86,6 +86,34 @@ describe("Player destroy vs. late node events", () => {
         expect(await storage.has(player.guildId)).toBe(false);
     });
 
+    it("does not patch voice state for a player being destroyed", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        // `updateVoiceState` drops everything until the manager is ready, which `init()` normally sets.
+        manager.ready = true;
+
+        const patch = vi.spyOn(player.voice, "patch");
+
+        // The gateway keeps delivering for a guild the bot is still listed in, same window as above.
+        vi.spyOn(node.rest, "destroyPlayer").mockImplementation(async (): Promise<void> => {
+            await manager.updateVoiceState({
+                t: "VOICE_STATE_UPDATE",
+                d: {
+                    guild_id: player.guildId,
+                    user_id: manager.options.client.id,
+                    session_id: "foreign-session",
+                    channel_id: player.voiceId,
+                },
+            } as never);
+        });
+
+        await player.destroy();
+
+        expect(patch).not.toHaveBeenCalled();
+    });
+
     it("still persists the queue for a live player", async () => {
         const manager = createRealManager();
         createRealNode(manager);
