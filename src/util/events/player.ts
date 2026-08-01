@@ -20,6 +20,29 @@ import { stringify } from "../functions/utils";
 
 /**
  *
+ * Whether node events for this player should be dropped because it is gone, or on its way out.
+ *
+ * Lavalink keeps talking while {@link PlayerStructure.destroy} is in flight: deleting the player makes
+ * the track stop, and the resulting `TrackEndEvent` arrives while the REST call is still awaited — with
+ * the player still registered, since it is only unregistered afterwards. Handling it would advance and
+ * re-persist a queue that has just been thrown away.
+ * @param {PlayerStructure} player The player the event was dispatched to.
+ * @param {string} event The handler name, for the debug line.
+ * @returns {boolean} Whether the event should be ignored.
+ */
+function isGone(player: PlayerStructure, event: string): boolean {
+    if (!player.destroyed) return false;
+
+    player.manager.debug(
+        DebugLevels.Player,
+        `[Player] -> [${event}] Player for guild: ${player.guildId} is destroyed, skipping ${event} handling.`,
+    );
+
+    return true;
+}
+
+/**
+ *
  * Emitted when a queue track ends.
  * @param {PlayerStructure} this The player that emitted the event.
  * @param {boolean} [updateCurrent=true] Whether to update the current track or not.
@@ -112,6 +135,8 @@ async function queueEnd(
  * @returns {Promise<void>} I mean, it's a track start event, what do you expect?
  */
 export async function trackStart(this: PlayerStructure, payload: TrackStartEvent): Promise<void> {
+    if (isGone(this, "Start")) return;
+
     if (!(await this.data.get("internal_nodeChange"))) {
         this.paused = false;
         this.playing = true;
@@ -134,6 +159,7 @@ export async function trackStart(this: PlayerStructure, payload: TrackStartEvent
  * @returns {Promise<void>} The track ended... sadge.
  */
 export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): Promise<void> {
+    if (isGone(this, "End")) return;
     if (await this.data.get("internal_nodeChange")) return;
 
     // Playback was stopped by onError.autoStop; swallow the trailing TrackEnd so the queue isn't advanced.
@@ -160,14 +186,6 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
 
     const reasons: TrackEndReason[] = [TrackEndReason.LoadFailed, TrackEndReason.Cleanup];
     if (reasons.includes(payload.reason)) {
-        if (this.destroyed) {
-            this.manager.debug(
-                DebugLevels.Player,
-                `[Player] -> [End] Player for guild: ${this.guildId} is being destroyed, skipping track end handling.`,
-            );
-            return;
-        }
-
         await onEnd.call(this);
 
         if (!this.queue.current) return queueEnd.call(this, current, payload);
@@ -200,6 +218,8 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
  * @returns {Promise<void>} The track stuck? Try to unstuck it!
  */
 export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent): Promise<void> {
+    if (isGone(this, "Stuck")) return;
+
     this.manager.emit(EventNames.TrackStuck, this, this.queue.current, payload);
     this.manager.debug(DebugLevels.Player, `[Player] -> [Stuck] The track: ${this.queue.current?.info.title ?? "Unknown"} has stuck.`);
 
@@ -231,6 +251,8 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
  * @returns {Promise<void>} Aww, the track has an error? That's sad.
  */
 export async function trackError(this: PlayerStructure, payload: TrackExceptionEvent): Promise<void> {
+    if (isGone(this, "Error")) return;
+
     this.manager.emit(EventNames.TrackError, this, this.queue.current, payload);
     this.manager.debug(DebugLevels.Player, `[Player] -> [Error] The track: ${this.queue.current?.info.title ?? "Unknown"} has error.`);
 
