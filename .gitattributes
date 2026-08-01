@@ -1,0 +1,14 @@
+# Biome formats with `"lineEnding": "crlf"` (biome.json), so every checkout has to hand it CRLF —
+# otherwise the CI formatting job reformats whatever the last commit touched and pushes a
+# `chore: apply formatting` commit back. Git still stores LF in the object database; `eol=crlf`
+# only decides what lands in the working tree, and it does so on every platform, so a Linux
+# runner and a Windows machine agree without depending on anyone's `core.autocrlf`.
+* text=auto eol=crlf
+
+# Hooks are executed by `sh`, not formatted: a CR would end up in the shebang or the command and
+# break them.
+.husky/** text eol=lf
+*.sh text eol=lf
+
+# Left byte for byte, no line-ending filtering.
+*.png binary

@@ -1,6 +1,7 @@
 import { MergeError } from "../../classes/Errors";
 import type { TrackRequester } from "../../classes/Track";
-import type { DeepRequired, RestOrArray } from "../../types/Manager";
+import { DebugLevels, type DeepRequired, type RestOrArray } from "../../types/Manager";
+import type { PlayerScope } from "../../types/Player";
 import type { UpdatePlayerInfo } from "../../types/Rest";
 import type { NodeStructure, PlayerStructure } from "../../types/Structures";
 import type { PromiseWithResolvers } from "../../types/Utility";
@@ -38,6 +39,30 @@ export function updatePlayerState(node: NodeStructure, data: Partial<UpdatePlaye
             Object.assign(player.filterManager.data, data.playerOptions.filters);
         }
     }
+}
+
+/**
+ *
+ * Whether a payload dispatched to this player should be dropped because the player is gone, or on
+ * its way out.
+ *
+ * {@link PlayerStructure.destroy} unregisters the player only after awaiting the node, so both
+ * Lavalink and the gateway keep delivering payloads for a player that is already tearing down: the
+ * REST delete makes the track stop, and the resulting event lands while that request is still
+ * pending. Handling it would advance and re-persist a queue that has just been thrown away.
+ * @param {PlayerStructure} player The player the payload was dispatched to.
+ * @param {PlayerScope} scope The subsystem handling the payload, for the debug line.
+ * @returns {boolean} Whether the payload should be ignored.
+ */
+export function isPlayerGone(player: PlayerStructure, scope: PlayerScope): boolean {
+    if (!player.destroyed) return false;
+
+    player.manager.debug(
+        DebugLevels.Player,
+        `[Player] -> [${scope}] Player for guild: ${player.guildId} is destroyed, skipping ${scope} handling.`,
+    );
+
+    return true;
 }
 
 /**

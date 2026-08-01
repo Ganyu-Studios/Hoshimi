@@ -92,6 +92,19 @@ export class QueueUtils {
      * ```
      */
     public save(): Awaitable<void> {
+        // `destroy()` removes the stored queue and only unregisters the player afterwards, so a late
+        // node event landing in between would write the key straight back and leak it forever: the
+        // player is gone, but the storage entry stays. Persisting for a destroyed player is never
+        // right, so the invariant lives here rather than in each caller.
+        if (this.queue.player.destroyed) {
+            this.queue.player.manager.debug(
+                DebugLevels.Queue,
+                `[Queue] -> [Adapter] Skipped saving queue for ${this.queue.player.guildId}: the player is destroyed.`,
+            );
+
+            return;
+        }
+
         const max: number = this.options.maxHistory;
         const length: number = this.queue.history.length;
 

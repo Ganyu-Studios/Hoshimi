@@ -16,11 +16,11 @@ import {
     type VoiceState,
 } from "../types/Manager";
 import { type LavalinkSearchResponse, LoadType, State } from "../types/Node";
-import type { LavalinkPlayerVoice, PlayerOptions } from "../types/Player";
+import { type LavalinkPlayerVoice, type PlayerOptions, PlayerScope } from "../types/Player";
 import { type NodeManagerStructure, type NodeStructure, type PlayerStructure, Structures, type TrackStructure } from "../types/Structures";
 import { Collection } from "../util/collection";
 import { HoshimiDefaultOptions } from "../util/constants";
-import { isPlainObject, mergeDefault, stringify } from "../util/functions/utils";
+import { isPlainObject, isPlayerGone, mergeDefault, stringify } from "../util/functions/utils";
 import { Validations } from "../util/functions/validations";
 import { ManagerError, OptionError } from "./Errors";
 
@@ -265,13 +265,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                     return;
                 }
 
-                if (player.destroyed) {
-                    this.debug(
-                        DebugLevels.Player,
-                        `[Player] -> [Voice] Player for guild: ${data.guild_id} is being destroyed, skipping voice state update handling.`,
-                    );
-                    return;
-                }
+                if (isPlayerGone(player, PlayerScope.Voice)) return;
 
                 if (data.id === player.voiceId) {
                     this.debug(DebugLevels.Player, `[Player] -> [Voice] The channel ${data.id} was deleted, disconnecting the player.`);
@@ -303,13 +297,7 @@ export class Hoshimi extends EventEmitter<HoshimiEvents> {
                         return;
                     }
 
-                    if (player.destroyed) {
-                        this.debug(
-                            DebugLevels.Player,
-                            `[Player] -> [Voice] Player for guild: ${data.guild_id} is being destroyed, skipping voice state update handling.`,
-                        );
-                        return;
-                    }
+                    if (isPlayerGone(player, PlayerScope.Voice)) return;
 
                     // Voice state updates arrive for every member of the guild; patching on someone
                     // else's payload would overwrite the client session id with a foreign one.
