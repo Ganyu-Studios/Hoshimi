@@ -13,7 +13,7 @@ export default defineConfig({
     tsconfig: "./tsconfig.json",
     target: false,
     deps: {
-        skipNodeModulesBundle: true,
+        neverBundle: true,
     },
     checks: {
         pluginTimings: false,
