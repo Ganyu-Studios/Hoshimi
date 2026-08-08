@@ -102,6 +102,48 @@ client.events.values.RAW = {
 })();
 ```
 
+## 📣 Events
+
+The manager is an `EventEmitter`, and every event is typed by name — the handler's arguments come from
+the event you listen to, so there is nothing to annotate:
+
+```typescript
+import { DebugLevels, EventNames } from "hoshimi";
+
+hoshimi.on(EventNames.NodeReady, (node) => {
+    console.log(`Node ${node.id} is ready.`);
+});
+
+hoshimi.on(EventNames.TrackStart, (player, track) => {
+    console.log(`Now playing "${track?.info.title}" in ${player.guildId}`);
+    // `player.textId` is the channel the player was created with, if you set one.
+});
+
+hoshimi.on(EventNames.QueueEnd, async (player) => {
+    console.log(`Nothing left to play in ${player.guildId}`);
+    await player.destroy();
+});
+
+hoshimi.on(EventNames.PlayerDestroy, (player, reason) => {
+    console.log(`Player for ${player.guildId} destroyed: ${reason}`);
+});
+
+hoshimi.on(EventNames.NodeError, (node, error) => console.error(`Node ${node.id} failed:`, error));
+hoshimi.on(EventNames.Error, (error) => console.error(error));
+```
+
+Debug is a single event carrying its level, so you decide how much of it reaches your logs:
+
+```typescript
+hoshimi.on(EventNames.Debug, (level, message) => {
+    if (level === DebugLevels.Player) console.debug(message);
+});
+```
+
+`EventNames` is only a convenience — `hoshimi.on("trackStart", ...)` is the same listener, typed the
+same way. There are events for nodes, players, tracks, the queue and lyrics; your editor will list
+them all from the enum.
+
 ## 📜 Filters
 
 A filter is active while its key is in the payload. There is no "off" payload: `clear` removes the key,
