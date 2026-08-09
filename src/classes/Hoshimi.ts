@@ -1,4 +1,3 @@
-import { EventEmitter } from "node:events";
 import {
     type ChannelDelete,
     type ChannelDeletePacket,
@@ -20,6 +19,7 @@ import { type LavalinkPlayerVoice, type PlayerOptions, PlayerScope } from "../ty
 import { type NodeManagerStructure, type NodeStructure, type PlayerStructure, Structures, type TrackStructure } from "../types/Structures";
 import { Collection } from "../util/collection";
 import { HoshimiDefaultOptions } from "../util/constants";
+import { TypedEmitter } from "../util/emitter";
 import { isPlainObject, isPlayerGone, mergeDefault, stringify } from "../util/functions/utils";
 import { Validations } from "../util/functions/validations";
 import { ManagerError, OptionError } from "./Errors";
@@ -32,7 +32,7 @@ type GatewayPackets = VoicePacket | VoiceServer | VoiceState | ChannelDeletePack
 /**
  * Class representing the Hoshimi manager.
  * @class Hoshimi
- * @extends {EventEmitter<HoshimiEvents>}
+ * @extends {TypedEmitter<HoshimiEvents>}
  * @example
  * ```ts
  * import { Hoshimi, SearchSources } from "hoshimi";
@@ -65,7 +65,7 @@ type GatewayPackets = VoicePacket | VoiceServer | VoiceState | ChannelDeletePack
  * console.log(manager); // The manager instance
  * ```
  */
-export class Hoshimi extends EventEmitter<HoshimiEvents> {
+export class Hoshimi extends TypedEmitter<HoshimiEvents> {
     /**
      * The options for the manager.
      * @type {HoshimiOptions}

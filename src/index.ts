@@ -46,5 +46,9 @@ export * from "./types/Structures";
 // Exports related to constants.
 export * from "./util/constants";
 
+// Exports related to the typed event emitter. Part of the public surface because `Hoshimi` extends
+// it: without this, a consumer's `Hoshimi` type would reference a name they cannot resolve.
+export * from "./util/emitter";
+
 // Exports related to track utilities.
 export { TrackResolution } from "./util/functions/track";
