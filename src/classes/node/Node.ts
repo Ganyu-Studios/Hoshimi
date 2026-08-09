@@ -14,6 +14,7 @@ import {
     type SearchQuery,
     State,
     type Stats,
+    type UserAgent,
     WebsocketCloseCodes,
 } from "../../types/Node";
 import {
@@ -33,8 +34,9 @@ import {
     Structures,
     type TrackStructure,
 } from "../../types/Structures";
+import { HoshimiAgent, HoshimiDefaultOptions } from "../../util/constants";
 import { clearHeartbeatTimer, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
-import { censor, stringify } from "../../util/functions/utils";
+import { censor, stringify, toHeaderValue } from "../../util/functions/utils";
 import { Validations } from "../../util/functions/validations";
 import { NodeError } from "../Errors";
 
@@ -400,13 +402,18 @@ export class Node {
                 id: this.id,
             });
 
+        const previous: State = this.state;
+
         this.state = State.Connecting;
 
+        // `Client-Name` is the bot's name as Discord gives it, so it can hold anything a user can
+        // type. Everything that reaches a header goes through the same cleaning, since one bad
+        // character makes the WebSocket constructor throw and leaves the node unusable.
         const headers: ResumableHeaders = {
             Authorization: this.options.password,
             "User-Id": this.nodeManager.manager.options.client.id,
-            "Client-Name": this.nodeManager.manager.options.client.username!,
-            "User-Agent": this.rest.userAgent,
+            "Client-Name": toHeaderValue(this.nodeManager.manager.options.client.username!, HoshimiDefaultOptions.client.username),
+            "User-Agent": toHeaderValue(this.rest.userAgent, HoshimiAgent) as UserAgent,
         };
 
         if (this.options.sessionId) {
@@ -419,7 +426,15 @@ export class Node {
             );
         }
 
-        this.ws = new WebSocket(this.address, { headers: { ...headers } });
+        // A throw here — a malformed address, a header the cleaning could not save — would otherwise
+        // leave the state on `Connecting`, and every later attempt returns early on that, so the node
+        // would stay dead for the rest of the process instead of retrying.
+        try {
+            this.ws = new WebSocket(this.address, { headers: { ...headers } });
+        } catch (error) {
+            this.state = previous;
+            throw error;
+        }
 
         this.ws.on("upgrade", onOpen.bind(this));
         this.ws.on("message", onMessage.bind(this));
