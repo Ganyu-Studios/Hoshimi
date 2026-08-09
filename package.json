@@ -1,6 +1,6 @@
 {
     "name": "hoshimi",
-    "version": "0.5.1",
+    "version": "0.5.2",
     "description": "A lavalink@v4 client easy to use, up-to-date and all ears.",
     "main": "./dist/index.cjs",
     "module": "./dist/index.mjs",
