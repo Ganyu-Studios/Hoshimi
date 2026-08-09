@@ -67,6 +67,19 @@ export function isPlayerGone(player: PlayerStructure, scope: PlayerScope): boole
 
 /**
  *
+ * Make a value safe to send as an HTTP header.
+ * @description Node throws `ERR_INVALID_CHAR` for anything outside printable ASCII, and `Client-Name` carries the bot's name straight from Discord — an emoji or a non-latin script in it takes the whole connection down. Offending characters are dropped rather than transliterated, since the header is only ever read by a human in the node's logs.
+ * @param {string} value The value to clean.
+ * @param {string} fallback The value to use when nothing printable is left.
+ * @returns {string} A value that will not be rejected as a header.
+ */
+export function toHeaderValue(value: string, fallback: string): string {
+    const cleaned: string = value.replace(/[^\x20-\x7E]/g, "").trim();
+    return cleaned.length ? cleaned : fallback;
+}
+
+/**
+ *
  * Check if the value is defined (not undefined or null).
  * @param {unknown} value
  * @returns {boolean} True if the value is defined, false otherwise.
