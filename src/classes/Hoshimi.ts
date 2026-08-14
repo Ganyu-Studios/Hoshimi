@@ -312,6 +312,23 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
 
                     // And also includes some abstract code.
                     if ("token" in data && "endpoint" in data) {
+                        // Discord sends a VOICE_SERVER_UPDATE with a null endpoint when it moves the
+                        // guild to a new voice server — a routine reallocation that happens on its own
+                        // every so often (it is why a channel sometimes drops and reconnects with no
+                        // one being kicked). The current endpoint is dead and a fresh update with a
+                        // real one arrives moments later. `patch` keeps the old endpoint here (its
+                        // truthy guard ignores null) but takes the new token, so building a payload
+                        // from that would point Lavalink at a gone server with a mismatched token.
+                        // Wait for the update that carries the new endpoint instead.
+                        if (!data.endpoint) {
+                            this.debug(
+                                DebugLevels.Player,
+                                `[Player] -> [Voice] The voice server is being reallocated for: ${data.guild_id}, waiting for the new endpoint.`,
+                            );
+
+                            return;
+                        }
+
                         if (!player.voice.sessionId) {
                             this.debug(DebugLevels.Player, `[Player] -> [Voice] The session id is missing for: ${data.guild_id}`);
 
