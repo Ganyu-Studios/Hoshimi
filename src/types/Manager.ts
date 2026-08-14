@@ -870,9 +870,10 @@ export interface VoiceServer {
     guild_id: string;
     /**
      * The voice server endpoint.
-     * @type {string}
+     * @description Null while Discord reallocates the guild's voice server; a fresh update with a real endpoint follows.
+     * @type {string | null}
      */
-    endpoint: string;
+    endpoint: string | null;
 }
 
 /**
