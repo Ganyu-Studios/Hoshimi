@@ -121,7 +121,7 @@ function validateManagerOptions(options: HoshimiOptions): void {
                 typeof options.nodeOptions.sessionOptions.resumable !== "undefined" &&
                 typeof options.nodeOptions.sessionOptions.resumable !== "boolean"
             )
-                throw new OptionError("The manager option 'options.nodeOptions.resumable' must be a boolean.");
+                throw new OptionError("The manager option 'options.nodeOptions.sessionOptions.resumable' must be a boolean.");
 
             assertNonNegativeInteger(options.nodeOptions.sessionOptions.timeout, "options.nodeOptions.sessionOptions.timeout");
 
@@ -130,6 +130,12 @@ function validateManagerOptions(options: HoshimiOptions): void {
                 typeof options.nodeOptions.sessionOptions.byLibrary !== "boolean"
             )
                 throw new OptionError("The manager option 'options.nodeOptions.sessionOptions.byLibrary' must be a boolean.");
+
+            if (
+                typeof options.nodeOptions.sessionOptions.resumeFn !== "undefined" &&
+                typeof options.nodeOptions.sessionOptions.resumeFn !== "function"
+            )
+                throw new OptionError("The manager option 'options.nodeOptions.sessionOptions.resumeFn' must be a function.");
         }
 
         if (isPlainObject(options.nodeOptions.moveOptions)) {

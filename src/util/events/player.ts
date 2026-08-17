@@ -348,19 +348,20 @@ export async function socketClosed(this: PlayerStructure, payload: WebSocketClos
 
 /**
  *
- * Resumes players by library.
- * @param {NodeStructure} this The node that is resuming the players.
+ * Resumes players by library. The default handler for {@link NodeSessionOptions.byLibrary}; exported
+ * so a custom `resumeFn` can reuse or wrap it.
+ * @param {NodeStructure} node The node that is resuming the players.
  * @param {PlayerStructure[]} players The players to be resumed.
- * @returns {Promise<void>} Nothing.
+ * @returns {Promise<void>}
  */
-export async function resumeByLibrary(this: NodeStructure, players: PlayerStructure[]): Promise<void> {
-    this.nodeManager.manager.debug(DebugLevels.Node, `[Socket] -> [${this.id}]: Resuming session by library...`);
+export async function resumeByLibrary(node: NodeStructure, players: PlayerStructure[]): Promise<void> {
+    node.nodeManager.manager.debug(DebugLevels.Node, `[Socket] -> [${node.id}]: Resuming session by library...`);
 
     for (const player of players) {
         if (await player.data.get("internal_nodeChange")) continue;
         try {
             if (!player.isPlaying() && !player.queue.totalSize) {
-                this.nodeManager.manager.debug(
+                node.nodeManager.manager.debug(
                     DebugLevels.Node,
                     `[Player] -> [Resume] Destroyed player for guild ${player.guildId} due to empty queue.`,
                 );
@@ -372,7 +373,7 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
 
             const voice: LavalinkPlayerVoice | null = player.voice.toNode();
             if (!voice) {
-                this.nodeManager.manager.debug(
+                node.nodeManager.manager.debug(
                     DebugLevels.Node,
                     `[Player] -> [Resume] Skipping guild ${player.guildId} because voice data is incomplete.`,
                 );
@@ -392,10 +393,10 @@ export async function resumeByLibrary(this: NodeStructure, players: PlayerStruct
                     paused: player.paused,
                 });
         } catch (error) {
-            this.nodeManager.manager.emit(EventNames.NodeError, this, error);
+            node.nodeManager.manager.emit(EventNames.NodeError, node, error);
         }
 
-        this.nodeManager.manager.debug(
+        node.nodeManager.manager.debug(
             DebugLevels.Node,
             `[Player] -> [Resume] Resumed player for guild ${player.guildId} using the library.`,
         );

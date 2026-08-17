@@ -10,7 +10,6 @@ import {
     lyricsLine,
     lyricsNotFound,
     playerUpdate,
-    resumeByLibrary,
     socketClosed,
     trackEnd,
     trackError,
@@ -212,7 +211,8 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     const players: PlayerStructure[] = this.nodeManager.manager.players.filter((p): boolean => p.node.id === this.id);
                     const isLibrary: boolean = sessionOptions.byLibrary;
 
-                    if (!payload.resumed && isLibrary && players.length) await resumeByLibrary.call(this, players);
+                    // `resumeFn` defaults to the built-in `resumeByLibrary`; a custom one replaces it.
+                    if (!payload.resumed && isLibrary && players.length) await sessionOptions.resumeFn(this, players);
 
                     this.info = await this.rest.request<NodeInfo>({ endpoint: RestRoutes.NodeInfo });
 

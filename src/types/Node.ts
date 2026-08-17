@@ -1,7 +1,7 @@
 import type { TrackUserData } from "../classes/Track";
 import type { CustomizableSources } from "../registry/SourceRegistry";
 import type { FilterType } from "./Filters";
-import type { Hint, PickRequired, Prettify, SearchSource } from "./Manager";
+import type { Awaitable, Hint, PickRequired, Prettify, SearchSource } from "./Manager";
 import type {
     LyricsFoundEvent,
     LyricsLineEvent,
@@ -13,7 +13,7 @@ import type {
     TrackStuckEvent,
     WebSocketClosedEvent,
 } from "./Player";
-import type { NodeStructure } from "./Structures";
+import type { NodeStructure, PlayerStructure } from "./Structures";
 
 /**
  * The states.
@@ -1194,6 +1194,14 @@ export interface NodeSessionOptions {
      * @default false
      */
     byLibrary?: boolean;
+    /**
+     * Custom handler for `byLibrary` resume. When set, it runs instead of the built-in one; when
+     * omitted, the built-in `resumeByLibrary` is used. Only consulted while `byLibrary` is enabled.
+     * @param {NodeStructure} node The node whose players are being resumed.
+     * @param {PlayerStructure[]} players The players the library holds for that node.
+     * @returns {Awaitable<void>}
+     */
+    resumeFn?(node: NodeStructure, players: PlayerStructure[]): Awaitable<void>;
 }
 
 export interface NodePlayerMoveOptions {
