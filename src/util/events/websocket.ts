@@ -10,7 +10,6 @@ import {
     lyricsLine,
     lyricsNotFound,
     playerUpdate,
-    resumeByLibrary,
     socketClosed,
     trackEnd,
     trackError,
@@ -47,7 +46,7 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
  * @param {NodeStructure} this The node that emitted the event.
  * @param {number} code The close code of the connection.
  * @param {string} reason The close reason message.
- * @returns {void}
+ * @returns {Promise<void>}
  */
 export async function onClose(this: NodeStructure, code: number, reason: string): Promise<void> {
     clearHeartbeatTimer.call(this);
@@ -212,7 +211,8 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     const players: PlayerStructure[] = this.nodeManager.manager.players.filter((p): boolean => p.node.id === this.id);
                     const isLibrary: boolean = sessionOptions.byLibrary;
 
-                    if (!payload.resumed && isLibrary && players.length) await resumeByLibrary.call(this, players);
+                    // `resumeFn` defaults to the built-in `resumeByLibrary`; a custom one replaces it.
+                    if (!payload.resumed && isLibrary && players.length) await sessionOptions.resumeFn(this, players);
 
                     this.info = await this.rest.request<NodeInfo>({ endpoint: RestRoutes.NodeInfo });
 

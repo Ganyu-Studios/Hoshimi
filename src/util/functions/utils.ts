@@ -191,7 +191,7 @@ export function mergeDefault<T extends Record<string, any>>(def: T, given: T): D
  *
  * Get the default requester.
  * @param {TrackRequester} requester The requester to default.
- * @returns {TrackRequester} The default requester.
+ * @returns {T} The requester cast to the caller's type, or an empty object when it is absent or empty.
  */
 export function requesterFn<T>(requester: TrackRequester): T {
     if (!requester || typeof requester !== "object" || !Object.keys(requester).length) return {} as T;

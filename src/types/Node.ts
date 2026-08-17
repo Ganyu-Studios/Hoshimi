@@ -1,7 +1,7 @@
 import type { TrackUserData } from "../classes/Track";
 import type { CustomizableSources } from "../registry/SourceRegistry";
 import type { FilterType } from "./Filters";
-import type { Hint, PickRequired, Prettify, SearchSource } from "./Manager";
+import type { Awaitable, Hint, PickRequired, Prettify, SearchSource } from "./Manager";
 import type {
     LyricsFoundEvent,
     LyricsLineEvent,
@@ -13,7 +13,7 @@ import type {
     TrackStuckEvent,
     WebSocketClosedEvent,
 } from "./Player";
-import type { NodeStructure } from "./Structures";
+import type { NodeStructure, PlayerStructure } from "./Structures";
 
 /**
  * The states.
@@ -193,47 +193,47 @@ export enum SourceNames {
      */
     TextToSpeech = "tts",
     /**
-     * Play voice using text to speech.
+     * Play from Clyp.it.
      * @description Provided by skybot-lavalink-plugin.
      */
     Clypit = "clypit",
     /**
-     * Play voice using text to speech.
+     * Play from Stream Deck audio.
      * @description Provided by skybot-lavalink-plugin.
      */
     StreamDeckAudio = "StreamDeckAudio",
     /**
-     * Play voice using text to speech.
+     * Play from getyarn.io.
      * @description Provided by skybot-lavalink-plugin.
      */
     GetYarn = "getyarn.io",
     /**
-     * Play voice using text to speech.
+     * Play from MixCloud.
      * @description Provided by skybot-lavalink-plugin.
      */
     MixCloud = "mixcloud",
     /**
-     * Play voice using text to speech.
+     * Play from OverClocked ReMix.
      * @description Provided by skybot-lavalink-plugin.
      */
     OCRemix = "ocremix",
     /**
-     * Play voice using text to speech.
+     * Play from PixelDrain.
      * @description Provided by skybot-lavalink-plugin.
      */
     PixelDrain = "pixeldrain",
     /**
-     * Play voice using text to speech.
+     * Play from Reddit.
      * @description Provided by skybot-lavalink-plugin.
      */
     Reddit = "reddit",
     /**
-     * Play voice using text to speech.
+     * Play from SoundGasm.
      * @description Provided by skybot-lavalink-plugin.
      */
     SoundGasm = "soundgasm",
     /**
-     * Play voice using text to speech.
+     * Play from TikTok.
      * @description Provided by skybot-lavalink-plugin.
      */
     TikTok = "tiktok",
@@ -271,15 +271,15 @@ export enum PluginInfoType {
      */
     Album = "album",
     /**
-     * The plugin information type is track.
+     * The plugin information type is playlist.
      */
     Playlist = "playlist",
     /**
-     * The plugin information type is track.
+     * The plugin information type is artist.
      */
     Artist = "artist",
     /**
-     * The plugin information type is track.
+     * The plugin information type is recommendations.
      */
     Recommendations = "recommendations",
 }
@@ -1048,7 +1048,7 @@ export interface NodeInfo {
     plugins: NodeInfoPlugin[];
     /**
      * Whether the node is a Nodelink instance.
-     * @type {boolean
+     * @type {boolean}
      */
     isNodelink: boolean;
 }
@@ -1194,6 +1194,14 @@ export interface NodeSessionOptions {
      * @default false
      */
     byLibrary?: boolean;
+    /**
+     * Custom handler for `byLibrary` resume. When set, it runs instead of the built-in one; when
+     * omitted, the built-in `resumeByLibrary` is used. Only consulted while `byLibrary` is enabled.
+     * @param {NodeStructure} node The node whose players are being resumed.
+     * @param {PlayerStructure[]} players The players the library holds for that node.
+     * @returns {Awaitable<void>}
+     */
+    resumeFn?(node: NodeStructure, players: PlayerStructure[]): Awaitable<void>;
 }
 
 export interface NodePlayerMoveOptions {

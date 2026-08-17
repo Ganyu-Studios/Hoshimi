@@ -14,8 +14,8 @@ import type { TrackRequester, TrackResolvableStructure } from "../Track";
  */
 export class QueueUtils {
     /**
-     * Player instance.
-     * @type {Queue}
+     * Queue instance.
+     * @type {QueueStructure}
      * @private
      * @readonly
      * @internal
@@ -53,7 +53,7 @@ export class QueueUtils {
     /**
      * Build a track from a resolvable structure.
      * Automatically resolves UnresolvedTrack instances to avoid double resolution.
-     * @param {TrackResolvableStructure | null} track The input track.
+     * @param {TrackResolvableStructure | AnyLavalinkTrack | null} [track] The input track.
      * @param {TrackRequester} [requester] Optional requester override.
      * @returns {Promise<TrackStructure | null>} The built and resolved track.
      */
@@ -121,7 +121,7 @@ export class QueueUtils {
     /**
      *
      * Destroy the queue, removing all stored data.
-     * @returns {Promise<void>}
+     * @returns {Awaitable<boolean>} Whether the stored queue entry was deleted.
      * @example
      * ```ts
      * await player.queue.utils.destroy();

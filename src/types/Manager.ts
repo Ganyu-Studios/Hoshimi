@@ -656,14 +656,14 @@ export interface HoshimiEvents {
      * Emitted when the track is stuck.
      * @param {PlayerStructure} player The player that emitted the event.
      * @param {TrackStructure | null} track The track that was stuck.
-     * @param {TrackEndEvent} payload The payload of the event.
+     * @param {TrackStuckEvent} payload The payload of the event.
      */
     trackStuck: [player: PlayerStructure, track: TrackStructure | null, payload: TrackStuckEvent];
     /**
      * Emitted when a track is errored.
      * @param {PlayerStructure} player The player that emitted the event.
      * @param {TrackStructure | null} track The track that was errored.
-     * @param {TrackEndEvent} payload The payload of the event.
+     * @param {TrackExceptionEvent} payload The payload of the event.
      */
     trackError: [player: PlayerStructure, track: TrackStructure | null, payload: TrackExceptionEvent];
 
@@ -685,7 +685,7 @@ export interface HoshimiEvents {
      * Emitted when a line of lyrics is updated.
      * @param {PlayerStructure} player The player that emitted the event.
      * @param {TrackStructure | null} track The track that was updated.
-     * @param {LyricsFoundEvent} payload The lyrics that were updated.
+     * @param {LyricsLineEvent} payload The lyrics that were updated.
      */
     lyricsLine: [player: PlayerStructure, track: TrackStructure | null, payload: LyricsLineEvent];
 
@@ -736,7 +736,7 @@ export interface QueryResult {
     tracks: TrackStructure[];
     /**
      * The plugin info of the search result.
-     * @type {PluginInfo}
+     * @type {PluginInfo | null}
      */
     pluginInfo: PluginInfo | null;
 }
@@ -823,12 +823,12 @@ export interface VoiceState {
      */
     deaf: boolean;
     /**
-     * The self mute status of the voice state.
+     * The self deaf status of the voice state.
      * @type {boolean}
      */
     self_deaf: boolean;
     /**
-     * The self video status of the voice state.
+     * The self mute status of the voice state.
      * @type {boolean}
      */
     self_mute: boolean;

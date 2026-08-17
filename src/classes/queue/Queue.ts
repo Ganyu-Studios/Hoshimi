@@ -294,23 +294,17 @@ export class Queue {
 
     /**
      * Clear the queue.
+     * @description Empties the upcoming tracks and the history and drops the stored queue. The current
+     * track and playback are left untouched.
      * @returns {Promise<this>} The queue instance.
      * @example
      * ```ts
      * const queue = player.queue;
      *
-     * // Clear queue and stop playback
-     * console.log(queue.size); // 0
-     * await queue.add(track);
      * await queue.add(track1, track2);
-     * await queue.clear();
-     * console.log(queue.current); // track
-     * console.log(queue.size); // 0
+     * console.log(queue.size); // 2
      *
-     * // Keep current track
-     * await queue.add(track);
      * await queue.clear();
-     * console.log(queue.current); // track
      * console.log(queue.size); // 0
      * ```
      */

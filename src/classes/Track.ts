@@ -60,7 +60,7 @@ export class Track implements LavalinkTrack {
 
     /**
      * The constructor for the track.
-     * @param {LavalinkTrack} track The track to construct the track from.
+     * @param {LavalinkTrack | null} track The track to construct the track from.
      * @param {TrackRequester} requester The requester of the track.
      * @example
      * ```ts

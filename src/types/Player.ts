@@ -507,8 +507,8 @@ export interface PlayerVoice {
      */
     channelId?: string;
     /**
-     * The voice server guild id.
-     * @type {string | undefined}
+     * The voice connection state.
+     * @type {boolean | undefined}
      */
     connected?: boolean;
     /**
@@ -544,7 +544,7 @@ export interface PlayerJSON {
     selfMute: boolean;
     /**
      * The voice settings for the player.
-     * @type {LavalinkPlayerVoice}
+     * @type {Nullable<LavalinkPlayerVoice>}
      */
     voice: Nullable<LavalinkPlayerVoice>;
     /**
@@ -554,7 +554,7 @@ export interface PlayerJSON {
     loop: LoopMode;
     /**
      * The options for the player.
-     * @type {boolean}
+     * @type {PlayerOptions}
      */
     options: PlayerOptions;
     /**

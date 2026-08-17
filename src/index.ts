@@ -49,6 +49,7 @@ export * from "./util/constants";
 // Exports related to the typed event emitter. Part of the public surface because `Hoshimi` extends
 // it: without this, a consumer's `Hoshimi` type would reference a name they cannot resolve.
 export * from "./util/emitter";
-
+// The built-in `byLibrary` resume handler, exported so a custom `resumeFn` can reuse or wrap it.
+export { resumeByLibrary } from "./util/events/player";
 // Exports related to track utilities.
 export { TrackResolution } from "./util/functions/track";

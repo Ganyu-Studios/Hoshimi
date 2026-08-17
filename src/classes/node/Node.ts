@@ -199,7 +199,7 @@ export class Node {
     /**
      *
      * Define a custom event handler for the node.
-     * @param {P} payload The payload to send to the node.
+     * @param {unknown} payload The payload received from the node.
      * @returns {Awaitable<void>}
      * @example
      * ```ts

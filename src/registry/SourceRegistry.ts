@@ -150,7 +150,7 @@ export const SourceRegistry = {
     },
     /**
      * Get the canonical source from an alias or source name.
-     * @param {Hint<RegistrySearchSource>} value The value to resolve.
+     * @param {RegistrySearchSource} value The value to resolve.
      * @returns {string | undefined} The canonical source identifier.
      */
     resolve(value: RegistrySearchSource): string | undefined {
@@ -161,7 +161,7 @@ export const SourceRegistry = {
     },
     /**
      * Checks whether a source is registered.
-     * @param {Hint<RegistrySearchSource>} value The value to check.
+     * @param {RegistrySearchSource} value The value to check.
      * @returns {boolean} Whether the source is registered.
      */
     isRegistered(value: RegistrySearchSource): boolean {

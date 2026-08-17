@@ -5,6 +5,7 @@ import { AudioOutput } from "../types/Filters";
 import { type RequiredHoshimiOptions, SearchSources } from "../types/Manager";
 import { NodeSortTypes, type UserAgent } from "../types/Node";
 import { LoopMode } from "../types/Player";
+import { resumeByLibrary } from "./events/player";
 import { autoplayFn } from "./functions/autoplay";
 import { requesterFn } from "./functions/utils";
 
@@ -102,6 +103,7 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
             resumable: false,
             timeout: 60,
             byLibrary: false,
+            resumeFn: resumeByLibrary,
         },
         moveOptions: {
             filterBy: NodeSortTypes.Penalties,
