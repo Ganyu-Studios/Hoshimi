@@ -129,7 +129,7 @@ function validateManagerOptions(options: HoshimiOptions): void {
                 typeof options.nodeOptions.sessionOptions.byLibrary !== "undefined" &&
                 typeof options.nodeOptions.sessionOptions.byLibrary !== "boolean"
             )
-                throw new OptionError("The manager option 'options.nodeOptions.resumeByLibrary' must be a boolean.");
+                throw new OptionError("The manager option 'options.nodeOptions.sessionOptions.byLibrary' must be a boolean.");
         }
 
         if (isPlainObject(options.nodeOptions.moveOptions)) {

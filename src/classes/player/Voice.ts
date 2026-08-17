@@ -225,7 +225,7 @@ export class PlayerVoiceState {
 
     /**
      * Disconnect the player from voice.
-     * @returns {Promise<PlayerStructure>} The player structure after disconnecting.
+     * @returns {Promise<void>}
      * @example
      * ```ts
      * const player = manager.getPlayer("guildId");

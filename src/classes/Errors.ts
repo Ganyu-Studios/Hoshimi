@@ -108,7 +108,7 @@ export class RestError extends Error {
      */
     public error: string;
     /**
-     * The message of the response.
+     * The path of the response.
      * @type {string}
      */
     public path: string;

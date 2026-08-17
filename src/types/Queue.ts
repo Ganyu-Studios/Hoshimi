@@ -30,7 +30,7 @@ export interface HoshimiQueueOptions {
     /**
      * The storage manager to use for the queue.
      * @type {QueueStorageAdapter}
-     * @default {MemoryAdapter}
+     * @default {QueueMemoryStorage}
      */
     storage?: QueueStorageAdapter;
 }
@@ -66,17 +66,17 @@ export interface TrackJSON extends LavalinkTrack {
 export interface QueueJSON {
     /**
      * The tracks of the queue.
-     * @type {TrackResolvableStructure[]}
+     * @type {TrackJSON[]}
      */
     tracks: TrackJSON[];
     /**
      * The previous tracks of the queue.
-     * @type {TrackStructure[]}
+     * @type {TrackJSON[]}
      */
     history: TrackJSON[];
     /**
      * The current track of the queue.
-     * @type {TrackStructure | null}
+     * @type {TrackJSON | null}
      */
     current: TrackJSON | null;
 }

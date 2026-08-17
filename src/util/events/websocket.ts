@@ -47,7 +47,7 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
  * @param {NodeStructure} this The node that emitted the event.
  * @param {number} code The close code of the connection.
  * @param {string} reason The close reason message.
- * @returns {void}
+ * @returns {Promise<void>}
  */
 export async function onClose(this: NodeStructure, code: number, reason: string): Promise<void> {
     clearHeartbeatTimer.call(this);

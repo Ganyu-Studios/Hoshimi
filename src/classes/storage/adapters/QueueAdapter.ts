@@ -96,7 +96,7 @@ export abstract class QueueStorageAdapter<T extends QueueJSON = QueueJSON> {
      * @returns {T} The parsed value.
      * @example
      * ```ts
-     * const parsed = await storage.parse<{ key: string }>("{'key':'value'}");
+     * const parsed = await storage.parse("{'key':'value'}");
      * console.log(parsed); // { key: "value" }
      * ```
      */

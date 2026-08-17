@@ -243,12 +243,11 @@ export class Rest {
      *
      * Destroy the player for the guild.
      * @param {string} guildId The guild id to destroy the player.
-     * @returns {Promise<void>} The updated player data.
+     * @returns {Promise<void>}
      * @example
      * ```ts
      * await node.rest.destroyPlayer("guildId");
      * ```
-     * @example
      */
     public async destroyPlayer(guildId: string): Promise<void> {
         if (!this.sessionId || this.node.state !== State.Connected) {

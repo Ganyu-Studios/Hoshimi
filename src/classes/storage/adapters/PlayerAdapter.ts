@@ -121,7 +121,7 @@ export abstract class PlayerStorageAdapter {
      *
      * Get the value using the key.
      * @param {string} key The key to get the value from.
-     * @returns {Awaitable<T | undefined>} The value of the key.
+     * @returns {Awaitable<V | undefined>} The value of the key.
      * @example
      * ```ts
      * const value = await storage.get("key");

@@ -193,47 +193,47 @@ export enum SourceNames {
      */
     TextToSpeech = "tts",
     /**
-     * Play voice using text to speech.
+     * Play from Clyp.it.
      * @description Provided by skybot-lavalink-plugin.
      */
     Clypit = "clypit",
     /**
-     * Play voice using text to speech.
+     * Play from Stream Deck audio.
      * @description Provided by skybot-lavalink-plugin.
      */
     StreamDeckAudio = "StreamDeckAudio",
     /**
-     * Play voice using text to speech.
+     * Play from getyarn.io.
      * @description Provided by skybot-lavalink-plugin.
      */
     GetYarn = "getyarn.io",
     /**
-     * Play voice using text to speech.
+     * Play from MixCloud.
      * @description Provided by skybot-lavalink-plugin.
      */
     MixCloud = "mixcloud",
     /**
-     * Play voice using text to speech.
+     * Play from OverClocked ReMix.
      * @description Provided by skybot-lavalink-plugin.
      */
     OCRemix = "ocremix",
     /**
-     * Play voice using text to speech.
+     * Play from PixelDrain.
      * @description Provided by skybot-lavalink-plugin.
      */
     PixelDrain = "pixeldrain",
     /**
-     * Play voice using text to speech.
+     * Play from Reddit.
      * @description Provided by skybot-lavalink-plugin.
      */
     Reddit = "reddit",
     /**
-     * Play voice using text to speech.
+     * Play from SoundGasm.
      * @description Provided by skybot-lavalink-plugin.
      */
     SoundGasm = "soundgasm",
     /**
-     * Play voice using text to speech.
+     * Play from TikTok.
      * @description Provided by skybot-lavalink-plugin.
      */
     TikTok = "tiktok",
@@ -271,15 +271,15 @@ export enum PluginInfoType {
      */
     Album = "album",
     /**
-     * The plugin information type is track.
+     * The plugin information type is playlist.
      */
     Playlist = "playlist",
     /**
-     * The plugin information type is track.
+     * The plugin information type is artist.
      */
     Artist = "artist",
     /**
-     * The plugin information type is track.
+     * The plugin information type is recommendations.
      */
     Recommendations = "recommendations",
 }
@@ -1048,7 +1048,7 @@ export interface NodeInfo {
     plugins: NodeInfoPlugin[];
     /**
      * Whether the node is a Nodelink instance.
-     * @type {boolean
+     * @type {boolean}
      */
     isNodelink: boolean;
 }

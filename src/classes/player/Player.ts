@@ -200,7 +200,7 @@ export class Player {
      *
      * Create a new player.
      * @param {Hoshimi} manager The manager for the player.
-     * @param {PlayOptions} options The options for the player.
+     * @param {PlayerOptions} options The options for the player.
      * @example
      * ```ts
      * const player = Structures.Player(manager, {
@@ -559,7 +559,7 @@ export class Player {
      * @example
      * ```ts
      * const player = manager.getPlayer("guildId");
-     * player.destroy(DestroyReasons.Stop);
+     * player.destroy({ reason: DestroyReasons.Stop });
      * ```
      */
     public async destroy(options: DestroyOptions = {}): Promise<void> {
@@ -598,7 +598,8 @@ export class Player {
     /**
      *
      * Pause or resume the player.
-     * @returns {Promise<void>}
+     * @param {boolean} [paused=!this.paused] Whether to pause; defaults to toggling the current state.
+     * @returns {Promise<boolean>} The resulting paused state.
      * @example
      * ```ts
      * const player = manager.getPlayer("guildId");
@@ -653,6 +654,7 @@ export class Player {
      *
      * Set the loop mode of the player.
      * @param {LoopMode} mode The loop mode to set.
+     * @returns {this} The player instance.
      * @throws {PlayerError} If the loop mode is invalid.
      * @example
      * ```ts

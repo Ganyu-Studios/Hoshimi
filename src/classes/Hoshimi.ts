@@ -68,7 +68,7 @@ type GatewayPackets = VoicePacket | VoiceServer | VoiceState | ChannelDeletePack
 export class Hoshimi extends TypedEmitter<HoshimiEvents> {
     /**
      * The options for the manager.
-     * @type {HoshimiOptions}
+     * @type {RequiredHoshimiOptions}
      */
     public options: RequiredHoshimiOptions;
 
@@ -118,14 +118,16 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
      * 	},
      * 	nodeOptions: {
      * 		userAgent: HoshimiAgent,
-     * 		resumable: false,
-     * 		resumeByLibrary: false,
+     * 		sessionOptions: {
+     * 			resumable: false,
+     * 			byLibrary: false,
+     * 		},
      * 	},
      * 	queueOptions: {
      *      maxHistory: 25,
      *      autoplayFn: autoplayFn,
      *      autoPlay: false,
-     *      storage: new MemoryAdapter(),
+     *      storage: new QueueMemoryStorage(),
      * 	},
      *   playerOptions: {
      *      requesterFn: defaultRequesterFn,

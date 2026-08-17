@@ -31,12 +31,13 @@ export class LyricsManager {
     /**
      *
      * Get the current lyrics for the current track.
+     * @param {string} guildId The guild id to get the current lyrics for.
      * @param {boolean} skipSource Whether to skip the track source or not.
      * @returns {Promise<LyricsResult | null>} The lyrics result or null if not found.
      * @example
      * ```ts
-     * const player = manager.getPlayer("guildId");
-     * const lyrics = await player.lyricsManager.current();
+     * const node = manager.nodeManager.get("nodeId");
+     * const lyrics = await node.lyricsManager.current("guildId");
      * ```
      */
     public async current(guildId: string, skipSource: boolean = false): Promise<LyricsResult | null> {
