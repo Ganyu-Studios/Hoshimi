@@ -29,6 +29,8 @@ import { isPlayerGone, stringify } from "../functions/utils";
 async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Promise<void> {
     if (
         this.queue.current &&
+        // A track pulled from history via previous() must not be pushed back into it.
+        !this.queue.current.isPrevious &&
         !this.queue.history.find(
             (x): boolean => x.info.identifier === this.queue.current!.info.identifier && x.info.title === this.queue.current!.info.title,
         )
@@ -154,8 +156,12 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
     const current: TrackStructure | null = this.queue.current;
 
     if (payload.reason === TrackEndReason.Replaced) {
+        // A replace is a user-forced play() over active playback. Mirror lavalink-client: emit the
+        // end event and return WITHOUT touching history. `queue.current` has already been advanced
+        // to the replacement by play(), so it is not the ended track; and the outgoing track should
+        // not be pushed to history from a replace at all (natural ends are what populate history).
         this.manager.emit(EventNames.TrackEnd, this, current, payload);
-        return onEnd.call(this, false);
+        return;
     }
 
     const isStopPlaying = await this.data.get("internal_stopPlaying");
