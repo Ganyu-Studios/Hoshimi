@@ -23,10 +23,9 @@ import { isPlayerGone, stringify } from "../functions/utils";
  *
  * Emitted when a queue track ends.
  * @param {PlayerStructure} this The player that emitted the event.
- * @param {boolean} [updateCurrent=true] Whether to update the current track or not.
  * @returns {Promise<void>} Yeah, this is something weird but it works.
  */
-async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Promise<void> {
+async function onEnd(this: PlayerStructure): Promise<void> {
     if (
         this.queue.current &&
         // A track pulled from history via previous() must not be pushed back into it.
@@ -50,7 +49,8 @@ async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Prom
     if (this.loop === LoopMode.Track && this.queue.current) await this.queue.unshift(this.queue.current);
     if (this.loop === LoopMode.Queue && this.queue.current) await this.queue.add(this.queue.current);
 
-    if (!this.queue.current && updateCurrent) this.queue.current = await this.queue.utils.build(await this.queue.shift());
+    // No shift here: play() is the sole place the queue advances (it shifts the next track into
+    // current). onEnd only records history and applies the loop mode.
 
     await this.queue.utils.save();
 
@@ -104,7 +104,7 @@ async function queueEnd(
 
     if (payload.type === PlayerEventType.TrackEnd && payload.reason !== TrackEndReason.Stopped) await this.queue.utils.save();
 
-    await onEnd.call(this, false);
+    await onEnd.call(this);
 
     this.manager.emit(EventNames.QueueEnd, this, this.queue);
     this.manager.debug(DebugLevels.Player, "[Player] -> [Queue] The queue has ended.");
