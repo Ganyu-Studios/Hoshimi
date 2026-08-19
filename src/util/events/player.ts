@@ -83,8 +83,11 @@ async function queueEnd(
 
         this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Autoplay function executed.");
 
-        if (this.queue.size > 0) await onEnd.call(this);
-        if (this.queue.current) {
+        // Autoplay seeds the queue; play() shifts the first track into current and plays it. Running
+        // onEnd here first would shift one track in, and play()'s own shift would then skip past it —
+        // and with a single seeded track the second shift hits an empty queue and crashes in build().
+        // So go straight to play(), which advances exactly once.
+        if (this.queue.size > 0) {
             if (payload.type === PlayerEventType.TrackEnd) this.manager.emit(EventNames.TrackEnd, this, track, payload);
 
             this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Track(s) queued from autoplay function.");
