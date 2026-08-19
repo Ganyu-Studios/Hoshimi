@@ -59,15 +59,6 @@ export class Track implements LavalinkTrack {
     public requester: TrackRequester;
 
     /**
-     * Whether this track was pulled from the history via {@link Queue.previous} to be replayed.
-     * When `true`, the track-end handler will not push it back into history, preventing a
-     * previous track from re-entering the history it was just taken from.
-     * @type {boolean}
-     * @default false
-     */
-    public isPrevious: boolean = false;
-
-    /**
      * The constructor for the track.
      * @param {LavalinkTrack | null} track The track to construct the track from.
      * @param {TrackRequester} requester The requester of the track.
@@ -94,8 +85,6 @@ export class Track implements LavalinkTrack {
         this.requester = requester ?? {};
         this.pluginInfo = track.pluginInfo;
         this.userData = track.userData ?? {};
-        // Preserved when restoring from stored JSON; a fresh Lavalink track has no such field.
-        this.isPrevious = "isPrevious" in track && !!track.isPrevious;
     }
 
     /**
@@ -127,7 +116,6 @@ export class Track implements LavalinkTrack {
             info: this.info,
             pluginInfo: this.pluginInfo,
             userData: this.userData,
-            isPrevious: this.isPrevious,
         };
     }
 }

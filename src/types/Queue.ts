@@ -58,12 +58,6 @@ export interface SyncOptions {
  */
 export interface TrackJSON extends LavalinkTrack {
     requester: TrackRequester;
-    /**
-     * Whether the track was taken from history to be replayed. Persisted so the flag survives
-     * a queue save/restore.
-     * @type {boolean}
-     */
-    isPrevious?: boolean;
 }
 
 /**

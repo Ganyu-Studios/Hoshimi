@@ -28,8 +28,6 @@ import { isPlayerGone, stringify } from "../functions/utils";
 async function onEnd(this: PlayerStructure): Promise<void> {
     if (
         this.queue.current &&
-        // A track pulled from history via previous() must not be pushed back into it.
-        !this.queue.current.isPrevious &&
         !this.queue.history.find(
             (x): boolean => x.info.identifier === this.queue.current!.info.identifier && x.info.title === this.queue.current!.info.title,
         )
