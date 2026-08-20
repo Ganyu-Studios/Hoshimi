@@ -23,14 +23,11 @@ import { isPlayerGone, stringify } from "../functions/utils";
  *
  * Emitted when a queue track ends.
  * @param {PlayerStructure} this The player that emitted the event.
- * @param {boolean} [updateCurrent=true] Whether to update the current track or not.
  * @returns {Promise<void>} Yeah, this is something weird but it works.
  */
-async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Promise<void> {
+async function onEnd(this: PlayerStructure): Promise<void> {
     if (
         this.queue.current &&
-        // A track pulled from history via previous() must not be pushed back into it.
-        !this.queue.current.isPrevious &&
         !this.queue.history.find(
             (x): boolean => x.info.identifier === this.queue.current!.info.identifier && x.info.title === this.queue.current!.info.title,
         )
@@ -50,7 +47,8 @@ async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Prom
     if (this.loop === LoopMode.Track && this.queue.current) await this.queue.unshift(this.queue.current);
     if (this.loop === LoopMode.Queue && this.queue.current) await this.queue.add(this.queue.current);
 
-    if (!this.queue.current && updateCurrent) this.queue.current = await this.queue.utils.build(await this.queue.shift());
+    // No shift here: play() is the sole place the queue advances (it shifts the next track into
+    // current). onEnd only records history and applies the loop mode.
 
     await this.queue.utils.save();
 
@@ -83,8 +81,11 @@ async function queueEnd(
 
         this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Autoplay function executed.");
 
-        if (this.queue.size > 0) await onEnd.call(this);
-        if (this.queue.current) {
+        // Autoplay seeds the queue; play() shifts the first track into current and plays it. Running
+        // onEnd here first would shift one track in, and play()'s own shift would then skip past it —
+        // and with a single seeded track the second shift hits an empty queue and crashes in build().
+        // So go straight to play(), which advances exactly once.
+        if (this.queue.size > 0) {
             if (payload.type === PlayerEventType.TrackEnd) this.manager.emit(EventNames.TrackEnd, this, track, payload);
 
             this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Track(s) queued from autoplay function.");
@@ -101,7 +102,7 @@ async function queueEnd(
 
     if (payload.type === PlayerEventType.TrackEnd && payload.reason !== TrackEndReason.Stopped) await this.queue.utils.save();
 
-    await onEnd.call(this, false);
+    await onEnd.call(this);
 
     this.manager.emit(EventNames.QueueEnd, this, this.queue);
     this.manager.debug(DebugLevels.Player, "[Player] -> [Queue] The queue has ended.");

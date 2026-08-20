@@ -157,12 +157,7 @@ export class Queue {
     public async previous(remove: boolean = false): Promise<TrackStructure | null> {
         if (remove) {
             const track: TrackStructure | null = this.history.shift() ?? null;
-            if (track) {
-                // Flag it so replaying it won't push it straight back into the history it just
-                // left when it ends naturally.
-                track.isPrevious = true;
-                await this.utils.save();
-            }
+            if (track) await this.utils.save();
 
             return track;
         }
