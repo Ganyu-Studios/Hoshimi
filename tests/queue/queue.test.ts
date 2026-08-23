@@ -21,7 +21,7 @@ describe("Queue", () => {
         createRealNode(manager);
         const player = createRealPlayer(manager);
         const queue = player.queue;
-        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+        vi.spyOn(queue.utils, "save").mockResolvedValue(undefined);
 
         await queue.add(mockedTrack("t1") as never);
         await queue.add([mockedTrack("t2"), mockedTrack("t3")] as never);
@@ -38,7 +38,7 @@ describe("Queue", () => {
         createRealNode(manager);
         const player = createRealPlayer(manager);
         const queue = player.queue;
-        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+        vi.spyOn(queue.utils, "save").mockResolvedValue(undefined);
         vi.spyOn(Math, "random").mockReturnValue(0);
 
         await queue.add([mockedTrack("a"), mockedTrack("b")] as never);
@@ -55,7 +55,7 @@ describe("Queue", () => {
         createRealNode(manager);
         const player = createRealPlayer(manager);
         const queue = player.queue;
-        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+        vi.spyOn(queue.utils, "save").mockResolvedValue(undefined);
 
         await queue.add([mockedTrack("a"), mockedTrack("b")] as never);
         const snapshot = [...queue.tracks];
@@ -70,7 +70,7 @@ describe("Queue", () => {
         createRealNode(manager);
         const player = createRealPlayer(manager);
         const queue = player.queue;
-        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+        vi.spyOn(queue.utils, "save").mockResolvedValue(undefined);
 
         const [a, b, c] = [mockedTrack("a"), mockedTrack("b"), mockedTrack("c")];
         await queue.add([a, b, c] as never);
@@ -87,7 +87,7 @@ describe("Queue", () => {
         createRealNode(manager);
         const player = createRealPlayer(manager);
         const queue = player.queue;
-        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+        vi.spyOn(queue.utils, "save").mockResolvedValue(undefined);
 
         const [a, b, c] = [mockedTrack("a"), mockedTrack("b"), mockedTrack("c")];
         await queue.add([a, b, c] as never);
@@ -105,7 +105,7 @@ describe("Queue", () => {
         const player = createRealPlayer(manager);
         const queue = player.queue;
 
-        const save = vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+        const save = vi.spyOn(queue.utils, "save").mockResolvedValue(undefined);
 
         const [a, b] = [mockedTrack("a"), mockedTrack("b")];
         await queue.add([a, b] as never);
@@ -124,7 +124,7 @@ describe("Queue", () => {
         createRealNode(manager);
         const player = createRealPlayer(manager);
         const queue = player.queue;
-        vi.spyOn(queue.utils, "save").mockImplementation(() => undefined);
+        vi.spyOn(queue.utils, "save").mockResolvedValue(undefined);
 
         await queue.splice(0, 0, mockedTrack("a") as never);
 

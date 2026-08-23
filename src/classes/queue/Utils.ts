@@ -1,4 +1,4 @@
-import { type Awaitable, DebugLevels } from "../../types/Manager";
+import { DebugLevels } from "../../types/Manager";
 import type { AnyLavalinkTrack } from "../../types/Player";
 import type { HoshimiQueueOptions, QueueJSON, SyncOptions, TrackJSON } from "../../types/Queue";
 import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
@@ -91,7 +91,7 @@ export class QueueUtils {
      * await player.queue.utils.save();
      * ```
      */
-    public save(): Awaitable<void> {
+    public async save(): Promise<void> {
         // `destroy()` removes the stored queue and only unregisters the player afterwards, so a late
         // node event landing in between would write the key straight back and leak it forever: the
         // player is gone, but the storage entry stays. Persisting for a destroyed player is never
@@ -101,6 +101,20 @@ export class QueueUtils {
                 DebugLevels.Queue,
                 `[Queue] -> [Adapter] Skipped saving queue for ${this.queue.player.guildId}: the player is destroyed.`,
             );
+
+            return;
+        }
+
+        // A fully empty queue (no current, nothing upcoming, no history) has nothing worth persisting.
+        // Writing an empty object here would resurrect the entry that clear()/destroy() just removed —
+        // so delete instead. The invariant is "empty queue -> no stored entry".
+        if (!this.queue.totalSize && !this.queue.history.length) {
+            this.queue.player.manager.debug(
+                DebugLevels.Queue,
+                `[Queue] -> [Adapter] Removing empty queue for ${this.queue.player.guildId}.`,
+            );
+
+            await this.storage.delete(this.queue.player.guildId);
 
             return;
         }
@@ -121,13 +135,13 @@ export class QueueUtils {
     /**
      *
      * Destroy the queue, removing all stored data.
-     * @returns {Awaitable<boolean>} Whether the stored queue entry was deleted.
+     * @returns {Promise<boolean>} Whether the stored queue entry was deleted.
      * @example
      * ```ts
      * await player.queue.utils.destroy();
      * ```
      */
-    public destroy(): Awaitable<boolean> {
+    public async destroy(): Promise<boolean> {
         this.queue.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Adapter] Destroying queue for ${this.queue.player.guildId}`);
 
         return this.storage.delete(this.queue.player.guildId);
