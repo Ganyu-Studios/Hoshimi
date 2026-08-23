@@ -80,6 +80,9 @@ async function queueEnd(
     // autoplayFn no longer has to re-implement the check, and the built-in isn't called (nor logged
     // as "executed") on every queue end when autoplay is off.
     const isAutoplayEnabled: boolean = !!(await this.data.get("enabledAutoplay")) || this.manager.options.queueOptions.autoPlay;
+
+    this.manager.debug(DebugLevels.Player, `[Queue] -> [Autoplay] Autoplay enabled: ${isAutoplayEnabled} | Guild: ${this.guildId}`);
+
     if (isAutoplayEnabled && typeof this.manager.options.queueOptions.autoplayFn === "function") {
         await this.manager.options.queueOptions.autoplayFn(this, track);
 
