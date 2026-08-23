@@ -26,7 +26,7 @@ describe("autoplay does not double-advance", () => {
         const autoplayFn = vi.fn(async (player: PlayerStructure) => {
             await player.queue.add(track("auto-1"));
         });
-        const manager = createRealManager({ queueOptions: { autoplayFn } } as never);
+        const manager = createRealManager({ queueOptions: { autoplayFn, autoPlay: true } } as never);
         createRealNode(manager);
         const player = createRealPlayer(manager);
         player.queue.current = track("ended");
@@ -42,7 +42,7 @@ describe("autoplay does not double-advance", () => {
             await player.queue.add(track("auto-1"));
             await player.queue.add(track("auto-2"));
         });
-        const manager = createRealManager({ queueOptions: { autoplayFn } } as never);
+        const manager = createRealManager({ queueOptions: { autoplayFn, autoPlay: true } } as never);
         createRealNode(manager);
         const player = createRealPlayer(manager);
         player.queue.current = track("ended");
@@ -56,6 +56,24 @@ describe("autoplay does not double-advance", () => {
 
     it("still ends the queue when autoplay seeds nothing", async () => {
         const autoplayFn = vi.fn().mockResolvedValue(undefined);
+        const manager = createRealManager({ queueOptions: { autoplayFn, autoPlay: true } } as never);
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        player.queue.current = track("ended");
+
+        const queueEnd = vi.fn();
+        manager.on("queueEnd", queueEnd);
+
+        await trackEnd.call(player, endEvent);
+
+        expect(queueEnd).toHaveBeenCalledTimes(1);
+        expect(player.queue.current).toBeNull();
+    });
+
+    it("does not call autoplayFn when autoplay is disabled", async () => {
+        // The regression: the hook fired (and logged "executed") on every queue end even with autoplay
+        // off, because enablement was checked inside the function instead of by the caller.
+        const autoplayFn = vi.fn().mockResolvedValue(undefined);
         const manager = createRealManager({ queueOptions: { autoplayFn } } as never);
         createRealNode(manager);
         const player = createRealPlayer(manager);
@@ -66,6 +84,7 @@ describe("autoplay does not double-advance", () => {
 
         await trackEnd.call(player, endEvent);
 
+        expect(autoplayFn).not.toHaveBeenCalled();
         expect(queueEnd).toHaveBeenCalledTimes(1);
         expect(player.queue.current).toBeNull();
     });

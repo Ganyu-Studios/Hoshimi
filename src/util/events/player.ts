@@ -76,7 +76,11 @@ async function queueEnd(
     this.paused = false;
     this.queue.current = null;
 
-    if (typeof this.manager.options.queueOptions.autoplayFn === "function") {
+    // Autoplay enablement is the caller's decision, not the function's: gating here means a custom
+    // autoplayFn no longer has to re-implement the check, and the built-in isn't called (nor logged
+    // as "executed") on every queue end when autoplay is off.
+    const isAutoplayEnabled: boolean = !!(await this.data.get("enabledAutoplay")) || this.manager.options.queueOptions.autoPlay;
+    if (isAutoplayEnabled && typeof this.manager.options.queueOptions.autoplayFn === "function") {
         await this.manager.options.queueOptions.autoplayFn(this, track);
 
         this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Autoplay function executed.");

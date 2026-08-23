@@ -20,9 +20,6 @@ const limit: number = 10;
 export async function autoplayFn(player: PlayerStructure, lastTrack: TrackResolvableStructure | null): Promise<void> {
     if (!lastTrack) return;
 
-    const isEnabled: boolean = !!(await player.data.get("enabledAutoplay")) || player.manager.options.queueOptions.autoPlay;
-    if (!isEnabled) return;
-
     /**
      *
      * Filter the tracks to remove the last track and the previous tracks.
