@@ -84,7 +84,7 @@ client.events.values.READY = {
         client.logger.info(`Logged in as ${user.username}`);
         
         // Call the manager to initialize hoshimi
-        hoshimi.init({ ...user, username: user.username });
+        hoshimi.init({ id: user.id, username: user.username });
     },
 };
 
