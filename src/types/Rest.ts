@@ -517,7 +517,7 @@ export interface SessionResumingOptions {
      */
     resuming: boolean;
     /**
-     * The timeout for resuming the session in milliseconds.
+     * The timeout for resuming the session in seconds.
      * @type {number | null | undefined}
      */
     timeout?: number | null;

@@ -5,7 +5,7 @@
     "main": "./dist/index.cjs",
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.cts",
-    "packageManager": "pnpm@11.23.0+sha512.f00082e5b283a199b74e079da28d155c008fe232f44c8a06ea7ddfa014ecf719fc362f790ecc67b28106ddac2afb24c49a9a079159da560b2ce7d1e98efd11af",
+    "packageManager": "pnpm@11.24.0+sha512.bd27e345e976dcb0be0b7a1228217b049a817e21b1f355c90dbe7dc46671895a8bc1e6d06c24554505ea93ea0b45f489a27ec1bfbc8de6a9659fca0f16fa0000",
     "exports": {
         ".": {
             "types": "./dist/index.d.cts",
@@ -48,11 +48,11 @@
     "author": "Ganyu Studios",
     "license": "MIT",
     "devDependencies": {
-        "@biomejs/biome": "^2.5.10",
-        "@types/node": "^26.2.0",
+        "@biomejs/biome": "^2.5.11",
+        "@types/node": "^26.4.0",
         "@types/ws": "^8.18.1",
         "husky": "^9.1.7",
-        "lint-staged": "^17.3.0",
+        "lint-staged": "^17.4.1",
         "tsdown": "^0.22.14",
         "tsx": "^4.23.12",
         "typescript": "^7.0.2",
