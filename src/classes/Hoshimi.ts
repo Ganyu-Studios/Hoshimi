@@ -552,74 +552,74 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
                 tracks: [],
             };
 
-        const found: number =
-            search.loadType === LoadType.Search
-                ? search.data.length
-                : search.loadType === LoadType.Playlist
-                  ? search.data.tracks.length
-                  : search.loadType === LoadType.Track
-                    ? 1
-                    : 0;
-
-        this.debug(
-            DebugLevels.Manager,
-            `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Load: ${search.loadType} | Tracks: ${found}`,
-        );
-
         const requesterFn = this.options.playerOptions.requesterFn;
         const requester = await requesterFn(options.requester);
 
+        let result: QueryResult;
+
         switch (search.loadType) {
             case LoadType.Empty: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: null,
                     playlist: null,
                     pluginInfo: null,
                     tracks: [],
                 };
+                break;
             }
 
             case LoadType.Error: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: search.data,
                     playlist: null,
                     pluginInfo: null,
                     tracks: [],
                 };
+                break;
             }
 
             case LoadType.Playlist: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: null,
                     playlist: search.data,
                     pluginInfo: search.data.pluginInfo,
                     tracks: search.data.tracks.map((t): TrackStructure => Structures.Track(t, requester)),
                 };
+                break;
             }
 
             case LoadType.Search: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: null,
                     playlist: null,
                     pluginInfo: null,
                     tracks: search.data.map((t): TrackStructure => Structures.Track(t, requester)),
                 };
+                break;
             }
 
             case LoadType.Track: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: null,
                     playlist: null,
                     pluginInfo: search.data.pluginInfo,
                     tracks: [Structures.Track(search.data, requester)],
                 };
+                break;
             }
         }
+
+        this.debug(
+            DebugLevels.Manager,
+            `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Load: ${result.loadType} | Tracks: ${result.tracks.length}`,
+        );
+
+        return result;
     }
 }
 
