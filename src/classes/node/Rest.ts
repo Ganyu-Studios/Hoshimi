@@ -142,7 +142,8 @@ export class Rest {
 
         this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
-            `[Rest] -> [${this.node.id} : ${options.method}]: Url: ${this.restUrl} | Endpoint: ${options.endpoint} | Params: ${url.search} | Body: ${options.body ? "yes" : "no"}`,
+            () =>
+                `[Rest] -> [${this.node.id} : ${options.method}]: Url: ${this.restUrl} | Endpoint: ${options.endpoint} | Params: ${url.search} | Body: ${options.body ? stringify(options.body) : "None"}`,
         );
 
         const response = await fetch(url.toString(), fetchOptions).finally((): void => clearTimeout(timeout));
@@ -195,7 +196,7 @@ export class Rest {
 
         this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
-            `[Rest] -> [${this.node.id}]: Updated player data for guild: ${data.guildId} | Fields: [${Object.keys(data.playerOptions ?? {}).join(", ")}] | noReplace: ${data.noReplace ?? false}`,
+            () => `[Rest] -> [${this.node.id}]: Updated player data for guild: ${data.guildId} | Payload: ${stringify(data)}`,
         );
 
         updatePlayerState(this.node, data);

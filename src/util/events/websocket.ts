@@ -4,6 +4,7 @@ import { type LavalinkEventPayload, NodeDestroyReasons, type NodeInfo, OpCodes, 
 import { PlayerEventType } from "../../types/Player";
 import { type LavalinkPlayer, RestRoutes } from "../../types/Rest";
 import type { NodeStructure, PlayerStructure } from "../../types/Structures";
+import { stringify } from "../functions/utils";
 import {
     lyricsFound,
     lyricsLine,
@@ -288,10 +289,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
             }
         }
 
-        this.nodeManager.manager.debug(
-            DebugLevels.Node,
-            `[Socket] -> [${this.id}]: Received payload | op: ${payload.op}${"type" in payload ? ` | type: ${payload.type}` : ""}`,
-        );
+        this.nodeManager.manager.debug(DebugLevels.Node, () => `[Socket] -> [${this.id}]: Received payload: ${stringify(payload)}`);
     } catch (error) {
         this.nodeManager.manager.emit(EventNames.NodeError, this, error);
     }
