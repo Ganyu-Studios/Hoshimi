@@ -612,6 +612,17 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
                 };
                 break;
             }
+
+            default: {
+                result = {
+                    loadType: LoadType.Empty,
+                    exception: null,
+                    playlist: null,
+                    pluginInfo: null,
+                    tracks: [],
+                };
+                break;
+            }
         }
 
         this.debug(
