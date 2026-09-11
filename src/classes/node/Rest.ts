@@ -17,7 +17,7 @@ import {
 } from "../../types/Rest";
 import type { NodeStructure } from "../../types/Structures";
 import { HoshimiAgent } from "../../util/constants";
-import { censor, stringify, updatePlayerState } from "../../util/functions/utils";
+import { stringify, updatePlayerState } from "../../util/functions/utils";
 import { RestError } from "../Errors";
 
 /**
@@ -142,8 +142,7 @@ export class Rest {
 
         this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
-            () =>
-                `[Rest] -> [${this.node.id} : ${options.method}]: Url: ${this.restUrl} | Endpoint: ${options.endpoint} | Params: ${url.search} | Body: ${options.body ? stringify(options.body) : "None"} | Headers: ${stringify(censor({ data: headers, keys: ["Authorization"] }))}`,
+            `[Rest] -> [${this.node.id} : ${options.method}]: Url: ${this.restUrl} | Endpoint: ${options.endpoint} | Params: ${url.search} | Body: ${options.body ? "yes" : "no"}`,
         );
 
         const response = await fetch(url.toString(), fetchOptions).finally((): void => clearTimeout(timeout));
@@ -196,7 +195,7 @@ export class Rest {
 
         this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
-            () => `[Rest] -> [${this.node.id}]: Updated player data for guild: ${data.guildId} | Payload: ${stringify(data)}`,
+            `[Rest] -> [${this.node.id}]: Updated player data for guild: ${data.guildId} | Fields: [${Object.keys(data.playerOptions ?? {}).join(", ")}] | noReplace: ${data.noReplace ?? false}`,
         );
 
         updatePlayerState(this.node, data);

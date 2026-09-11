@@ -56,7 +56,7 @@ describe("Rest", () => {
         expect(opts.headers["User-Agent"]).toContain("hoshimi-test");
     });
 
-    it("request censors the password in the debug log", async () => {
+    it("does not leak the node password in the debug log", async () => {
         const manager = createRealManager();
         const node = createRealNode(manager);
         node.sessionId = "sess-123";
@@ -80,9 +80,8 @@ describe("Rest", () => {
 
         const logged = messages.join("\n");
 
-        expect(logged).toContain("Headers:");
-        expect(logged).not.toContain("pass");
-        expect(logged).toContain('"Authorization":"****"');
+        expect(logged).toContain("[Rest]");
+        expect(logged).not.toContain(node.options.password);
     });
 
     it("request sends POST body as string", async () => {

@@ -70,8 +70,7 @@ export class QueueUtils {
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
-            () =>
-                `[Queue] -> [Utils] Building track for ${this.queue.player.guildId} | Input: ${stringify(track)} | Requester: ${stringify(trackRequester)}`,
+            `[Queue] -> [Utils] Building track: ${track.info.title ?? "unknown"} for ${this.queue.player.guildId}`,
         );
 
         if (TrackResolution.isResolved(track)) return track;
