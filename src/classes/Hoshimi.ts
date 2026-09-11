@@ -20,7 +20,7 @@ import { type NodeManagerStructure, type NodeStructure, type PlayerStructure, St
 import { Collection } from "../util/collection";
 import { HoshimiDefaultOptions } from "../util/constants";
 import { TypedEmitter } from "../util/emitter";
-import { isPlainObject, isPlayerGone, mergeDefault, stringify } from "../util/functions/utils";
+import { isPlainObject, isPlayerGone, mergeDefault } from "../util/functions/utils";
 import { Validations } from "../util/functions/validations";
 import { ManagerError, OptionError } from "./Errors";
 
@@ -28,6 +28,11 @@ import { ManagerError, OptionError } from "./Errors";
  * The packet type for the manager.
  */
 type GatewayPackets = VoicePacket | VoiceServer | VoiceState | ChannelDeletePacket;
+
+/**
+ * A lazy debug message: a thunk that builds the string only when a debug listener is attached.
+ */
+type DebugMessageFunction = () => string;
 
 /**
  * Class representing the Hoshimi manager.
@@ -188,15 +193,21 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
      *
      * Emit a debug event.
      * @param {DebugLevels} level The debug level.
-     * @param {string} message The debug message.
+     * @param {string | DebugMessageFunction} message The debug message, or a thunk that builds it. Pass a thunk
+     * for messages that serialize payloads so the work is skipped entirely when no debug listener is attached.
      * @returns {void}
      * @example
      * ```ts
      * manager.debug(DebugLevels.Manager, "This is a debug message.");
      * ```
      */
-    public debug(level: DebugLevels, message: string): void {
-        this.emit(EventNames.Debug, level, message);
+    public debug(level: DebugLevels, message: string | DebugMessageFunction): void {
+        // Bail before building the message when nobody is listening. Callers that interpolate
+        // `stringify(...)` should pass a thunk so that serialization only runs when a debug
+        // listener is attached, keeping the hot paths (search, requests, player updates) allocation-free.
+        if (!this.listenerCount(EventNames.Debug)) return;
+
+        this.emit(EventNames.Debug, level, typeof message === "function" ? message() : message);
     }
 
     /**
@@ -541,9 +552,18 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
                 tracks: [],
             };
 
+        const found: number =
+            search.loadType === LoadType.Search
+                ? search.data.length
+                : search.loadType === LoadType.Playlist
+                  ? search.data.tracks.length
+                  : search.loadType === LoadType.Track
+                    ? 1
+                    : 0;
+
         this.debug(
             DebugLevels.Manager,
-            `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Result: ${stringify(search)}`,
+            `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Load: ${search.loadType} | Tracks: ${found}`,
         );
 
         const requesterFn = this.options.playerOptions.requesterFn;

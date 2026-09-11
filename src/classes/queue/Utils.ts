@@ -70,7 +70,8 @@ export class QueueUtils {
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
-            `[Queue] -> [Utils] Building track for ${this.queue.player.guildId} | Input: ${stringify(track)} | Requester: ${stringify(trackRequester)}`,
+            () =>
+                `[Queue] -> [Utils] Building track for ${this.queue.player.guildId} | Input: ${stringify(track)} | Requester: ${stringify(trackRequester)}`,
         );
 
         if (TrackResolution.isResolved(track)) return track;
@@ -126,7 +127,7 @@ export class QueueUtils {
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
-            `[Queue] -> [Adapter] Saving queue for ${this.queue.player.guildId} | Object: ${stringify(this.queue.toJSON())}`,
+            `[Queue] -> [Adapter] Saving queue for ${this.queue.player.guildId} | Tracks: ${this.queue.size} | History: ${this.queue.history.length} | Current: ${this.queue.current?.info.title ?? "none"}`,
         );
 
         return this.storage.set(this.queue.player.guildId, this.queue.toJSON());
@@ -181,7 +182,7 @@ export class QueueUtils {
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
-            `[Queue] -> [Adapter] Syncing queue for ${this.queue.player.guildId} | Object: ${stringify(storedQueue)}`,
+            `[Queue] -> [Adapter] Syncing queue for ${this.queue.player.guildId} | Tracks: ${storedQueue.tracks.length} | History: ${storedQueue.history.length} | Current: ${storedQueue.current?.info.title ?? "none"}`,
         );
 
         return this.save();

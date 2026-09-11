@@ -266,10 +266,11 @@ describe("PluginRegistry", () => {
             const manager = createRealManager();
             const node = createRealNode(manager, { id: "node-v6" });
             node.info = { plugins: [], filters: [], isNodelink: true } as never;
-            const emitSpy = vi.spyOn(manager, "emit");
+            const debugSpy = vi.fn();
+            manager.on("debug", debugSpy);
 
             expect(() => PluginRegistry.validate({ node: node as never, required: [PluginCapabilities.Filters] })).not.toThrow();
-            expect(emitSpy).toHaveBeenCalled();
+            expect(debugSpy).toHaveBeenCalled();
         });
 
         it("recognizes a registered fork as satisfying the capability", () => {
@@ -288,12 +289,13 @@ describe("PluginRegistry", () => {
             const manager = createRealManager();
             const node = createRealNode(manager, { id: "node-v8" });
             node.info = { plugins: [], filters: [], isNodelink: false } as never;
-            const emitSpy = vi.spyOn(manager, "emit");
+            const debugSpy = vi.fn();
+            manager.on("debug", debugSpy);
 
             PluginRegistry.skipValidation(true);
 
             expect(() => PluginRegistry.validate({ node: node as never, required: [PluginCapabilities.Filters] })).not.toThrow();
-            expect(emitSpy).toHaveBeenCalled();
+            expect(debugSpy).toHaveBeenCalled();
         });
 
         it("bypasses validation for individually-skipped capabilities", () => {

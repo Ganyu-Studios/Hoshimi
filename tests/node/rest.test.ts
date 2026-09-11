@@ -64,7 +64,8 @@ describe("Rest", () => {
 
         (node.rest.request as ReturnType<typeof vi.fn>).mockRestore();
 
-        const debugSpy = vi.spyOn(manager, "debug");
+        const messages: string[] = [];
+        manager.on("debug", (_level, message): number => messages.push(message));
 
         vi.stubGlobal(
             "fetch",
@@ -77,7 +78,7 @@ describe("Rest", () => {
 
         await rest.request({ endpoint: RestRoutes.NodeInfo });
 
-        const logged = debugSpy.mock.calls.map(([, message]) => message).join("\n");
+        const logged = messages.join("\n");
 
         expect(logged).toContain("Headers:");
         expect(logged).not.toContain("pass");

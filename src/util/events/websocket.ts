@@ -289,7 +289,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
             }
         }
 
-        this.nodeManager.manager.debug(DebugLevels.Node, `[Socket] -> [${this.id}]: Received payload: ${stringify(payload)}`);
+        this.nodeManager.manager.debug(DebugLevels.Node, () => `[Socket] -> [${this.id}]: Received payload: ${stringify(payload)}`);
     } catch (error) {
         this.nodeManager.manager.emit(EventNames.NodeError, this, error);
     }
