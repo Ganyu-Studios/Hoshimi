@@ -261,13 +261,6 @@ export class Player {
         return this.playing && !this.paused;
     }
 
-    /**
-     * Check if the player is currently paused.
-     * @returns {boolean} Whether the player is currently paused.
-     */
-    public isPaused(): boolean {
-        return !this.playing && this.paused;
-    }
 
     /**
      * Check if the player is currently idle.
