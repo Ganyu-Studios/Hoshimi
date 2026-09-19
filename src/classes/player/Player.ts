@@ -509,46 +509,50 @@ export class Player {
 
         await this.data.set("internal_nodeChange", true);
 
-        if (this.queue.current || this.queue.size) {
-            const sources: SourceName[] = [this.queue.current, ...this.queue.tracks]
-                .filter((t) => !!t)
-                .map((t): SourceName | undefined => t.info.sourceName)
-                .filter((s) => !!s);
+        try {
+            if (this.queue.current || this.queue.size) {
+                const sources: SourceName[] = [this.queue.current, ...this.queue.tracks]
+                    .filter((t) => !!t)
+                    .map((t): SourceName | undefined => t.info.sourceName)
+                    .filter((s) => !!s);
 
-            const missings: SourceName[] = [...new Set(sources)].filter((s): boolean => !target.info!.sourceManagers.includes(s));
-            if (missings.length) throw new PlayerError(`Target node is missing source managers for: ${missings.join(", ")}`);
+                const missings: SourceName[] = [...new Set(sources)].filter((s): boolean => !target.info!.sourceManagers.includes(s));
+                if (missings.length) throw new PlayerError(`Target node is missing source managers for: ${missings.join(", ")}`);
+            }
+
+            const current: TrackStructure | null = this.queue.current;
+
+            const voice: LavalinkPlayerVoice | null = this.voice.toNode();
+            if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
+
+            if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);
+
+            this.node = target;
+
+            await this.connect();
+
+            const playerOptions: LavalinkPlayOptions = { voice };
+
+            if (current) {
+                playerOptions.position = this.lastPosition;
+                playerOptions.volume = this.volume;
+                playerOptions.track = {
+                    encoded: current.encoded,
+                    info: current.info,
+                    userData: current.userData,
+                    pluginInfo: current.pluginInfo,
+                };
+            }
+
+            await this.updatePlayer({ playerOptions });
+            await this.filterManager.apply();
+
+            this.manager.debug(DebugLevels.Player, `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`);
+        } finally {
+            // A failed move must not leave the flag behind: the track end
+            // handlers ignore the player while it is set.
+            await this.data.delete("internal_nodeChange");
         }
-
-        const current: TrackStructure | null = this.queue.current;
-
-        const voice: LavalinkPlayerVoice | null = this.voice.toNode();
-        if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
-
-        if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);
-
-        this.node = target;
-
-        await this.connect();
-
-        const playerOptions: LavalinkPlayOptions = { voice };
-
-        if (current) {
-            playerOptions.position = this.lastPosition;
-            playerOptions.volume = this.volume;
-            playerOptions.track = {
-                encoded: current.encoded,
-                info: current.info,
-                userData: current.userData,
-                pluginInfo: current.pluginInfo,
-            };
-        }
-
-        await this.updatePlayer({ playerOptions });
-        await this.filterManager.apply();
-
-        this.manager.debug(DebugLevels.Player, `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`);
-
-        await this.data.delete("internal_nodeChange");
     }
 
     /**
