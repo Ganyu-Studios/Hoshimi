@@ -41,10 +41,10 @@ import { NodeError, OptionError } from "../../src/classes/Errors";
 import { LyricsManager } from "../../src/classes/node/Lyrics";
 import { Node } from "../../src/classes/node/Node";
 import { EventNames, type HoshimiOptions, SearchSources } from "../../src/types/Manager";
-import { NodeDestroyReasons, PluginNames, State, WebsocketCloseCodes } from "../../src/types/Node";
+import { NodeDestroyReasons, type NodeOptions, PluginNames, State, WebsocketCloseCodes } from "../../src/types/Node";
 import { HttpMethods, RestRoutes } from "../../src/types/Rest";
 
-function createNode(client?: { id?: string; username?: string }) {
+function createNode(client?: { id?: string; username?: string }, overrides: Partial<NodeOptions> = {}) {
     const emit = vi.fn();
     const nodeManager = {
         manager: {
@@ -85,6 +85,7 @@ function createNode(client?: { id?: string; username?: string }) {
         id: "node-1",
         retryAmount: 2,
         retryDelay: 50,
+        ...overrides,
     });
 
     return { node, nodeManager, emit };
@@ -265,7 +266,7 @@ describe("Node", () => {
     it("reconnect retries and calls connect when retries remain", () => {
         vi.useFakeTimers();
 
-        const { node, emit } = createNode({ id: "123", username: "bot" });
+        const { node, emit } = createNode({ id: "123", username: "bot" }, { retryBackoff: false });
         node.state = State.Connected;
         node.ws = { removeAllListeners: vi.fn() } as never;
 
@@ -284,7 +285,7 @@ describe("Node", () => {
     it("reconnect emits error and destroys when retries are exhausted", () => {
         vi.useFakeTimers();
 
-        const { node, emit } = createNode({ id: "123", username: "bot" });
+        const { node, emit } = createNode({ id: "123", username: "bot" }, { retryBackoff: false });
         node.state = State.Connected;
         node.retryAmount = 0;
 
@@ -298,6 +299,29 @@ describe("Node", () => {
             reason: NodeDestroyReasons.Destroy,
         });
         expect(emit).toHaveBeenCalledWith(EventNames.NodeError, node, expect.any(Error));
+    });
+
+    it("reconnect grows the delay with exponential backoff and jitter", () => {
+        vi.useFakeTimers();
+        // Equal jitter with random() === 0 collapses to exactly half the target, making it deterministic.
+        const random = vi.spyOn(Math, "random").mockReturnValue(0);
+
+        const { node, emit } = createNode({ id: "123", username: "bot" }); // backoff on by default
+        node.state = State.Connected;
+        node.ws = { removeAllListeners: vi.fn() } as never;
+        vi.spyOn(node, "connect").mockImplementation(() => undefined);
+
+        // attempt 0: target = base (50), delay = 25
+        node.reconnect();
+        expect(emit).toHaveBeenLastCalledWith(EventNames.NodeReconnecting, node, 2, 25);
+        vi.advanceTimersByTime(25);
+        expect(node.retryAmount).toBe(1);
+
+        // attempt 1: target = base * 2 (100), delay = 50
+        node.reconnect();
+        expect(emit).toHaveBeenLastCalledWith(EventNames.NodeReconnecting, node, 1, 50);
+
+        random.mockRestore();
     });
 });
 

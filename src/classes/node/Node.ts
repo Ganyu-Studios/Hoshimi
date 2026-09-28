@@ -182,6 +182,8 @@ export class Node {
             secure: options.secure ?? false,
             retryAmount: options.retryAmount ?? 5,
             retryDelay: options.retryDelay ?? 20000,
+            retryBackoff: options.retryBackoff ?? true,
+            retryDelayMax: options.retryDelayMax ?? 60000,
             closeOnError,
             heartbeat,
         };
@@ -613,7 +615,18 @@ export class Node {
         this.state = State.Idle;
         this.sessionId = null;
 
-        this.nodeManager.manager.emit(EventNames.NodeReconnecting, this, this.retryAmount, this.retryDelay);
+        const { retryAmount, retryDelay, retryDelayMax, retryBackoff } = this.options;
+
+        let delay: number = retryDelay;
+        if (retryBackoff) {
+            // Grow the delay as retries are consumed (attempt is 0-based), capped at retryDelayMax.
+            const attempt: number = retryAmount - this.retryAmount;
+            const target: number = Math.min(retryDelay * 2 ** attempt, Math.max(retryDelayMax, retryDelay));
+            // Equal jitter: never below half the target, never above it, to de-sync a fleet dropping together.
+            delay = Math.round(target / 2 + Math.random() * (target / 2));
+        }
+
+        this.nodeManager.manager.emit(EventNames.NodeReconnecting, this, this.retryAmount, delay);
 
         this.reconnectTimeout = setTimeout(() => {
             this.reconnectTimeout = null;
@@ -643,7 +656,7 @@ export class Node {
 
             this.retryAmount--;
             this.connect();
-        }, this.options.retryDelay);
+        }, delay);
     }
 
     /**
