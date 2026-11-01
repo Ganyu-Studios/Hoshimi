@@ -187,6 +187,24 @@ describe("QueueUtils", () => {
         await expect(queue.utils.sync()).rejects.toThrow(StorageError);
     });
 
+    it("sync with override replaces the whole history, not as many entries as there are tracks", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const queue = player.queue;
+
+        const stored = (id: string) => ({ ...mockedTrack(id).toJSON(), requester: {} });
+        queue.utils.storage.get = vi.fn().mockResolvedValue({ tracks: [stored("s-t")], history: [stored("s-h")], current: null });
+
+        queue.tracks = [mockedTrack("t1")];
+        queue.history = [mockedTrack("h1"), mockedTrack("h2"), mockedTrack("h3")];
+
+        await queue.utils.sync({ override: true });
+
+        expect(queue.tracks.map((track) => track.encoded)).toEqual(["s-t"]);
+        expect(queue.history.map((track) => track.encoded)).toEqual(["s-h"]);
+    });
+
     it("sync merges queue when override is false", async () => {
         const manager = createRealManager();
         createRealNode(manager);

@@ -177,7 +177,8 @@ export class QueueUtils {
         const length: number = this.queue.tracks.length;
 
         if (tracks.length) this.queue.tracks.splice(override ? 0 : length, override ? length : 0, ...tracks);
-        if (history.length) this.queue.history.splice(0, override ? length : 0, ...history);
+        // Overriding replaces the whole history: it is its own length, not the one of the tracks.
+        if (history.length) this.queue.history.splice(0, override ? this.queue.history.length : 0, ...history);
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
