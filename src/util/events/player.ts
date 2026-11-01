@@ -233,24 +233,23 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
     this.manager.emit(EventNames.TrackStuck, this, this.queue.current, payload);
     this.manager.debug(DebugLevels.Player, `[Player] -> [Stuck] The track: ${this.queue.current?.info.title ?? "Unknown"} has stuck.`);
 
-    const isStopPlaying = await this.data.get("internal_stopPlaying");
+    // Advancing is left to the TrackEnd that stopping the track produces, so history, loop modes and the
+    // next track go through one path. Handling them here as well applied the loop twice whenever the node
+    // stopped the track on its own (NodeLink does after most stucks), and stalled the queue when it did
+    // not (NodeLink's stalled-stream check), since nothing played the next track.
+    //
+    // The node may have already ended the track and the queue moved on while this handler waited: only
+    // the stuck track is stopped, never the one that replaced it.
+    if (this.queue.current?.encoded !== payload.track.encoded) return;
 
-    if (!this.queue.size && (this.loop === LoopMode.Off || isStopPlaying)) {
-        try {
-            await this.node.updatePlayer({
-                guildId: this.guildId,
-                playerOptions: { track: { encoded: null } },
-            });
-
-            return;
-        } catch {
-            return queueEnd.call(this, this.queue.current, payload);
-        }
+    try {
+        await this.node.updatePlayer({
+            guildId: this.guildId,
+            playerOptions: { track: { encoded: null } },
+        });
+    } catch {
+        return queueEnd.call(this, this.queue.current, payload);
     }
-
-    await onEnd.call(this);
-
-    if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
 }
 
 /**
