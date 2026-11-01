@@ -1,72 +1,72 @@
 name: Question / Help
 description: Ask a question about using Hoshimi
 labels:
-  - question
+    - question
 title: "question: "
 body:
-  - type: markdown
-    attributes:
-      value: |
-        For general usage questions, please include a concise code sample and your environment details.
+    - type: markdown
+      attributes:
+          value: |
+              For general usage questions, please include a concise code sample and your environment details.
 
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Pre-checks
-      options:
-        - label: I've searched the README and existing issues
+    - type: checkboxes
+      id: checks
+      attributes:
+          label: Pre-checks
+          options:
+              - label: I've searched the README and existing issues
+                required: true
+
+    - type: textarea
+      id: question
+      attributes:
+          label: Question
+          description: What do you want to know or achieve?
+          placeholder: Describe your question clearly.
+      validations:
           required: true
 
-  - type: textarea
-    id: question
-    attributes:
-      label: Question
-      description: What do you want to know or achieve?
-      placeholder: Describe your question clearly.
-    validations:
-      required: true
+    - type: textarea
+      id: code
+      attributes:
+          label: Minimal code sample
+          description: Provide a minimal snippet that shows what you're trying to do.
+          render: typescript
+          placeholder: |
+              // minimal example here
+      validations:
+          required: false
 
-  - type: textarea
-    id: code
-    attributes:
-      label: Minimal code sample
-      description: Provide a minimal snippet that shows what you're trying to do.
-      render: typescript
-      placeholder: |
-        // minimal example here
-    validations:
-      required: false
+    - type: input
+      id: hoshimi-version
+      attributes:
+          label: Hoshimi version
+          placeholder: e.g. 1.2.3 or git SHA
 
-  - type: input
-    id: hoshimi-version
-    attributes:
-      label: Hoshimi version
-      placeholder: e.g. 1.2.3 or git SHA
+    - type: input
+      id: node-version
+      attributes:
+          label: Node.js version
+          placeholder: node -v
 
-  - type: input
-    id: node-version
-    attributes:
-      label: Node.js version
-      placeholder: node -v
+    - type: dropdown
+      id: package-manager
+      attributes:
+          label: Package manager
+          options:
+              - pnpm
+              - npm
+              - yarn
 
-  - type: dropdown
-    id: package-manager
-    attributes:
-      label: Package manager
-      options:
-        - pnpm
-        - npm
-        - yarn
+    - type: input
+      id: os
+      attributes:
+          label: Operating system
+          placeholder: Windows, macOS, Linux (distro)
 
-  - type: input
-    id: os
-    attributes:
-      label: Operating system
-      placeholder: Windows, macOS, Linux (distro)
-
-  - type: textarea
-    id: extra
-    attributes:
-      label: Additional context
-      description: Any extra details, links, or screenshots.
-      render: markdown
+    - type: textarea
+      id: extra
+      attributes:
+          label: Additional context
+          description: Any extra details, links, or screenshots.
+          render: markdown

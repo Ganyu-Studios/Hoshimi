@@ -1,89 +1,89 @@
 name: Publish
 
 on:
-  push:
-    branches:
-      - release
+    push:
+        branches:
+            - release
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  build:
-    name: Publish
-    runs-on: ubuntu-latest
-    if: github.repository == 'Ganyu-Studios/Hoshimi'
-    permissions:
-      # npm provenance needs the first; the second is for creating the tag and the release entry.
-      # Nothing is pushed back to a branch.
-      id-token: write
-      contents: write
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v6
+    build:
+        name: Publish
+        runs-on: ubuntu-latest
+        if: github.repository == 'Ganyu-Studios/Hoshimi'
+        permissions:
+            # npm provenance needs the first; the second is for creating the tag and the release entry.
+            # Nothing is pushed back to a branch.
+            id-token: write
+            contents: write
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v6
 
-      - name: Install Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24.x'
-          registry-url: 'https://registry.npmjs.org'
+            - name: Install Node
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "24.x"
+                  registry-url: "https://registry.npmjs.org"
 
-      - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v4
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        run: pnpm test
+            - name: Run tests
+              run: pnpm test
 
-      # The version in package.json is the release: bump it on `lib` and merge into `release`.
-      # Publishing is skipped when that version is already on npm, so a merge that carries no bump
-      # (or a re-run) is a no-op instead of a failure.
-      - name: Publish to npm
-        id: publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          version=$(node -p "require('./package.json').version")
+            # The version in package.json is the release: bump it on `lib` and merge into `release`.
+            # Publishing is skipped when that version is already on npm, so a merge that carries no bump
+            # (or a re-run) is a no-op instead of a failure.
+            - name: Publish to npm
+              id: publish
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  version=$(node -p "require('./package.json').version")
 
-          if npm view "hoshimi@$version" version > /dev/null 2>&1; then
-            echo "hoshimi@$version is already published, nothing to do."
-            exit 0
-          fi
+                  if npm view "hoshimi@$version" version > /dev/null 2>&1; then
+                    echo "hoshimi@$version is already published, nothing to do."
+                    exit 0
+                  fi
 
-          echo "Publishing hoshimi@$version"
-          npm config set //registry.npmjs.org/:_authToken ${NODE_AUTH_TOKEN}
-          npm publish --provenance
+                  echo "Publishing hoshimi@$version"
+                  npm config set //registry.npmjs.org/:_authToken ${NODE_AUTH_TOKEN}
+                  npm publish --provenance
 
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      # Only runs when the step above actually published: a merge carrying no bump leaves `version`
-      # unset and this is skipped, so no empty release is created.
-      #
-      # The tag drops the leading `0.`, which is the scheme every release so far follows — v3.3, v3.8
-      # and v5.2 are 0.3.3, 0.3.8 and 0.5.2. Once the package reaches 1.0.0 there is nothing to strip
-      # and the version is used as it is.
-      - name: Create the GitHub release
-        if: steps.publish.outputs.version != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          version="${{ steps.publish.outputs.version }}"
-          tag="v${version#0.}"
+            # Only runs when the step above actually published: a merge carrying no bump leaves `version`
+            # unset and this is skipped, so no empty release is created.
+            #
+            # The tag drops the leading `0.`, which is the scheme every release so far follows — v3.3, v3.8
+            # and v5.2 are 0.3.3, 0.3.8 and 0.5.2. Once the package reaches 1.0.0 there is nothing to strip
+            # and the version is used as it is.
+            - name: Create the GitHub release
+              if: steps.publish.outputs.version != ''
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  version="${{ steps.publish.outputs.version }}"
+                  tag="v${version#0.}"
 
-          # Same idempotency the publish step has. It matters when npm went through but this step did
-          # not: a re-run would find the version already published, skip it, and the release would
-          # never be created — so this has to be reachable and harmless on a second pass.
-          if gh release view "$tag" > /dev/null 2>&1; then
-            echo "$tag already exists, nothing to do."
-            exit 0
-          fi
+                  # Same idempotency the publish step has. It matters when npm went through but this step did
+                  # not: a re-run would find the version already published, skip it, and the release would
+                  # never be created — so this has to be reachable and harmless on a second pass.
+                  if gh release view "$tag" > /dev/null 2>&1; then
+                    echo "$tag already exists, nothing to do."
+                    exit 0
+                  fi
 
-          echo "Tagging ${{ github.sha }} as $tag"
+                  echo "Tagging ${{ github.sha }} as $tag"
 
-          gh release create "$tag" \
-            --target "${{ github.sha }}" \
-            --title "Release $tag" \
-            --generate-notes \
-            --latest
+                  gh release create "$tag" \
+                    --target "${{ github.sha }}" \
+                    --title "Release $tag" \
+                    --generate-notes \
+                    --latest
