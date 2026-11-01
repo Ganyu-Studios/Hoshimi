@@ -22,6 +22,13 @@ describe("Validations.validateQuery", () => {
         );
     });
 
+    it("keeps URLs with a port, an IP or localhost untouched", () => {
+        for (const query of ["http://localhost:8080/a.mp3", "http://192.168.1.5/a.mp3", "https://cdn.example.com:8443/a.mp3"]) {
+            expect(Validations.validateQuery({ query, source: SearchSources.Youtube })).toBe(query);
+            expect(Validations.validateQuery({ query: `spsearch:${query}`, source: SearchSources.Youtube })).toBe(query);
+        }
+    });
+
     it("builds an identifier for free text using the given source", () => {
         expect(Validations.validateQuery({ query: "  never gonna give you up  ", source: SearchSources.Youtube })).toBe(
             "ytsearch:never gonna give you up",

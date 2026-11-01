@@ -38,6 +38,22 @@ function assertNonNegativeInteger(value: unknown, option: string): void {
 
 /**
  *
+ * Check whether a query is a URL that has to reach the node untouched.
+ *
+ * {@link UrlRegex} only knows `domain.tld` hosts, so a URL with a port, an IP or `localhost` (self-hosted
+ * files, a local HTTP server) failed it and got its scheme stripped by the `http` source prefix. With an
+ * explicit scheme the URL parser decides instead; without one, the regex is still what tells a bare
+ * domain from a search term.
+ * @param {string} value The query to check.
+ * @returns {boolean} True when the query is a URL.
+ */
+function isUrl(value: string): boolean {
+    if (/^https?:\/\//i.test(value)) return URL.canParse(value);
+    return UrlRegex.test(value);
+}
+
+/**
+ *
  * Validate if the node options are correct.
  * @param {NodeOptions} options The node options to validate.
  * @returns {boolean} If the node options are correct.
@@ -187,11 +203,11 @@ function validateQuery(search: SearchQuery): string {
 
     // A plain URL goes to the node untouched. This has to be checked before parsing a source prefix:
     // `http://x.com/a.mp3` matches the registered `http` source and would lose its scheme.
-    if (UrlRegex.test(query)) return query;
+    if (isUrl(query)) return query;
 
     const parsed: ParsedQuery | null = SourceRegistry.parseQuery(query);
     if (parsed) {
-        if (UrlRegex.test(parsed.value)) return parsed.value;
+        if (isUrl(parsed.value)) return parsed.value;
         return SourceRegistry.createIdentifier(parsed.source, parsed.value);
     }
 
