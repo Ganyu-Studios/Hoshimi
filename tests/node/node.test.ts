@@ -283,6 +283,26 @@ describe("Node", () => {
         expect(connectSpy).toHaveBeenCalledTimes(1);
     });
 
+    it("reconnect brings back a node left disconnected on purpose, but never a destroyed one", () => {
+        vi.useFakeTimers();
+
+        const { node } = createNode({ id: "123", username: "bot" }, { retryBackoff: false });
+        const connectSpy = vi.spyOn(node, "connect").mockImplementation(() => undefined);
+
+        node.state = State.Connected;
+        node.disconnect();
+        expect(node.state).toBe(State.Disconnected);
+
+        node.reconnect();
+        vi.advanceTimersByTime(60);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
+
+        node.state = State.Destroyed;
+        node.reconnect();
+        vi.advanceTimersByTime(60);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
+    });
+
     it("reconnect emits error and destroys when retries are exhausted", () => {
         vi.useFakeTimers();
 
