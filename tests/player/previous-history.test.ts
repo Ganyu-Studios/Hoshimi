@@ -63,4 +63,28 @@ describe("previous(true) history navigation", () => {
 
         expect(player.queue.history.map((t) => t.info.identifier)).toContain("A");
     });
+
+    it("the last track of the queue IS added to history when the queue ends", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        const A = Structures.Track(createMockTrackData({ info: { identifier: "A", title: "Track A" } }) as never, {});
+        player.queue.current = A;
+        vi.spyOn(player, "updatePlayer").mockResolvedValue(null);
+
+        const queueEnd = vi.fn();
+        manager.on("queueEnd", queueEnd);
+
+        await trackEnd.call(player, {
+            type: PlayerEventType.TrackEnd,
+            guildId: player.guildId,
+            reason: TrackEndReason.Finished,
+            track: A,
+        } as unknown as TrackEndEvent);
+
+        expect(queueEnd).toHaveBeenCalledOnce();
+        expect(player.queue.current).toBeNull();
+        expect(player.queue.history.map((t) => t.info.identifier)).toEqual(["A"]);
+    });
 });

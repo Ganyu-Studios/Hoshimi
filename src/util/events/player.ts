@@ -21,11 +21,11 @@ import { isPlayerGone } from "../functions/utils";
 
 /**
  *
- * Emitted when a queue track ends.
+ * Record the current track in the history, newest first.
  * @param {PlayerStructure} this The player that emitted the event.
- * @returns {Promise<void>} Yeah, this is something weird but it works.
+ * @returns {Promise<void>}
  */
-async function onEnd(this: PlayerStructure): Promise<void> {
+async function addToHistory(this: PlayerStructure): Promise<void> {
     if (
         this.queue.current &&
         !this.queue.history.find(
@@ -43,6 +43,16 @@ async function onEnd(this: PlayerStructure): Promise<void> {
             `[Player] -> [Previous] The track: ${this.queue.current.info.title} has been added to the previous track list.`,
         );
     }
+}
+
+/**
+ *
+ * Emitted when a queue track ends.
+ * @param {PlayerStructure} this The player that emitted the event.
+ * @returns {Promise<void>} Yeah, this is something weird but it works.
+ */
+async function onEnd(this: PlayerStructure): Promise<void> {
+    await addToHistory.call(this);
 
     if (this.loop === LoopMode.Track && this.queue.current) await this.queue.unshift(this.queue.current);
     if (this.loop === LoopMode.Queue && this.queue.current) await this.queue.add(this.queue.current);
@@ -70,7 +80,15 @@ async function queueEnd(
 ): Promise<void> {
     if (await this.data.get("internal_nodeChange")) return;
 
+    const isStopPlaying = await this.data.get("internal_stopPlaying");
+
     await this.data.delete("internal_stopPlaying");
+
+    // Recorded before `current` is cleared below: the queue is over, so only the history applies here,
+    // never the loop modes, and doing it later found no current track and dropped the last one. A track
+    // ended by `stop()` is left out: `stop({ clearQueue: true })` has just emptied the history, and
+    // writing to it again would resurrect the stored queue it deleted.
+    if (!isStopPlaying) await addToHistory.call(this);
 
     this.playing = false;
     this.paused = false;
@@ -107,9 +125,9 @@ async function queueEnd(
         return this.play({ noReplace: true, paused: false });
     }
 
-    if (payload.type === PlayerEventType.TrackEnd && payload.reason !== TrackEndReason.Stopped) await this.queue.utils.save();
-
-    await onEnd.call(this);
+    // Persists the cleared current track. The history was already recorded above, and with no current
+    // track `onEnd` had nothing left to do but this save.
+    await this.queue.utils.save();
 
     this.manager.emit(EventNames.QueueEnd, this, this.queue);
     this.manager.debug(DebugLevels.Player, "[Player] -> [Queue] The queue has ended.");
