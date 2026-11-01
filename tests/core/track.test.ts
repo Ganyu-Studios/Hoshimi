@@ -181,3 +181,31 @@ describe("UnresolvedTrack", () => {
         await expect(unresolved.resolve(player as never)).rejects.toThrow(ResolveError);
     });
 });
+
+describe("TrackResolution", () => {
+    it("builds a raw node track as it is, without decoding it again", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        const raw = createMockTrackData({ info: { identifier: "raw", title: "Raw" } });
+        const built = await player.queue.utils.build(raw as never);
+
+        expect(built).toBeInstanceOf(Track);
+        expect(built?.info.identifier).toBe("raw");
+        expect(node.rest.request).not.toHaveBeenCalled();
+    });
+
+    it("still resolves a partial object with an encoded track through the node", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        vi.mocked(node.rest.request).mockResolvedValue(createMockTrackData({ info: { identifier: "decoded" } }) as never);
+
+        const built = await player.queue.utils.build({ encoded: "encoded-track", info: { title: "Only a title" } } as never);
+
+        expect(built?.info.identifier).toBe("decoded");
+        expect(vi.mocked(node.rest.request).mock.calls.some(([options]) => options.endpoint.includes("decodetrack"))).toBe(true);
+    });
+});
