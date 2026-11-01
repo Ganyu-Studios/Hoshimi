@@ -192,8 +192,8 @@ export class Node {
         this.retryDelay = this.options.retryDelay;
         this.nodeManager = nodeManager;
 
-        if (this.options.secure && this.options.port !== 443) this.options.port = 443;
-
+        // The port is used as given: `secure` only picks the scheme. Forcing 443 made a node behind TLS
+        // on any other port (8443, a reverse proxy) unreachable.
         this.rest = Structures.Rest(this);
         this.lyricsManager = Structures.LyricsManager(this);
     }

@@ -127,18 +127,19 @@ describe("Node", () => {
         vi.restoreAllMocks();
     });
 
-    it("builds secure address using port 443", () => {
+    it("builds a secure address keeping the given port", () => {
         const { node } = createNode({ id: "1", username: "bot" });
         const secureNode = new Node(node.nodeManager, {
             host: "example.com",
-            port: 2333,
+            port: 8443,
             password: "pass",
             secure: true,
             id: "secure-1",
         });
 
-        expect(secureNode.options.port).toBe(443);
-        expect(secureNode.address).toBe("wss://example.com:443/v4/websocket");
+        expect(secureNode.options.port).toBe(8443);
+        expect(secureNode.address).toBe("wss://example.com:8443/v4/websocket");
+        expect(secureNode.rest.url).toBe("https://example.com:8443");
     });
 
     it("throws when connect is called without client data", () => {
