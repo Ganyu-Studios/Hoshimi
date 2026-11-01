@@ -159,7 +159,8 @@ describe("QueueUtils", () => {
 
         await queue.utils.save();
 
-        expect(queue.history.length).toBe(2);
+        // Newest first: the oldest entry is the one dropped.
+        expect(queue.history.map((track) => track.encoded)).toEqual(["h1", "h2"]);
         expect(queue.utils.storage.set).toHaveBeenCalledWith("guild-1", queue.toJSON());
     });
 

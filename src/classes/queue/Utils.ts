@@ -120,10 +120,9 @@ export class QueueUtils {
             return;
         }
 
+        // The history is newest first, so the oldest entries are the ones past `max`.
         const max: number = this.options.maxHistory;
-        const length: number = this.queue.history.length;
-
-        if (length > max) this.queue.history.splice(0, length - max);
+        if (this.queue.history.length > max) this.queue.history.splice(max);
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
