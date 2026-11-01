@@ -399,27 +399,35 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
                     } else {
                         this.debug(DebugLevels.Player, `[Player] -> [Voice] The channel id is missing for: ${data.guild_id}`);
 
-                        const { autoDestroy, autoReconnect, autoQueue } = this.options.playerOptions.onDisconnect;
+                        const { autoDestroy, autoReconnect } = this.options.playerOptions.onDisconnect;
 
                         if (autoDestroy) {
                             await player.destroy({ reason: DestroyReasons.VoiceChannelLeft });
                             return;
                         }
 
-                        if (autoReconnect) {
-                            try {
-                                const position: number = player.position;
-                                const paused: boolean = player.paused;
+                        // `voiceId` is only still set when the client was disconnected from outside: `disconnect()`
+                        // clears it before leaving, so a disconnect of our own is never undone here.
+                        if (autoReconnect && player.voiceId) {
+                            const position: number = player.position;
+                            const paused: boolean = player.paused;
 
+                            // The old voice connection is gone. Its state has to go too, or `connect()` sees the
+                            // player as connected and returns without sending the join, and the track is
+                            // replayed over a connection that no longer exists.
+                            player.connected = false;
+                            player.voice.reset();
+
+                            try {
                                 this.debug(
                                     DebugLevels.Player,
                                     `[Player] -> [Voice] Attempting to reconnect the player for: ${data.guild_id}`,
                                 );
 
-                                if (autoQueue && player.queue.current && !player.queue.isEmpty()) await player.connect();
+                                await player.connect();
 
-                                if (player.queue.current) return player.play({ track: player.queue.current, paused, position });
-                                if (!player.queue.isEmpty()) return player.play({ paused });
+                                if (player.queue.current) return await player.play({ track: player.queue.current, paused, position });
+                                if (!player.queue.isEmpty()) return await player.play({ paused });
 
                                 this.debug(
                                     DebugLevels.Player,
@@ -429,6 +437,8 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
                                 this.emit(EventNames.PlayerError, player, error);
                                 await player.destroy({ reason: DestroyReasons.ReconnectFailed });
                             }
+
+                            return;
                         }
 
                         player.connected = false;
