@@ -1,8 +1,7 @@
 import PackageJson from "../../package.json";
-import { QueueMemoryStorage } from "../classes/storage/QueueMemory";
 import type { ChannelMixSettings } from "../types/Filters";
 import { AudioOutput } from "../types/Filters";
-import { type RequiredHoshimiOptions, SearchSources } from "../types/Manager";
+import { type DefaultHoshimiOptions, SearchSources } from "../types/Manager";
 import { NodeSortTypes, type UserAgent } from "../types/Node";
 import { LoopMode } from "../types/Player";
 import { resumeByLibrary } from "./events/player";
@@ -86,9 +85,9 @@ export const LoopValues: LoopMode[] = Object.values(LoopMode).filter((v): v is L
 
 /**
  * The default options for Hoshimi.
- * @type {Readonly<RequiredHoshimiOptions>}
+ * @type {Readonly<DefaultHoshimiOptions>}
  */
-export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.freeze<RequiredHoshimiOptions>({
+export const HoshimiDefaultOptions: Readonly<DefaultHoshimiOptions> = Object.freeze<DefaultHoshimiOptions>({
     nodes: [{ host: "localhost", port: 2333, password: "youshallnotpass" }],
     sendPayload: () => {},
     defaultSearchSource: SearchSources.Youtube,
@@ -115,7 +114,9 @@ export const HoshimiDefaultOptions: Readonly<RequiredHoshimiOptions> = Object.fr
     },
     queueOptions: {
         autoplayFn,
-        storage: new QueueMemoryStorage(),
+        // Created per manager, in its constructor. The key stays so a custom storage survives `mergeDefault`,
+        // which drops every key the defaults do not have.
+        storage: undefined,
         maxHistory: 25,
         autoPlay: false,
     },

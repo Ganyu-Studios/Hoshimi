@@ -23,6 +23,7 @@ import { TypedEmitter } from "../util/emitter";
 import { isPlainObject, isPlayerGone, mergeDefault } from "../util/functions/utils";
 import { Validations } from "../util/functions/validations";
 import { ManagerError, OptionError } from "./Errors";
+import { QueueMemoryStorage } from "./storage/QueueMemory";
 
 /**
  * The packet type for the manager.
@@ -157,6 +158,10 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
         if (!options || !isPlainObject(options)) throw new ManagerError("You must provide the options for the manager.");
 
         this.options = mergeDefault(HoshimiDefaultOptions, options);
+
+        // Not a default value: the defaults are one object shared by every manager, so a storage instance
+        // there made two managers in one process read and write each other's queues for the same guild.
+        this.options.queueOptions.storage ??= new QueueMemoryStorage();
 
         Validations.validateManagerOptions(this.options);
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HoshimiDefaultOptions, type HoshimiOptions } from "../../src";
 import { ManagerError, OptionError } from "../../src/classes/Errors";
 import { Hoshimi } from "../../src/classes/Hoshimi";
+import { QueueMemoryStorage } from "../../src/classes/storage/QueueMemory";
 import { State } from "../../src/types/Node";
 
 function createOptions() {
@@ -43,6 +44,19 @@ describe("Hoshimi", () => {
 
         expect(manager.options.defaultSearchSource).toBeDefined();
         expect(manager.options.queueOptions.storage).toBeDefined();
+    });
+
+    it("gives each manager its own default queue storage, and keeps a custom one", () => {
+        const a = new Hoshimi(createOptions());
+        const b = new Hoshimi(createOptions());
+
+        expect(a.options.queueOptions.storage).toBeInstanceOf(QueueMemoryStorage);
+        expect(a.options.queueOptions.storage).not.toBe(b.options.queueOptions.storage);
+
+        const storage = new QueueMemoryStorage();
+        const c = new Hoshimi({ ...createOptions(), queueOptions: { storage } });
+
+        expect(c.options.queueOptions.storage).toBe(storage);
     });
 
     it("isUsable returns false when manager is not ready", () => {
