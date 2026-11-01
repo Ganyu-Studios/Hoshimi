@@ -89,31 +89,104 @@ export function isDefined(value: unknown): boolean {
 }
 
 /**
- *
- * Stringify a value, handling circular references, functions, symbols, and bigints.
- * @param {unknown} value The value to stringify.
- * @param {string | number} [space] The space to use for indentation.
- * @returns {string} The stringified value.
+ * Options for {@link stringify}.
  */
-export function stringify(value: unknown, space?: string | number): string {
-    const seen = new WeakSet();
+export interface StringifyOptions {
+    /**
+     * Indentation, same as the `space` argument of `JSON.stringify`.
+     * @type {string | number | undefined}
+     */
+    space?: string | number;
+    /**
+     * Custom replacer, same signature as the one in `JSON.stringify`. It runs before the internal
+     * sanitizing, and whatever it returns (including `undefined` and `null`) is respected.
+     * @type {((this: any, key: string, value: any) => any) | undefined}
+     */
+    replacer?: (this: any, key: string, value: any) => any;
+    /**
+     * Text that replaces a circular reference.
+     * @type {string | undefined}
+     * @default "[Circular]"
+     */
+    circular?: string;
+    /**
+     * Omit circular properties instead of replacing them (in arrays they become `null`, as
+     * `JSON.stringify` does with `undefined`).
+     * @type {boolean | undefined}
+     * @default false
+     */
+    omitCircular?: boolean;
+}
+
+/**
+ * An entry of the ancestor stack used by {@link stringify}.
+ */
+interface StringifyAncestor {
+    /**
+     * The object as it was found.
+     * @type {object}
+     */
+    original: object;
+    /**
+     * What `JSON.stringify` uses as `this` for the object's children.
+     * @type {object}
+     */
+    holder: object;
+}
+
+/**
+ *
+ * A `JSON.stringify` that never throws because of circular references.
+ * @description Only real cycles (an object that is its own ancestor) are cut. An object repeated in two
+ * different branches is kept in both: dropping every repeat silently removed keys from the payloads sent
+ * to the node, like a second filter sharing the settings object of the first. `Map` and `Set` become
+ * arrays, an `Error` keeps its `name`, `message`, `stack` and `cause`, and a `BigInt` becomes a string
+ * (e.g. `"10n"`).
+ * @param {unknown} input The value to serialize.
+ * @param {StringifyOptions} [options={}] The serialization options.
+ * @returns {string} The JSON string.
+ * @example
+ * ```ts
+ * const a: any = { name: "Ganyu" };
+ * a.self = a;
+ *
+ * stringify(a); // {"name":"Ganyu","self":"[Circular]"}
+ * ```
+ */
+export function stringify(input: unknown, options: StringifyOptions = {}): string {
+    const { space, replacer, circular = "[Circular]", omitCircular = false } = options;
+
+    const stack: StringifyAncestor[] = [];
 
     return JSON.stringify(
-        value,
-        (_, value) => {
-            if (typeof value === "function") return undefined;
+        input,
+        function (this: object, key: string, raw: unknown): unknown {
+            const value: unknown = replacer ? replacer.call(this, key, raw) : raw;
 
-            if (typeof value === "symbol") return value.toString();
-            if (typeof value === "bigint") return value.toString();
-            if (typeof value === "object" && value !== null) {
-                if (seen.has(value)) return undefined;
+            if (typeof value === "bigint") return `${value}n`;
+            if (typeof value !== "object" || value === null) return value;
 
-                seen.add(value);
+            // Leave the branches that are already finished: the top of the stack has to be the holder.
+            while (stack.length && stack[stack.length - 1]?.holder !== this) stack.pop();
 
-                return value;
-            }
+            if (stack.some((ancestor): boolean => ancestor.original === value)) return omitCircular ? undefined : circular;
 
-            return value;
+            let out: object = value;
+
+            if (value instanceof Map) out = Array.from(value.entries());
+            else if (value instanceof Set) out = Array.from(value.values());
+            else if (value instanceof Error)
+                out = {
+                    ...value,
+                    name: value.name,
+                    message: value.message,
+                    stack: value.stack,
+                    ...("cause" in value ? { cause: value.cause } : {}),
+                };
+
+            stack.push({ original: value, holder: out });
+
+            return out;
         },
         space,
     );
