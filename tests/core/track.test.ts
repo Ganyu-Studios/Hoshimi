@@ -92,6 +92,53 @@ describe("UnresolvedTrack", () => {
         expect(result).toBeDefined();
     });
 
+    it.each([
+        ["the ISRC", { isrc: "ISRC1" }, "isrc"],
+        ["the author", { author: "Artist" }, "author"],
+        ["the duration", { length: 200_000 }, "length"],
+    ])("prefers a search result matching %s over the first one", async (_, info, expected) => {
+        const manager = createRealManager();
+        const node = createRealNode(manager, { id: "node-1" });
+        node.state = State.Connected;
+
+        const first = createMockTrackData({
+            info: { identifier: "first", title: "Cover", author: "Someone", isrc: "NOPE", length: 90_000 },
+        });
+        const byIsrc = createMockTrackData({
+            info: { identifier: "isrc", title: "Other", author: "Other", isrc: "ISRC1", length: 60_000 },
+        });
+        const byAuthor = createMockTrackData({ info: { identifier: "author", title: "Other", author: "Artist", length: 60_000 } });
+        const byLength = createMockTrackData({ info: { identifier: "length", title: "Other", author: "Other", length: 200_500 } });
+
+        vi.mocked(node.rest.request).mockResolvedValue({ data: [first, byIsrc, byAuthor, byLength], loadType: LoadType.Search } as never);
+
+        const player = createRealPlayer(manager);
+        const unresolved = new UnresolvedTrack({ info: { title: "Song", ...info } } as never, { id: "req" } as never);
+
+        const result = await unresolved.resolve(player as never);
+
+        expect(result.info.identifier).toBe(expected);
+    });
+
+    it("falls back to the first search result when nothing matches", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager, { id: "node-1" });
+        node.state = State.Connected;
+
+        const first = createMockTrackData({ info: { identifier: "first", title: "Cover", author: "Someone" } });
+        vi.mocked(node.rest.request).mockResolvedValue({ data: [first], loadType: LoadType.Search } as never);
+
+        const player = createRealPlayer(manager);
+        const unresolved = new UnresolvedTrack(
+            { info: { title: "Song", author: "Artist", isrc: "ISRC1" } } as never,
+            { id: "req" } as never,
+        );
+
+        const result = await unresolved.resolve(player as never);
+
+        expect(result.info.identifier).toBe("first");
+    });
+
     it("throws ResolveError when unresolved track lacks resolvable properties", async () => {
         const manager = createRealManager();
         const node = createRealNode(manager, { id: "node-1" });
