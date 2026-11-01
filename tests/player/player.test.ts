@@ -4,7 +4,8 @@ import { PlayerError } from "../../src/classes/Errors";
 import { PlayerMemoryStorage } from "../../src/classes/storage/PlayerMemory";
 import { State } from "../../src/types/Node";
 import { LoopMode } from "../../src/types/Player";
-import { createRealManager, createRealNode, createRealPlayer } from "../helpers";
+import { Structures } from "../../src/types/Structures";
+import { createMockTrackData, createRealManager, createRealNode, createRealPlayer } from "../helpers";
 
 describe("Player", () => {
     it("validates loop mode and basic play state", () => {
@@ -56,6 +57,20 @@ describe("Player", () => {
 
         await expect(player.seek(NaN)).rejects.toThrow(PlayerError);
         await expect(player.setVolume(NaN)).rejects.toThrow(PlayerError);
+    });
+
+    it("play keeps noReplace out of the player body and sends it as the option", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const track = Structures.Track(createMockTrackData() as never, {});
+
+        await player.play({ track, noReplace: true, paused: true });
+
+        const data = vi.mocked(node.rest.updatePlayer).mock.lastCall?.[0];
+        expect(data?.noReplace).toBe(true);
+        expect(data?.playerOptions).not.toHaveProperty("noReplace");
+        expect(data?.playerOptions).toMatchObject({ paused: true, position: 0, track: { encoded: track.encoded } });
     });
 
     it("skip throws on an empty queue, or resolves when throwError is false", async () => {
