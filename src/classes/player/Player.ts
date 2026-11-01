@@ -629,8 +629,10 @@ export class Player {
     public async setPaused(paused: boolean = !this.paused): Promise<boolean> {
         this.manager.debug(DebugLevels.Player, `[Player] -> [Pause] Player is now ${paused} for guild: ${this.guildId}`);
 
-        // When pausing, stop position calculation by setting lastPositionUpdate to null
+        // When pausing, freeze the position where it is now, then stop the calculation. Nulling the update
+        // alone made the position jump back to the last value Lavalink reported.
         if (paused) {
+            this.lastPosition = this.position;
             this.lastPositionUpdate = null;
         } else {
             // When resuming, restart position calculation from current position

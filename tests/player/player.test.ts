@@ -23,6 +23,32 @@ describe("Player", () => {
         expect(player.loop).toBe(LoopMode.Queue);
     });
 
+    it("setPaused freezes the position where it is and resumes from there", async () => {
+        vi.useFakeTimers();
+
+        try {
+            const manager = createRealManager();
+            const player = createRealPlayer(manager);
+            vi.spyOn(player, "updatePlayer").mockResolvedValue(null);
+
+            player.lastPosition = 10_000;
+            player.lastPositionUpdate = Date.now();
+            vi.advanceTimersByTime(3_000);
+
+            await player.setPaused(true);
+            expect(player.position).toBe(13_000);
+
+            vi.advanceTimersByTime(5_000);
+            expect(player.position).toBe(13_000);
+
+            await player.setPaused(false);
+            vi.advanceTimersByTime(1_000);
+            expect(player.position).toBe(14_000);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("seek and setVolume throw on invalid input", async () => {
         const manager = createRealManager();
         const player = createRealPlayer(manager);
