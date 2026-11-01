@@ -119,12 +119,6 @@ async function queueEnd(
         }
     }
 
-    if (this.queue.current) {
-        if (payload.type === PlayerEventType.TrackEnd) this.manager.emit(EventNames.TrackEnd, this, track, payload);
-
-        return this.play({ noReplace: true, paused: false });
-    }
-
     // Persists the cleared current track. The history was already recorded above, and with no current
     // track `onEnd` had nothing left to do but this save.
     await this.queue.utils.save();
