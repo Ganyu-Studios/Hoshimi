@@ -71,7 +71,7 @@ function createNode(client?: { id?: string; username?: string }, overrides: Part
                     },
                 },
                 restOptions: {
-                    resumeTimeout: 120,
+                    restTimeout: 120,
                 },
             } satisfies HoshimiOptions,
         },

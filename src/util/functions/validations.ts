@@ -177,7 +177,6 @@ function validateManagerOptions(options: HoshimiOptions): void {
     }
 
     if (isPlainObject(options.restOptions)) {
-        assertNonNegativeInteger(options.restOptions.resumeTimeout, "options.restOptions.resumeTimeout");
         assertNonNegativeInteger(options.restOptions.restTimeout, "options.restOptions.restTimeout");
     }
 }

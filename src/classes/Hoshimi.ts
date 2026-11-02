@@ -120,7 +120,7 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
      * 	},
      * 	defaultSearchSource: SearchSources.Youtube,
      * 	restOptions: {
-     * 		resumeTimeout: 10000,
+     * 		restTimeout: 10000,
      * 	},
      * 	nodeOptions: {
      * 		userAgent: HoshimiAgent,

@@ -92,7 +92,6 @@ export const HoshimiDefaultOptions: Readonly<DefaultHoshimiOptions> = Object.fre
     sendPayload: () => {},
     defaultSearchSource: SearchSources.Youtube,
     restOptions: {
-        resumeTimeout: 10000,
         restTimeout: 10000,
     },
     nodeOptions: {

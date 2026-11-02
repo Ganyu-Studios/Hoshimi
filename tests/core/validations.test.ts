@@ -52,7 +52,6 @@ describe("Validations.validateManagerOptions", () => {
             { queueOptions: { maxHistory: Number.NaN } },
             { queueOptions: { maxHistory: -1 } },
             { restOptions: { restTimeout: Number.NaN } },
-            { restOptions: { resumeTimeout: 1.5 } },
             { nodeOptions: { heartbeatOptions: { interval: Number.NaN } } },
             { nodeOptions: { sessionOptions: { timeout: Number.POSITIVE_INFINITY } } },
         ];
@@ -85,7 +84,7 @@ describe("Validations.validateManagerOptions", () => {
                 ...createOptions(),
                 nodes: [{ host: "localhost", port: 443, password: "pass", retryAmount: 0, retryDelay: 20000 }],
                 queueOptions: { maxHistory: 0 },
-                restOptions: { restTimeout: 5000, resumeTimeout: 10000 },
+                restOptions: { restTimeout: 5000 },
                 nodeOptions: {
                     sessionOptions: { timeout: 60 },
                     heartbeatOptions: { interval: 0 },

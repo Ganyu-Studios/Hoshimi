@@ -460,12 +460,6 @@ export interface LavalinkSession {
  */
 export interface HoshimiRestOptions {
     /**
-     * The amount of time to wait for the player to resume. (in milliseconds)
-     * @type {number}
-     * @default 10000
-     */
-    resumeTimeout?: number;
-    /**
      * The default REST request timeout applied to nodes that do not set their own `restTimeout`. (in milliseconds)
      * @type {number}
      * @default 10000
