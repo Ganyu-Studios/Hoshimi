@@ -166,17 +166,12 @@ export interface DisconnectPlayerActions {
      */
     autoDestroy?: boolean;
     /**
-     * Whether to automatically reconnect on disconnect.
+     * Whether to automatically rejoin the voice channel when the client is disconnected from it, and
+     * resume the track that was playing. Nothing is started when no track was playing.
      * @type {boolean | undefined}
      * @default false
      */
     autoReconnect?: boolean;
-    /**
-     * Whether to automatically add tracks back to the queue on disconnect.
-     * @type {boolean | undefined}
-     * @default false
-     */
-    autoQueue?: boolean;
 }
 
 /**

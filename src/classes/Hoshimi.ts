@@ -140,7 +140,6 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
      *    	onDisconnect: {
      *        autoDestroy: false,
      *        autoReconnect: false,
-     *        autoQueue: false,
      *   	},
      *   	onError: {
      *        autoDestroy: false,
@@ -426,12 +425,14 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
 
                                 await player.connect();
 
+                                // Only what was playing is resumed. A player with tracks queued but nothing current was
+                                // left idle on purpose (never started, or stopped by `onError.autoStop`), and a
+                                // reconnect is no reason to start it.
                                 if (player.queue.current) return await player.play({ track: player.queue.current, paused, position });
-                                if (!player.queue.isEmpty()) return await player.play({ paused });
 
                                 this.debug(
                                     DebugLevels.Player,
-                                    `[Player] -> [Voice] No tracks to play after reconnect for: ${data.guild_id}`,
+                                    `[Player] -> [Voice] Nothing was playing before the reconnect for: ${data.guild_id}`,
                                 );
                             } catch (error) {
                                 this.emit(EventNames.PlayerError, player, error);

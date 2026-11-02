@@ -60,6 +60,23 @@ describe("onDisconnect.autoReconnect", () => {
         expect(player.connected).toBe(false);
     });
 
+    it("rejoins but does not start the queue when nothing was playing", async () => {
+        const { player, sendPayload, left } = setup();
+        const play = vi.spyOn(player, "play").mockResolvedValue();
+
+        player.queue.current = null;
+        player.queue.tracks = [Structures.Track(createMockTrackData({ encoded: "next" }) as never, {})];
+
+        await left();
+
+        expect(sendPayload).toHaveBeenCalledWith(
+            player.guildId,
+            expect.objectContaining({ d: expect.objectContaining({ channel_id: "voice-1" }) }),
+        );
+        expect(play).not.toHaveBeenCalled();
+        expect(player.queue.size).toBe(1);
+    });
+
     it("destroys the player and stops there when replaying fails", async () => {
         const { manager, player, left } = setup();
         vi.spyOn(player, "play").mockRejectedValue(new Error("node down"));

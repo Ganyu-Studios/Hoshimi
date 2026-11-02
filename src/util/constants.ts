@@ -124,7 +124,6 @@ export const HoshimiDefaultOptions: Readonly<DefaultHoshimiOptions> = Object.fre
         onDisconnect: {
             autoDestroy: false,
             autoReconnect: false,
-            autoQueue: false,
         },
         onError: {
             autoDestroy: false,
