@@ -192,8 +192,8 @@ export class Node {
         this.retryDelay = this.options.retryDelay;
         this.nodeManager = nodeManager;
 
-        if (this.options.secure && this.options.port !== 443) this.options.port = 443;
-
+        // The port is used as given: `secure` only picks the scheme. Forcing 443 made a node behind TLS
+        // on any other port (8443, a reverse proxy) unreachable.
         this.rest = Structures.Rest(this);
         this.lyricsManager = Structures.LyricsManager(this);
     }
@@ -610,7 +610,10 @@ export class Node {
      * ```
      */
     public reconnect(): void {
-        if (this.state === State.Disconnected || this.state === State.Destroyed || this.reconnectTimeout) return;
+        // A node left `Disconnected` by `disconnect()` can be reconnected on purpose (`reconnectAll()` after
+        // `disconnectAll()`). Nothing reconnects it on its own: `disconnect()` removes the socket listeners,
+        // so `onClose` never runs for it.
+        if (this.state === State.Destroyed || this.reconnectTimeout) return;
 
         this.state = State.Idle;
         this.sessionId = null;

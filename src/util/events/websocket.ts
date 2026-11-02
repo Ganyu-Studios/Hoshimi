@@ -1,4 +1,5 @@
 import type { IncomingMessage } from "node:http";
+import { WebSocket } from "ws";
 import { DebugLevels, EventNames } from "../../types/Manager";
 import { type LavalinkEventPayload, NodeDestroyReasons, type NodeInfo, OpCodes, State, WebsocketCloseCodes } from "../../types/Node";
 import { PlayerEventType } from "../../types/Player";
@@ -45,10 +46,13 @@ export function onOpen(this: NodeStructure, res: IncomingMessage): void {
  * Emitted when the socket connection is closed.
  * @param {NodeStructure} this The node that emitted the event.
  * @param {number} code The close code of the connection.
- * @param {string} reason The close reason message.
+ * @param {Buffer | string} reason The close reason message.
  * @returns {Promise<void>}
  */
-export async function onClose(this: NodeStructure, code: number, reason: string): Promise<void> {
+export async function onClose(this: NodeStructure, code: number, reason: Buffer | string): Promise<void> {
+    // `ws` hands the reason over as a Buffer: compared as it is, it never matched the destroy reason below.
+    const message: string = String(reason);
+
     clearHeartbeatTimer.call(this);
 
     // Invalidate session immediately to prevent stale REST calls
@@ -57,12 +61,12 @@ export async function onClose(this: NodeStructure, code: number, reason: string)
 
     this.nodeManager.manager.debug(
         DebugLevels.Node,
-        `[Socket] -> [${this.id}]: Connection closed with ${this.address}. | Code: ${code} | Reason: ${reason}`,
+        `[Socket] -> [${this.id}]: Connection closed with ${this.address}. | Code: ${code} | Reason: ${message}`,
     );
 
     this.nodeManager.manager.emit(EventNames.NodeDisconnect, this);
 
-    if (code !== WebsocketCloseCodes.NormalClosure || reason !== NodeDestroyReasons.Destroy) {
+    if (code !== WebsocketCloseCodes.NormalClosure || message !== NodeDestroyReasons.Destroy) {
         if (this.nodeManager.nodes.has(this.id)) this.reconnect();
     }
 
@@ -204,7 +208,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                         this.nodeManager.manager.emit(EventNames.NodeResumed, this, players, payload);
                         this.nodeManager.manager.debug(
                             DebugLevels.Node,
-                            `[Socket] <- [${this.id}]: Resumed session. | Session id: ${payload.sessionId} | Players: ${players.length} | Resumed: ${payload.resumed} | Timeout: ${timeout}ms`,
+                            `[Socket] <- [${this.id}]: Resumed session. | Session id: ${payload.sessionId} | Players: ${players.length} | Resumed: ${payload.resumed} | Timeout: ${timeout}s`,
                         );
                     }
 
@@ -224,7 +228,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
 
                         this.nodeManager.manager.debug(
                             DebugLevels.Node,
-                            `[Socket] -> [${this.id}]: Setting timeout to resume session. | Timeout: ${timeout}ms`,
+                            `[Socket] -> [${this.id}]: Setting timeout to resume session. | Timeout: ${timeout}s`,
                         );
 
                         await this.updateSession({ resuming, timeout });

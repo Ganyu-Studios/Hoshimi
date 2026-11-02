@@ -372,10 +372,14 @@ export class Player {
         this.lastPosition = position;
         this.lastPositionUpdate = Date.now();
 
+        // `noReplace` is a query parameter, not a player field, so it stays out of the body; `track` is
+        // rebuilt below from the resolved current track.
+        const { noReplace, track: _, ...playerOptions } = options;
+
         await this.updatePlayer({
-            noReplace: options.noReplace,
+            noReplace,
             playerOptions: {
-                ...options,
+                ...playerOptions,
                 position,
                 track: {
                     encoded: this.queue.current.encoded,
@@ -550,7 +554,10 @@ export class Player {
             const playerOptions: LavalinkPlayOptions = { voice };
 
             if (current) {
-                playerOptions.position = this.lastPosition;
+                // `position`, not `lastPosition`: the latter is the last value the old node reported, up
+                // to a whole update interval behind. And without `paused` the new node always resumed.
+                playerOptions.position = this.position;
+                playerOptions.paused = this.paused;
                 playerOptions.volume = this.volume;
                 playerOptions.track = {
                     encoded: current.encoded,
@@ -629,8 +636,10 @@ export class Player {
     public async setPaused(paused: boolean = !this.paused): Promise<boolean> {
         this.manager.debug(DebugLevels.Player, `[Player] -> [Pause] Player is now ${paused} for guild: ${this.guildId}`);
 
-        // When pausing, stop position calculation by setting lastPositionUpdate to null
+        // When pausing, freeze the position where it is now, then stop the calculation. Nulling the update
+        // alone made the position jump back to the last value Lavalink reported.
         if (paused) {
+            this.lastPosition = this.position;
             this.lastPositionUpdate = null;
         } else {
             // When resuming, restart position calculation from current position

@@ -78,7 +78,7 @@ describe("Errors", () => {
         expect(error.error).toBe("Not Found");
         expect(error.path).toBe("/v4/loadtracks");
         expect(error.trace).toBe("trace-value");
-        expect(error.message).toBe("Track not found");
+        expect(error.message).toBe("Rest request failed with response code: 404 | message: Track not found");
     });
 
     it("RestError supports an empty message", () => {
@@ -91,7 +91,7 @@ describe("Errors", () => {
             trace: undefined,
         });
 
-        expect(error.message).toBe("");
+        expect(error.message).toBe("Rest request failed with response code: 500");
         expect(error.status).toBe(500);
     });
 });

@@ -53,13 +53,32 @@ function isUnresolved(track: TrackResolvableStructure | AnyLavalinkTrack): track
  */
 function isLavalinkResolved(track: TrackResolvableStructure | AnyLavalinkTrack): track is LavalinkTrack {
     if (!track || typeof track !== "object") return false;
-    // Must have encoded and info, and NOT be a Track instance, and NOT have resolve
+    // Must have encoded and info, and NOT be a Track instance, and NOT have resolve. A track straight
+    // from the node carries no requester, so its complete info is what tells it apart from a partial
+    // one: requiring the requester sent every node track through an extra `/decodetrack` round trip.
     return (
         !(track instanceof Track) &&
         typeof track.encoded === "string" &&
         typeof track.info === "object" &&
         !("resolve" in track && typeof track.resolve === "function") &&
-        "requester" in track
+        ("requester" in track || isCompleteInfo(track.info))
+    );
+}
+
+/**
+ *
+ * Check whether a track info has every field Lavalink always sends for a loaded track.
+ * @param {object} info The track info to check.
+ * @returns {boolean} True when the info is complete.
+ */
+function isCompleteInfo(info: object): boolean {
+    const { identifier, title, author, length, isStream } = info as Partial<Record<string, unknown>>;
+    return (
+        typeof identifier === "string" &&
+        typeof title === "string" &&
+        typeof author === "string" &&
+        typeof length === "number" &&
+        typeof isStream === "boolean"
     );
 }
 

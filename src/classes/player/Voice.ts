@@ -174,7 +174,9 @@ export class PlayerVoiceState {
      * ```
      */
     public async setState(options: NullableVoiceChannelUpdate = {}): Promise<void> {
-        const voiceId: string | undefined = options.voiceId ?? this.player.voiceId;
+        // `null` leaves the channel and only `undefined` keeps the current one: with `??` both fell back
+        // to it, so `voiceId: null` reconnected instead of leaving.
+        const voiceId: string | undefined = options.voiceId === null ? undefined : (options.voiceId ?? this.player.voiceId);
         const selfDeaf: boolean = options.selfDeaf ?? this.player.selfDeaf;
         const selfMute: boolean = options.selfMute ?? this.player.selfMute;
 

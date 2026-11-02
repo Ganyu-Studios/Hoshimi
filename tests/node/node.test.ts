@@ -71,7 +71,7 @@ function createNode(client?: { id?: string; username?: string }, overrides: Part
                     },
                 },
                 restOptions: {
-                    resumeTimeout: 120,
+                    restTimeout: 120,
                 },
             } satisfies HoshimiOptions,
         },
@@ -127,18 +127,19 @@ describe("Node", () => {
         vi.restoreAllMocks();
     });
 
-    it("builds secure address using port 443", () => {
+    it("builds a secure address keeping the given port", () => {
         const { node } = createNode({ id: "1", username: "bot" });
         const secureNode = new Node(node.nodeManager, {
             host: "example.com",
-            port: 2333,
+            port: 8443,
             password: "pass",
             secure: true,
             id: "secure-1",
         });
 
-        expect(secureNode.options.port).toBe(443);
-        expect(secureNode.address).toBe("wss://example.com:443/v4/websocket");
+        expect(secureNode.options.port).toBe(8443);
+        expect(secureNode.address).toBe("wss://example.com:8443/v4/websocket");
+        expect(secureNode.rest.url).toBe("https://example.com:8443");
     });
 
     it("throws when connect is called without client data", () => {
@@ -279,6 +280,26 @@ describe("Node", () => {
         vi.advanceTimersByTime(60);
 
         expect(node.retryAmount).toBe(1);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("reconnect brings back a node left disconnected on purpose, but never a destroyed one", () => {
+        vi.useFakeTimers();
+
+        const { node } = createNode({ id: "123", username: "bot" }, { retryBackoff: false });
+        const connectSpy = vi.spyOn(node, "connect").mockImplementation(() => undefined);
+
+        node.state = State.Connected;
+        node.disconnect();
+        expect(node.state).toBe(State.Disconnected);
+
+        node.reconnect();
+        vi.advanceTimersByTime(60);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
+
+        node.state = State.Destroyed;
+        node.reconnect();
+        vi.advanceTimersByTime(60);
         expect(connectSpy).toHaveBeenCalledTimes(1);
     });
 

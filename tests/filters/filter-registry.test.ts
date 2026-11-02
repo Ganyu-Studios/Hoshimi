@@ -301,6 +301,26 @@ describe("FilterManager presence semantics", () => {
         expect(sentFilters(spy)).toEqual({});
     });
 
+    it("setEQBand sends only the bands that were set, without holes", async () => {
+        const { fm, spy } = setup();
+
+        await fm.setEQBand({ band: 3, gain: 0.2 });
+        await fm.setEQBand({ band: 1, gain: -0.1 });
+
+        expect(sentFilters(spy)).toEqual({
+            equalizer: [
+                { band: 1, gain: -0.1 },
+                { band: 3, gain: 0.2 },
+            ],
+        });
+    });
+
+    it("setEQBand rejects a band Lavalink does not have", async () => {
+        const { fm } = setup();
+
+        for (const band of [-1, 15, 1.5]) await expect(fm.setEQBand({ band, gain: 0.1 })).rejects.toThrow("between 0 and 14");
+    });
+
     it("clearEQBands removes the equalizer key", async () => {
         const { fm, spy } = setup();
 

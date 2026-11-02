@@ -130,7 +130,6 @@ export class RestError extends Error {
         this.status = status;
         this.error = error;
         this.trace = trace;
-        this.message = message;
         this.path = path;
     }
 }
