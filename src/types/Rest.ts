@@ -173,8 +173,7 @@ export enum HttpStatusCodes {
 }
 
 /**
- * The REST routes.
- * @deprecated Use the typed `node.rest.route` builder instead. Will be removed in a future release.
+ * The REST routes, for `rest.request`. The typed `node.rest.route` builder covers the same endpoints.
  */
 export const RestRoutes = {
     /**

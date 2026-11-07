@@ -194,7 +194,7 @@ describe("Rest", () => {
         expect(result).toBeNull();
     });
 
-    it("keeps the deprecated player and session methods as wrappers around the node", async () => {
+    it("keeps the player and session shortcuts as wrappers around the node", async () => {
         const manager = createRealManager();
         const node = createRealNode(manager);
         const rest = new Rest(node as never);

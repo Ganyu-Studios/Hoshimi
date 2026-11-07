@@ -182,10 +182,22 @@ export class Rest {
 
     /**
      *
-     * Update the player data.
-     * @deprecated Use {@link Node.updatePlayer}, or `rest.route` for the raw request. Will be removed in a future release.
+     * Update the player data. Shortcut for {@link Node.updatePlayer}.
      * @param {Partial<UpdatePlayerInfo>} data The player data to update.
      * @returns {Promise<LavalinkPlayer | null>} The updated player data.
+     * @example
+     * ```ts
+     * const player = await node.rest.updatePlayer({
+     * 	guildId: "guildId",
+     * 	noReplace: true,
+     * 	playerOptions: {
+     * 		paused: false,
+     * 		track: { encoded: "encoded track" },
+     * 	},
+     * });
+     *
+     * console.log(player); // The updated lavalink player data
+     * ```
      */
     public updatePlayer(data: Partial<UpdatePlayerInfo>): Promise<LavalinkPlayer | null> {
         return this.node.updatePlayer(data);
@@ -193,10 +205,14 @@ export class Rest {
 
     /**
      *
-     * Stop the track in player for the guild.
-     * @deprecated Use {@link Node.stopPlayer}. Will be removed in a future release.
+     * Stop the track in player for the guild. Shortcut for {@link Node.stopPlayer}.
      * @param {string} guildId The guild id to stop the player.
      * @returns {Promise<LavalinkPlayer | null>} The updated player data.
+     * @example
+     * ```ts
+     * const player = await node.rest.stopPlayer("guildId");
+     * if (player) console.log(player); // The lavalink player
+     * ```
      */
     public stopPlayer(guildId: string): Promise<LavalinkPlayer | null> {
         return this.node.stopPlayer(guildId);
@@ -204,10 +220,13 @@ export class Rest {
 
     /**
      *
-     * Destroy the player for the guild.
-     * @deprecated Use {@link Node.destroyPlayer}. Will be removed in a future release.
+     * Destroy the player for the guild. Shortcut for {@link Node.destroyPlayer}.
      * @param {string} guildId The guild id to destroy the player.
      * @returns {Promise<void>}
+     * @example
+     * ```ts
+     * await node.rest.destroyPlayer("guildId");
+     * ```
      */
     public destroyPlayer(guildId: string): Promise<void> {
         return this.node.destroyPlayer(guildId);
@@ -215,10 +234,15 @@ export class Rest {
 
     /**
      *
-     * Update the session for the node.
-     * @deprecated Use {@link Node.updateSession}, which also stores the session it gets back. Will be removed in a future release.
+     * Update the session for the node. Shortcut for {@link Node.updateSession}, which also stores the
+     * session it gets back.
      * @param {SessionResumingOptions} options The session resuming options.
      * @returns {Promise<LavalinkSession | null>} The updated session data.
+     * @example
+     * ```ts
+     * const session = await node.rest.updateSession({ resuming: true, timeout: 60 });
+     * if (session) console.log(session); // The lavalink session data
+     * ```
      */
     public updateSession(options: SessionResumingOptions): Promise<LavalinkSession | null> {
         return this.node.updateSession(options);
@@ -226,9 +250,13 @@ export class Rest {
 
     /**
      *
-     * Get all players for the current session.
-     * @deprecated Use {@link Node.getPlayers}. Will be removed in a future release.
+     * Get all players for the current session. Shortcut for {@link Node.getPlayers}.
      * @returns {Promise<LavalinkPlayer[]>} The players for the current session.
+     * @example
+     * ```ts
+     * const players = await node.rest.getPlayers();
+     * console.log(players); // The lavalink players for the current session
+     * ```
      */
     public getPlayers(): Promise<LavalinkPlayer[]> {
         return this.node.getPlayers();
