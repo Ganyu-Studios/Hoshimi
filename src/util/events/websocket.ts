@@ -1,9 +1,9 @@
 import type { IncomingMessage } from "node:http";
 import { WebSocket } from "ws";
 import { DebugLevels, EventNames } from "../../types/Manager";
-import { type LavalinkEventPayload, NodeDestroyReasons, type NodeInfo, OpCodes, State, WebsocketCloseCodes } from "../../types/Node";
+import { type LavalinkEventPayload, NodeDestroyReasons, OpCodes, State, WebsocketCloseCodes } from "../../types/Node";
 import { PlayerEventType } from "../../types/Player";
-import { type LavalinkPlayer, RestRoutes } from "../../types/Rest";
+import type { LavalinkPlayer } from "../../types/Rest";
 import type { NodeStructure, PlayerStructure } from "../../types/Structures";
 import { stringify } from "../functions/utils";
 import {
@@ -202,7 +202,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     const { sessionOptions } = this.nodeManager.manager.options.nodeOptions;
 
                     if (payload.resumed) {
-                        const players: LavalinkPlayer[] = await this.rest.getPlayers();
+                        const players: LavalinkPlayer[] = await this.getPlayers();
                         const timeout: number = sessionOptions.timeout;
 
                         this.nodeManager.manager.emit(EventNames.NodeResumed, this, players, payload);
@@ -218,7 +218,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                     // `resumeFn` defaults to the built-in `resumeByLibrary`; a custom one replaces it.
                     if (!payload.resumed && isLibrary && players.length) await sessionOptions.resumeFn(this, players);
 
-                    this.info = await this.rest.request<NodeInfo>({ endpoint: RestRoutes.NodeInfo });
+                    this.info = await this.rest.route.info.get();
 
                     if (this.info) this.info.isNodelink = !!this.info.isNodelink;
 

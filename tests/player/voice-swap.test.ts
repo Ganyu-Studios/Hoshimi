@@ -17,7 +17,7 @@ describe("voice server reallocation", () => {
         const player = createRealPlayer(manager);
         player.voiceId = "voice-1";
 
-        const updatePlayer = vi.spyOn(node.rest, "updatePlayer").mockResolvedValue(null);
+        const updatePlayer = vi.mocked(node.updatePlayer);
 
         await manager.updateVoiceState({
             t: "VOICE_STATE_UPDATE",

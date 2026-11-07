@@ -42,7 +42,7 @@ describe("trackStuck", () => {
 
         await stuck();
 
-        expect(node.rest.updatePlayer).toHaveBeenCalledWith(
+        expect(node.updatePlayer).toHaveBeenCalledWith(
             expect.objectContaining({ guildId: player.guildId, playerOptions: { track: { encoded: null } } }),
         );
         expect(player.queue.current?.info.identifier).toBe("A");
@@ -67,11 +67,11 @@ describe("trackStuck", () => {
         const { node, player, A, stuck, end } = setup();
 
         await end();
-        vi.mocked(node.rest.updatePlayer).mockClear();
+        vi.mocked(node.updatePlayer).mockClear();
 
         await stuck(A);
 
         expect(player.queue.current?.info.identifier).toBe("B");
-        expect(node.rest.updatePlayer).not.toHaveBeenCalled();
+        expect(node.updatePlayer).not.toHaveBeenCalled();
     });
 });

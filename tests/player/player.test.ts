@@ -67,7 +67,7 @@ describe("Player", () => {
 
         await player.play({ track, noReplace: true, paused: true });
 
-        const data = vi.mocked(node.rest.updatePlayer).mock.lastCall?.[0];
+        const data = vi.mocked(node.updatePlayer).mock.lastCall?.[0];
         expect(data?.noReplace).toBe(true);
         expect(data?.playerOptions).not.toHaveProperty("noReplace");
         expect(data?.playerOptions).toMatchObject({ paused: true, position: 0, track: { encoded: track.encoded } });
@@ -81,7 +81,7 @@ describe("Player", () => {
         await expect(player.skip()).rejects.toThrow(PlayerError);
 
         await expect(player.skip({ throwError: false })).resolves.toBeUndefined();
-        expect(node.rest.stopPlayer).not.toHaveBeenCalled();
+        expect(node.stopPlayer).not.toHaveBeenCalled();
     });
 
     it("skip stops playback when a track is playing", async () => {
@@ -94,7 +94,7 @@ describe("Player", () => {
 
         await player.skip({ throwError: false });
 
-        expect(node.rest.stopPlayer).toHaveBeenCalledWith(player.guildId);
+        expect(node.stopPlayer).toHaveBeenCalledWith(player.guildId);
     });
 
     it("move throws when target node is missing", async () => {

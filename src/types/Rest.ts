@@ -174,6 +174,7 @@ export enum HttpStatusCodes {
 
 /**
  * The REST routes.
+ * @deprecated Use the typed `node.rest.route` builder instead. Will be removed in a future release.
  */
 export const RestRoutes = {
     /**
@@ -284,10 +285,10 @@ export interface RestOptions {
      */
     headers?: Record<string, string>;
     /**
-     * The body for the REST.
-     * @type {Record<string, unknown> | string | undefined}
+     * The body for the REST. Anything but a string is serialized as JSON.
+     * @type {Record<string, unknown> | unknown[] | string | undefined}
      */
-    body?: Record<string, unknown> | string;
+    body?: Record<string, unknown> | unknown[] | string;
     /**
      * The query parameters for the REST.
      * @type {Record<string, string>}

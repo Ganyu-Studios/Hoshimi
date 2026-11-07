@@ -27,9 +27,6 @@ describe("Rest", () => {
         const rest = new Rest(node as never);
 
         (node.rest.request as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.updatePlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.destroyPlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.stopPlayer as ReturnType<typeof vi.fn>).mockRestore();
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: true,
@@ -91,9 +88,6 @@ describe("Rest", () => {
         const rest = new Rest(node as never);
 
         (node.rest.request as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.updatePlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.destroyPlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.stopPlayer as ReturnType<typeof vi.fn>).mockRestore();
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: true,
@@ -120,9 +114,6 @@ describe("Rest", () => {
         const rest = new Rest(node as never);
 
         (node.rest.request as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.updatePlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.destroyPlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.stopPlayer as ReturnType<typeof vi.fn>).mockRestore();
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: true,
@@ -143,9 +134,6 @@ describe("Rest", () => {
         const rest = new Rest(node as never);
 
         (node.rest.request as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.updatePlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.destroyPlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.stopPlayer as ReturnType<typeof vi.fn>).mockRestore();
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: false,
@@ -170,9 +158,6 @@ describe("Rest", () => {
         const rest = new Rest(node as never);
 
         (node.rest.request as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.updatePlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.destroyPlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.stopPlayer as ReturnType<typeof vi.fn>).mockRestore();
 
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: false,
@@ -191,9 +176,6 @@ describe("Rest", () => {
         const rest = new Rest(node as never);
 
         (node.rest.request as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.updatePlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.destroyPlayer as ReturnType<typeof vi.fn>).mockRestore();
-        (node.rest.stopPlayer as ReturnType<typeof vi.fn>).mockRestore();
 
         const fetchSpy = vi.fn().mockRejectedValue(new Error("network down"));
         vi.stubGlobal("fetch", fetchSpy);
@@ -212,73 +194,47 @@ describe("Rest", () => {
         expect(result).toBeNull();
     });
 
-    it("stopPlayer delegates to updatePlayer with encoded null", async () => {
+    it("keeps the deprecated player and session methods as wrappers around the node", async () => {
         const manager = createRealManager();
         const node = createRealNode(manager);
-        node.sessionId = "sess-123";
         const rest = new Rest(node as never);
 
-        const updateSpy = vi.spyOn(rest, "updatePlayer").mockResolvedValue(null);
+        const players = [{ guildId: "g1" }];
+        const session = { resuming: true, timeout: 60 };
+        vi.spyOn(node, "getPlayers").mockResolvedValue(players as never);
+        vi.spyOn(node, "updateSession").mockResolvedValue(session as never);
 
+        const data = { guildId: "guild-1", playerOptions: { paused: true } };
+
+        await rest.updatePlayer(data);
         await rest.stopPlayer("guild-1");
-
-        expect(updateSpy).toHaveBeenCalledWith({
-            guildId: "guild-1",
-            playerOptions: {
-                paused: false,
-                track: { encoded: null },
-            },
-        });
-    });
-
-    it("destroyPlayer no-ops when there is no session", async () => {
-        const manager = createRealManager();
-        const node = createRealNode(manager);
-        node.sessionId = null as never;
-        const rest = new Rest(node as never);
-
-        const reqSpy = vi.spyOn(rest, "request").mockResolvedValue(null);
-
         await rest.destroyPlayer("guild-1");
 
-        expect(reqSpy).not.toHaveBeenCalled();
+        expect(node.updatePlayer).toHaveBeenCalledWith(data);
+        expect(node.stopPlayer).toHaveBeenCalledWith("guild-1");
+        expect(node.destroyPlayer).toHaveBeenCalledWith("guild-1");
+        expect(await rest.getPlayers()).toBe(players);
+        expect(await rest.updateSession({ resuming: true, timeout: 60 })).toBe(session);
+        expect(node.updateSession).toHaveBeenCalledWith({ resuming: true, timeout: 60 });
     });
 
-    it("destroyPlayer calls DELETE endpoint when session exists", async () => {
+    it("serializes the body once, for the wire and the debug line alike", async () => {
         const manager = createRealManager();
         const node = createRealNode(manager);
-        node.sessionId = "sess-123";
         const rest = new Rest(node as never);
 
-        const reqSpy = vi.spyOn(rest, "request").mockResolvedValue(null);
+        const fetchSpy = vi.fn().mockResolvedValue({ ok: true, status: HttpStatusCodes.NoContent } as never);
+        vi.stubGlobal("fetch", fetchSpy);
+        const debug = vi.fn();
+        manager.on("debug", (_, message) => debug(message));
 
-        await rest.destroyPlayer("guild-1");
+        await rest.route
+            .sessions("s")
+            .players("g")
+            .patch({ body: { paused: true } });
 
-        expect(reqSpy).toHaveBeenCalledWith({
-            method: HttpMethods.Delete,
-            endpoint: RestRoutes.UpdatePlayer("sess-123", "guild-1"),
-        });
-    });
-
-    it("getPlayers returns empty array when there is no session", async () => {
-        const manager = createRealManager();
-        const node = createRealNode(manager);
-        node.sessionId = null as never;
-        const rest = new Rest(node as never);
-
-        const result = await rest.getPlayers();
-
-        expect(result).toEqual([]);
-    });
-
-    it("updateSession returns null when there is no session", async () => {
-        const manager = createRealManager();
-        const node = createRealNode(manager);
-        node.sessionId = null as never;
-        const rest = new Rest(node as never);
-
-        const result = await rest.updateSession({ resuming: true, timeout: 1000 });
-
-        expect(result).toBeNull();
+        const [, opts] = fetchSpy.mock.calls[0] as [string, { body: string }];
+        expect(opts.body).toBe('{"paused":true}');
+        expect(debug).toHaveBeenCalledWith(expect.stringContaining('Body: {"paused":true}'));
     });
 });

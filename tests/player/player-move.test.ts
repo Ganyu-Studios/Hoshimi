@@ -37,7 +37,7 @@ describe("player move nodeChange flag", () => {
 
     it("clears the flag when the move fails midway", async () => {
         const { player, target } = await setup();
-        vi.spyOn(target.rest, "updatePlayer").mockRejectedValueOnce(new Error("rest down"));
+        vi.spyOn(target, "updatePlayer").mockRejectedValueOnce(new Error("rest down"));
 
         await expect(player.move("node-2")).rejects.toThrow("rest down");
         expect(await player.data.get("internal_nodeChange")).toBeUndefined();
@@ -73,7 +73,7 @@ describe("player move playback state", () => {
 
         await player.move("node-2");
 
-        return vi.mocked(target.rest.updatePlayer).mock.calls.find(([data]) => data.playerOptions?.track)?.[0].playerOptions;
+        return vi.mocked(target.updatePlayer).mock.calls.find(([data]) => data.playerOptions?.track)?.[0].playerOptions;
     }
 
     it("resumes on the new node from the current position, not the last reported one", async () => {

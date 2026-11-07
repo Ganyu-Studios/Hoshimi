@@ -29,9 +29,9 @@ export function createRealNode(manager: Hoshimi, options?: Partial<NodeOptions>)
     node.sessionId = "session-1";
 
     vi.spyOn(node.rest, "request").mockResolvedValue(null);
-    vi.spyOn(node.rest, "updatePlayer").mockResolvedValue(null);
-    vi.spyOn(node.rest, "destroyPlayer").mockImplementation(async () => {});
-    vi.spyOn(node.rest, "stopPlayer").mockResolvedValue(null);
+    vi.spyOn(node, "updatePlayer").mockResolvedValue(null);
+    vi.spyOn(node, "destroyPlayer").mockImplementation(async () => {});
+    vi.spyOn(node, "stopPlayer").mockResolvedValue(null);
 
     return node;
 }

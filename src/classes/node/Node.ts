@@ -17,15 +17,13 @@ import {
     type UserAgent,
     WebsocketCloseCodes,
 } from "../../types/Node";
-import {
-    type DecodeMethods,
-    HttpMethods,
-    type LavalinkPlayer,
-    type LavalinkSession,
-    type NullableLavalinkSession,
-    RestRoutes,
-    type SessionResumingOptions,
-    type UpdatePlayerInfo,
+import type {
+    DecodeMethods,
+    LavalinkPlayer,
+    LavalinkSession,
+    NullableLavalinkSession,
+    SessionResumingOptions,
+    UpdatePlayerInfo,
 } from "../../types/Rest";
 import {
     type LyricsManagerStructure,
@@ -36,9 +34,27 @@ import {
 } from "../../types/Structures";
 import { HoshimiAgent, HoshimiDefaultOptions } from "../../util/constants";
 import { clearHeartbeatTimer, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
-import { stringify, toHeaderValue } from "../../util/functions/utils";
+import { stringify, toHeaderValue, updatePlayerState } from "../../util/functions/utils";
 import { Validations } from "../../util/functions/validations";
 import { NodeError } from "../Errors";
+
+/**
+ *
+ * Get the session id when the node can take REST calls, logging the skipped action when it cannot.
+ * @param {Node} this The node to check.
+ * @param {string} action The name of the action that wants to run.
+ * @returns {string | null} The session id, or null when there is no session or the node is not connected.
+ */
+function readySession(this: Node, action: string): string | null {
+    if (this.sessionId && this.state === State.Connected) return this.sessionId;
+
+    this.nodeManager.manager.debug(
+        DebugLevels.Rest,
+        `[Rest] -> [${this.id}]: Skipped ${action} because session is not ready. | Session: ${this.sessionId ?? "none"} | State: ${this.state}`,
+    );
+
+    return null;
+}
 
 /**
  * Class representing a Lavalink node.
@@ -221,10 +237,7 @@ export class Node {
      */
     readonly decode: DecodeMethods = {
         single: async (track, requester): Promise<TrackStructure> => {
-            const raw: LavalinkTrack | null = await this.rest.request<LavalinkTrack>({
-                endpoint: RestRoutes.DecodeTrack,
-                params: { encodedTrack: track },
-            });
+            const raw: LavalinkTrack | null = await this.rest.route.decodetrack.get({ query: { encodedTrack: track } });
 
             const requesterFn = this.nodeManager.manager.options.playerOptions.requesterFn;
             const trackRequester = await requesterFn(requester);
@@ -232,12 +245,7 @@ export class Node {
             return Structures.Track(raw, trackRequester);
         },
         multiple: async (tracks, requester): Promise<TrackStructure[]> => {
-            const raw: LavalinkTrack[] =
-                (await this.rest.request<LavalinkTrack[]>({
-                    endpoint: RestRoutes.DecodeTracks,
-                    method: HttpMethods.Post,
-                    body: stringify(tracks),
-                })) ?? [];
+            const raw: LavalinkTrack[] = (await this.rest.route.decodetracks.post({ body: tracks })) ?? [];
 
             const requesterFn = this.nodeManager.manager.options.playerOptions.requesterFn;
             const trackRequester = await requesterFn(requester);
@@ -370,13 +378,7 @@ export class Node {
 
         const identifier: string = Validations.validateQuery(query);
 
-        return this.rest.request<LavalinkSearchResponse>({
-            endpoint: RestRoutes.LoadTracks,
-            params: {
-                identifier,
-                ...query.params,
-            },
-        });
+        return this.rest.route.loadtracks.get({ query: { identifier, ...query.params } });
     }
 
     /**
@@ -464,7 +466,17 @@ export class Node {
      * ```
      */
     public stopPlayer(guildId: string): Promise<LavalinkPlayer | null> {
-        return this.rest.stopPlayer(guildId);
+        if (!readySession.call(this, "stopPlayer")) return Promise.resolve(null);
+
+        this.nodeManager.manager.debug(DebugLevels.Rest, `[Rest] -> [${this.id}]: Stopped player for guild: ${guildId}`);
+
+        return this.updatePlayer({
+            guildId,
+            playerOptions: {
+                paused: false,
+                track: { encoded: null },
+            },
+        });
     }
 
     /**
@@ -490,7 +502,23 @@ export class Node {
      * ```
      */
     public updatePlayer(data: Partial<UpdatePlayerInfo>): Promise<LavalinkPlayer | null> {
-        return this.rest.updatePlayer(data);
+        const sessionId: string | null = readySession.call(this, "updatePlayer");
+        if (!sessionId) return Promise.resolve(null);
+
+        this.nodeManager.manager.debug(
+            DebugLevels.Rest,
+            () => `[Rest] -> [${this.id}]: Updated player data for guild: ${data.guildId} | Payload: ${stringify(data)}`,
+        );
+
+        updatePlayerState(this, data);
+
+        return this.rest.route
+            .sessions(sessionId)
+            .players(data.guildId!)
+            .patch({
+                body: { ...data.playerOptions },
+                query: { noReplace: data.noReplace ?? false },
+            });
     }
 
     /**
@@ -504,8 +532,36 @@ export class Node {
      * console.log("Player destroyed");
      * ```
      */
-    public destroyPlayer(guildId: string): Promise<void> {
-        return this.rest.destroyPlayer(guildId);
+    public async destroyPlayer(guildId: string): Promise<void> {
+        const sessionId: string | null = readySession.call(this, "destroyPlayer");
+        if (!sessionId) return;
+
+        this.nodeManager.manager.debug(DebugLevels.Rest, `[Rest] -> [${this.id}]: Destroyed player for guild: ${guildId}`);
+
+        await this.rest.route.sessions(sessionId).players(guildId).delete();
+    }
+
+    /**
+     *
+     * Get all players for the current session.
+     * @returns {Promise<LavalinkPlayer[]>} The players for the current session.
+     * @example
+     * ```ts
+     * const node = manager.nodeManager.get("node1");
+     * if (node) console.log(await node.getPlayers()); // The lavalink players for the current session
+     * ```
+     */
+    public async getPlayers(): Promise<LavalinkPlayer[]> {
+        const sessionId: string | null = readySession.call(this, "getPlayers");
+        if (!sessionId) return [];
+
+        this.nodeManager.manager.debug(DebugLevels.Rest, `[Rest] -> [${this.id}]: Fetching all players for session id: ${sessionId}`);
+
+        const players: LavalinkPlayer[] = (await this.rest.route.sessions(sessionId).players.get()) ?? [];
+        if (!players.length)
+            this.nodeManager.manager.debug(DebugLevels.Rest, `[Rest] <- [${this.id}]: No players found for session id: ${sessionId}`);
+
+        return players;
     }
 
     /**
@@ -590,9 +646,17 @@ export class Node {
      * ```
      */
     public async updateSession(options: SessionResumingOptions): Promise<LavalinkSession | null> {
-        if (!this.sessionId) return null;
+        const sessionId: string | null = readySession.call(this, "updateSession");
+        if (!sessionId) return null;
 
-        const session: LavalinkSession | null = await this.rest.updateSession(options);
+        const { resuming, timeout } = options;
+
+        this.nodeManager.manager.debug(
+            DebugLevels.Rest,
+            `[Rest] -> [${this.id}]: Updated session for resumed: ${resuming} | Timeout: ${timeout ?? "None"}`,
+        );
+
+        const session: LavalinkSession | null = await this.rest.route.sessions(sessionId).patch({ body: { resuming, timeout } });
         if (session) this.session = session;
 
         return session;
