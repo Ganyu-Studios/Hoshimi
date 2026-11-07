@@ -1,6 +1,15 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createRoute } from "../src/classes/node/Route";
-import type { LavalinkPlayer, LavalinkRoutes, LavalinkSession, LavalinkTrack, RestOptions, RouteArgs, RouteQueryArgs } from "../src/index";
+import type {
+    LavalinkPlayer,
+    LavalinkRawRoutes,
+    LavalinkRoutes,
+    LavalinkSession,
+    LavalinkTrack,
+    RestOptions,
+    RouteArgs,
+    RouteQueryArgs,
+} from "../src/index";
 import { HttpMethods } from "../src/index";
 
 // Same thing a plugin author would write in their project: `declare module "hoshimi"`.
@@ -108,6 +117,7 @@ describe("Route types", () => {
         expectTypeOf(route.sessions("s").patch).returns.resolves.toEqualTypeOf<LavalinkSession | null>();
         expectTypeOf(route.decodetrack.get).returns.resolves.toEqualTypeOf<LavalinkTrack | null>();
         expectTypeOf(route.loadsearch.get).returns.resolves.toEqualTypeOf<{ tracks: string[] } | null>();
+        expectTypeOf(createRoute<LavalinkRawRoutes>(vi.fn() as never).version.get).returns.resolves.toEqualTypeOf<string | null>();
     });
 
     it("rejects wrong routes, queries and bodies", () => {

@@ -129,3 +129,27 @@ export interface LavalinkRoutes {
         get(args: RouteQueryArgs<{ track: string } & LyricsQuery>): Promise<LyricsResult | null>;
     };
 }
+
+/**
+ * The typed routes outside `/v4`, the type of `node.rest.raw`.
+ *
+ * Augment it like {@link LavalinkRoutes} for plugin endpoints that are not versioned:
+ * @example
+ * ```ts
+ * declare module "hoshimi" {
+ *     interface LavalinkRawRoutes {
+ *         metrics: { get(args?: RouteArgs): Promise<string | null> };
+ *     }
+ * }
+ *
+ * const metrics = await node.rest.raw.metrics.get(); // GET /metrics
+ * ```
+ */
+export interface LavalinkRawRoutes {
+    /**
+     * The server version, as plain text.
+     */
+    version: {
+        get(args?: RouteArgs): Promise<string | null>;
+    };
+}

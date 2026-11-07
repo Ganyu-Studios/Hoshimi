@@ -31,6 +31,7 @@ describe("Rest", () => {
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: true,
             status: HttpStatusCodes.OK,
+            headers: new Headers({ "content-type": "application/json" }),
             json: vi.fn().mockResolvedValue({ ok: true }),
         } as never);
         vi.stubGlobal("fetch", fetchSpy);
@@ -69,6 +70,7 @@ describe("Rest", () => {
             vi.fn().mockResolvedValue({
                 ok: true,
                 status: HttpStatusCodes.OK,
+                headers: new Headers({ "content-type": "application/json" }),
                 json: vi.fn().mockResolvedValue({}),
             } as never),
         );
@@ -92,6 +94,7 @@ describe("Rest", () => {
         const fetchSpy = vi.fn().mockResolvedValue({
             ok: true,
             status: HttpStatusCodes.OK,
+            headers: new Headers({ "content-type": "application/json" }),
             json: vi.fn().mockResolvedValue({ done: true }),
         } as never);
         vi.stubGlobal("fetch", fetchSpy);
@@ -236,5 +239,50 @@ describe("Rest", () => {
         const [, opts] = fetchSpy.mock.calls[0] as [string, { body: string }];
         expect(opts.body).toBe('{"paused":true}');
         expect(debug).toHaveBeenCalledWith(expect.stringContaining('Body: {"paused":true}'));
+    });
+
+    it("sends raw routes outside /v4 and reads a plain text answer", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        const rest = new Rest(node as never);
+
+        const fetchSpy = vi.fn().mockResolvedValue({
+            ok: true,
+            status: HttpStatusCodes.OK,
+            headers: new Headers({ "content-type": "text/plain;charset=UTF-8" }),
+            text: vi.fn().mockResolvedValue("4.0.8"),
+            json: vi.fn().mockRejectedValue(new Error("not json")),
+        } as never);
+        vi.stubGlobal("fetch", fetchSpy);
+
+        expect(await rest.raw.version.get()).toBe("4.0.8");
+
+        const [url] = fetchSpy.mock.calls[0] as [string];
+        expect(new URL(url).pathname).toBe("/version");
+
+        await rest.route.info.get().catch(() => {});
+        const [infoUrl] = fetchSpy.mock.calls[1] as [string];
+        expect(new URL(infoUrl).pathname).toBe("/v4/info");
+    });
+
+    it("reads JSON with a charset, and a response without a content type, as JSON", async () => {
+        const manager = createRealManager();
+        const node = createRealNode(manager);
+        const rest = new Rest(node as never);
+
+        const answer = (type: string | null) => ({
+            ok: true,
+            status: HttpStatusCodes.OK,
+            headers: new Headers(type ? { "content-type": type } : {}),
+            json: vi.fn().mockResolvedValue({ ok: true }),
+            text: vi.fn().mockResolvedValue("text"),
+        });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce(answer("application/json; charset=utf-8")).mockResolvedValueOnce(answer(null)),
+        );
+
+        expect(await rest.route.info.get()).toEqual({ ok: true });
+        expect(await rest.route.info.get()).toEqual({ ok: true });
     });
 });

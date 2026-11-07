@@ -13,7 +13,7 @@ import {
     type SessionResumingOptions,
     type UpdatePlayerInfo,
 } from "../../types/Rest";
-import type { LavalinkRoutes } from "../../types/Route";
+import type { LavalinkRawRoutes, LavalinkRoutes } from "../../types/Route";
 import type { NodeStructure } from "../../types/Structures";
 import { HoshimiAgent } from "../../util/constants";
 import { stringify } from "../../util/functions/utils";
@@ -93,6 +93,18 @@ export class Rest {
      * ```
      */
     readonly route: LavalinkRoutes = createRoute<LavalinkRoutes>((options) => this.request(options));
+
+    /**
+     * Typed route builder for the endpoints outside `/v4`, shaped by {@link LavalinkRawRoutes}.
+     * Extend it with module augmentation like {@link Rest.route}.
+     * @type {LavalinkRawRoutes}
+     * @readonly
+     * @example
+     * ```ts
+     * const version = await node.rest.raw.version.get(); // GET /version
+     * ```
+     */
+    readonly raw: LavalinkRawRoutes = createRoute<LavalinkRawRoutes>((options) => this.request({ ...options, pathType: RestPathType.Raw }));
 
     /**
      * The REST URL to make requests.
@@ -176,6 +188,11 @@ export class Rest {
         }
 
         if (response.status === HttpStatusCodes.NoContent) return null;
+
+        // Unversioned endpoints like `/version` answer plain text. A response without a content type is
+        // read as JSON, as every response used to be.
+        const type: string = response.headers.get("content-type") ?? "application/json";
+        if (!type.includes("json")) return response.text() as Promise<T>;
 
         return response.json() as Promise<T>;
     }
