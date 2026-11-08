@@ -173,7 +173,7 @@ export enum HttpStatusCodes {
 }
 
 /**
- * The REST routes.
+ * The REST routes, for `rest.request`. The typed `node.rest.route` builder covers the same endpoints.
  */
 export const RestRoutes = {
     /**
@@ -284,10 +284,10 @@ export interface RestOptions {
      */
     headers?: Record<string, string>;
     /**
-     * The body for the REST.
-     * @type {Record<string, unknown> | string | undefined}
+     * The body for the REST. Anything but a string is serialized as JSON.
+     * @type {Record<string, unknown> | unknown[] | string | undefined}
      */
-    body?: Record<string, unknown> | string;
+    body?: Record<string, unknown> | unknown[] | string;
     /**
      * The query parameters for the REST.
      * @type {Record<string, string>}

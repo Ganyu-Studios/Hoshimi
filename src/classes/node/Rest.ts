@@ -1,7 +1,6 @@
 import type { Hoshimi } from "../..";
 import { DebugLevels } from "../../types/Manager";
 import type { UserAgent } from "../../types/Node";
-import { State } from "../../types/Node";
 import {
     type FetchOptions,
     HttpMethods,
@@ -11,14 +10,28 @@ import {
     type LavalinkSession,
     type RestOptions,
     RestPathType,
-    RestRoutes,
     type SessionResumingOptions,
     type UpdatePlayerInfo,
 } from "../../types/Rest";
+import type { LavalinkRawRoutes, LavalinkRoutes } from "../../types/Route";
 import type { NodeStructure } from "../../types/Structures";
 import { HoshimiAgent } from "../../util/constants";
-import { stringify, updatePlayerState } from "../../util/functions/utils";
+import { stringify } from "../../util/functions/utils";
 import { RestError } from "../Errors";
+import { createRoute } from "./Route";
+
+/**
+ *
+ * Serialize a request body. A string is sent as it is, anything else as JSON.
+ * @param {RestOptions["body"]} body The body to serialize.
+ * @returns {string | undefined} The serialized body, or undefined when there is none.
+ */
+function serializeBody(body: RestOptions["body"]): string | undefined {
+    if (!body) return undefined;
+    if (typeof body === "string") return body;
+
+    return stringify(body);
+}
 
 /**
  * Class representing the REST for the node.
@@ -82,6 +95,31 @@ export class Rest {
     }
 
     /**
+     * Typed route builder under `/v4`, shaped by {@link LavalinkRoutes}.
+     * Extend it with module augmentation to type your plugin routes.
+     * @type {LavalinkRoutes}
+     * @readonly
+     * @example
+     * ```ts
+     * const players = await node.rest.route.sessions(node.sessionId!).players.get();
+     * await node.rest.route.sessions(sessionId).players(guildId).patch({ body: { paused: true }, query: { noReplace: true } });
+     * ```
+     */
+    readonly route: LavalinkRoutes = createRoute<LavalinkRoutes>((options) => this.request(options));
+
+    /**
+     * Typed route builder for the endpoints outside `/v4`, shaped by {@link LavalinkRawRoutes}.
+     * Extend it with module augmentation like {@link Rest.route}.
+     * @type {LavalinkRawRoutes}
+     * @readonly
+     * @example
+     * ```ts
+     * const version = await node.rest.raw.version.get(); // GET /version
+     * ```
+     */
+    readonly raw: LavalinkRawRoutes = createRoute<LavalinkRawRoutes>((options) => this.request({ ...options, pathType: RestPathType.Raw }));
+
+    /**
      * The REST URL to make requests.
      * @type {string}
      */
@@ -135,15 +173,15 @@ export class Rest {
             signal: abortController.signal,
         };
 
-        if (![HttpMethods.Get, HttpMethods.Head].includes(options.method) && options.body) {
-            if (typeof options.body === "string") fetchOptions.body = options.body;
-            else fetchOptions.body = stringify(options.body);
-        }
+        // Serialized once, here: the same string goes on the wire and into the debug line.
+        const body: string | undefined = serializeBody(options.body);
+
+        if (![HttpMethods.Get, HttpMethods.Head].includes(options.method) && body) fetchOptions.body = body;
 
         this.node.nodeManager.manager.debug(
             DebugLevels.Rest,
             () =>
-                `[Rest] -> [${this.node.id} : ${options.method}]: Url: ${this.restUrl} | Endpoint: ${options.endpoint} | Params: ${url.search} | Body: ${options.body ? stringify(options.body) : "None"}`,
+                `[Rest] -> [${this.node.id} : ${options.method}]: Url: ${this.restUrl} | Endpoint: ${options.endpoint} | Params: ${url.search} | Body: ${body ?? "None"}`,
         );
 
         const response = await fetch(url.toString(), fetchOptions).finally((): void => clearTimeout(timeout));
@@ -163,14 +201,19 @@ export class Rest {
 
         if (response.status === HttpStatusCodes.NoContent) return null;
 
+        // Unversioned endpoints like `/version` answer plain text. A response without a content type is
+        // read as JSON, as every response used to be.
+        const type: string = response.headers.get("content-type") ?? "application/json";
+        if (!type.includes("json")) return response.text() as Promise<T>;
+
         return response.json() as Promise<T>;
     }
 
     /**
      *
-     * Update the player data.
+     * Update the player data. Shortcut for {@link Node.updatePlayer}.
      * @param {Partial<UpdatePlayerInfo>} data The player data to update.
-     * @returns {LavalinkPlayer | null} The updated player data.
+     * @returns {Promise<LavalinkPlayer | null>} The updated player data.
      * @example
      * ```ts
      * const player = await node.rest.updatePlayer({
@@ -186,32 +229,12 @@ export class Rest {
      * ```
      */
     public updatePlayer(data: Partial<UpdatePlayerInfo>): Promise<LavalinkPlayer | null> {
-        if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.debug(
-                DebugLevels.Rest,
-                `[Rest] -> [${this.node.id}]: Skipped updatePlayer because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
-            );
-            return Promise.resolve(null);
-        }
-
-        this.node.nodeManager.manager.debug(
-            DebugLevels.Rest,
-            () => `[Rest] -> [${this.node.id}]: Updated player data for guild: ${data.guildId} | Payload: ${stringify(data)}`,
-        );
-
-        updatePlayerState(this.node, data);
-
-        return this.request<LavalinkPlayer>({
-            method: HttpMethods.Patch,
-            endpoint: RestRoutes.UpdatePlayer(this.sessionId, data.guildId!),
-            body: { ...data.playerOptions },
-            params: { noReplace: `${data.noReplace ?? false}` },
-        });
+        return this.node.updatePlayer(data);
     }
 
     /**
      *
-     * Stop the track in player for the guild.
+     * Stop the track in player for the guild. Shortcut for {@link Node.stopPlayer}.
      * @param {string} guildId The guild id to stop the player.
      * @returns {Promise<LavalinkPlayer | null>} The updated player data.
      * @example
@@ -221,28 +244,12 @@ export class Rest {
      * ```
      */
     public stopPlayer(guildId: string): Promise<LavalinkPlayer | null> {
-        if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.debug(
-                DebugLevels.Rest,
-                `[Rest] -> [${this.node.id}]: Skipped stopPlayer because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
-            );
-            return Promise.resolve(null);
-        }
-
-        this.node.nodeManager.manager.debug(DebugLevels.Rest, `[Rest] -> [${this.node.id}]: Stopped player for guild: ${guildId}`);
-
-        return this.updatePlayer({
-            guildId,
-            playerOptions: {
-                paused: false,
-                track: { encoded: null },
-            },
-        });
+        return this.node.stopPlayer(guildId);
     }
 
     /**
      *
-     * Destroy the player for the guild.
+     * Destroy the player for the guild. Shortcut for {@link Node.destroyPlayer}.
      * @param {string} guildId The guild id to destroy the player.
      * @returns {Promise<void>}
      * @example
@@ -250,60 +257,29 @@ export class Rest {
      * await node.rest.destroyPlayer("guildId");
      * ```
      */
-    public async destroyPlayer(guildId: string): Promise<void> {
-        if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.debug(
-                DebugLevels.Rest,
-                `[Rest] -> [${this.node.id}]: Skipped destroyPlayer because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
-            );
-            return;
-        }
-
-        this.node.nodeManager.manager.debug(DebugLevels.Rest, `[Rest] -> [${this.node.id}]: Destroyed player for guild: ${guildId}`);
-
-        await this.request({
-            method: HttpMethods.Delete,
-            endpoint: RestRoutes.UpdatePlayer(this.sessionId, guildId),
-        });
+    public destroyPlayer(guildId: string): Promise<void> {
+        return this.node.destroyPlayer(guildId);
     }
 
     /**
      *
-     * Update the session for the node
+     * Update the session for the node. Shortcut for {@link Node.updateSession}, which also stores the
+     * session it gets back.
      * @param {SessionResumingOptions} options The session resuming options.
      * @returns {Promise<LavalinkSession | null>} The updated session data.
      * @example
      * ```ts
-     * const session = await node.rest.updateSession({ resuming: true, timeout: 30000 });
+     * const session = await node.rest.updateSession({ resuming: true, timeout: 60 });
      * if (session) console.log(session); // The lavalink session data
      * ```
      */
     public updateSession(options: SessionResumingOptions): Promise<LavalinkSession | null> {
-        if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.debug(
-                DebugLevels.Rest,
-                `[Rest] -> [${this.node.id}]: Skipped updateSession because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
-            );
-            return Promise.resolve(null);
-        }
-
-        const { resuming, timeout } = options;
-
-        this.node.nodeManager.manager.debug(
-            DebugLevels.Rest,
-            `[Rest] -> [${this.node.id}]: Updated session for resumed: ${resuming} | Timeout: ${timeout ?? "None"}`,
-        );
-
-        return this.request<LavalinkSession>({
-            method: HttpMethods.Patch,
-            endpoint: RestRoutes.UpdateSession(this.sessionId),
-            body: { resuming, timeout },
-        });
+        return this.node.updateSession(options);
     }
 
     /**
      *
-     * Get all players for the current session.
+     * Get all players for the current session. Shortcut for {@link Node.getPlayers}.
      * @returns {Promise<LavalinkPlayer[]>} The players for the current session.
      * @example
      * ```ts
@@ -311,34 +287,7 @@ export class Rest {
      * console.log(players); // The lavalink players for the current session
      * ```
      */
-    public async getPlayers(): Promise<LavalinkPlayer[]> {
-        if (!this.sessionId || this.node.state !== State.Connected) {
-            this.node.nodeManager.manager.debug(
-                DebugLevels.Rest,
-                `[Rest] -> [${this.node.id}]: Skipped getPlayers because session is not ready. | Session: ${this.node.sessionId ?? "none"} | State: ${this.node.state}`,
-            );
-            return [];
-        }
-
-        this.node.nodeManager.manager.debug(
-            DebugLevels.Rest,
-            `[Rest] -> [${this.node.id}]: Fetching all players for session id: ${this.sessionId}`,
-        );
-
-        const players: LavalinkPlayer[] =
-            (await this.request<LavalinkPlayer[]>({
-                endpoint: RestRoutes.GetPlayers(this.sessionId),
-            })) ?? [];
-
-        if (!players.length) {
-            this.node.nodeManager.manager.debug(
-                DebugLevels.Rest,
-                `[Rest] <- [${this.node.id}]: No players found for session id: ${this.sessionId}`,
-            );
-
-            return [];
-        }
-
-        return players;
+    public getPlayers(): Promise<LavalinkPlayer[]> {
+        return this.node.getPlayers();
     }
 }

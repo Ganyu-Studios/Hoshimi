@@ -40,9 +40,11 @@ import { WebSocket } from "ws";
 import { NodeError, OptionError } from "../../src/classes/Errors";
 import { LyricsManager } from "../../src/classes/node/Lyrics";
 import { Node } from "../../src/classes/node/Node";
+import { createRoute } from "../../src/classes/node/Route";
 import { EventNames, type HoshimiOptions, SearchSources } from "../../src/types/Manager";
 import { NodeDestroyReasons, type NodeOptions, PluginNames, State, WebsocketCloseCodes } from "../../src/types/Node";
-import { HttpMethods, RestRoutes } from "../../src/types/Rest";
+import { HttpMethods } from "../../src/types/Rest";
+import type { LavalinkRoutes } from "../../src/types/Route";
 
 function createNode(client?: { id?: string; username?: string }, overrides: Partial<NodeOptions> = {}) {
     const emit = vi.fn();
@@ -100,7 +102,7 @@ function createLyricsNode(
     const node = {
         id: "node-1",
         sessionId,
-        rest: { request },
+        rest: { request, route: createRoute<LavalinkRoutes>(request as never) },
         info: {
             plugins: plugins.map((name) => ({ name })),
             filters: [],
@@ -222,12 +224,13 @@ describe("Node", () => {
 
         await node.search({ query: "hello world", source: SearchSources.Youtube });
 
-        expect(requestSpy).toHaveBeenCalledWith({
-            endpoint: RestRoutes.LoadTracks,
-            params: {
-                identifier: "ytsearch:hello world",
-            },
-        });
+        expect(requestSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                endpoint: "/loadtracks",
+                method: HttpMethods.Get,
+                params: { identifier: "ytsearch:hello world" },
+            }),
+        );
     });
 
     it("search throws OptionError for invalid source", async () => {
@@ -363,10 +366,13 @@ describe("LyricsManager", () => {
 
         await manager.current("guild-1", true);
 
-        expect(request).toHaveBeenCalledWith({
-            endpoint: RestRoutes.CurrentLyrics("sess-1", "guild-1"),
-            params: { skipTrackSource: "true" },
-        });
+        expect(request).toHaveBeenCalledWith(
+            expect.objectContaining({
+                endpoint: "/sessions/sess-1/players/guild-1/track/lyrics",
+                method: HttpMethods.Get,
+                params: { skipTrackSource: "true" },
+            }),
+        );
     });
 
     it("get requests track lyrics", async () => {
@@ -375,13 +381,13 @@ describe("LyricsManager", () => {
 
         await manager.get({ encoded: "abc" } as never, false);
 
-        expect(request).toHaveBeenCalledWith({
-            endpoint: RestRoutes.GetLyrics,
-            params: {
-                track: "abc",
-                skipTrackSource: "false",
-            },
-        });
+        expect(request).toHaveBeenCalledWith(
+            expect.objectContaining({
+                endpoint: "/lyrics",
+                method: HttpMethods.Get,
+                params: { track: "abc", skipTrackSource: "false" },
+            }),
+        );
     });
 
     it("subscribe and unsubscribe call expected REST endpoints", async () => {
@@ -391,15 +397,18 @@ describe("LyricsManager", () => {
         await manager.subscribe("guild-1", true);
         await manager.unsubscribe("guild-1");
 
-        expect(request).toHaveBeenNthCalledWith(1, {
-            endpoint: RestRoutes.SubscribeLyrics("sess-1", "guild-1"),
-            method: HttpMethods.Post,
-            params: { skipTrackSource: "true" },
-        });
-        expect(request).toHaveBeenNthCalledWith(2, {
-            endpoint: RestRoutes.SubscribeLyrics("sess-1", "guild-1"),
-            method: HttpMethods.Delete,
-        });
+        expect(request).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({
+                endpoint: "/sessions/sess-1/players/guild-1/lyrics/subscribe",
+                method: HttpMethods.Post,
+                params: { skipTrackSource: "true" },
+            }),
+        );
+        expect(request).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({ endpoint: "/sessions/sess-1/players/guild-1/lyrics/subscribe", method: HttpMethods.Delete }),
+        );
     });
 
     it("throws NodeError when required plugins are missing", async () => {

@@ -1,6 +1,5 @@
 import { PluginCapabilities, PluginRegistry } from "../../registry/PluginRegistry";
 import type { LyricsResult } from "../../types/Node";
-import { HttpMethods, RestRoutes } from "../../types/Rest";
 import type { NodeStructure, TrackStructure } from "../../types/Structures";
 
 /**
@@ -45,12 +44,10 @@ export class LyricsManager {
 
         PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
-        return this.node.rest.request<LyricsResult>({
-            endpoint: RestRoutes.CurrentLyrics(this.node.sessionId, guildId),
-            params: {
-                skipTrackSource: `${skipSource}`,
-            },
-        });
+        return this.node.rest.route
+            .sessions(this.node.sessionId)
+            .players(guildId)
+            .track.lyrics.get({ query: { skipTrackSource: skipSource } });
     }
 
     /**
@@ -70,13 +67,7 @@ export class LyricsManager {
 
         PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
-        return this.node.rest.request<LyricsResult>({
-            endpoint: RestRoutes.GetLyrics,
-            params: {
-                track: track.encoded,
-                skipTrackSource: `${skipSource}`,
-            },
-        });
+        return this.node.rest.route.lyrics.get({ query: { track: track.encoded, skipTrackSource: skipSource } });
     }
 
     /**
@@ -96,13 +87,10 @@ export class LyricsManager {
 
         PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
-        await this.node.rest.request({
-            endpoint: RestRoutes.SubscribeLyrics(this.node.sessionId, guildId),
-            method: HttpMethods.Post,
-            params: {
-                skipTrackSource: `${skipSource}`,
-            },
-        });
+        await this.node.rest.route
+            .sessions(this.node.sessionId)
+            .players(guildId)
+            .lyrics.subscribe.post({ query: { skipTrackSource: skipSource } });
     }
 
     /**
@@ -121,9 +109,6 @@ export class LyricsManager {
 
         PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
-        await this.node.rest.request({
-            endpoint: RestRoutes.SubscribeLyrics(this.node.sessionId, guildId),
-            method: HttpMethods.Delete,
-        });
+        await this.node.rest.route.sessions(this.node.sessionId).players(guildId).lyrics.subscribe.delete();
     }
 }

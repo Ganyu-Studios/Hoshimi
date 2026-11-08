@@ -46,7 +46,7 @@ function setup(opts: { filters?: string[]; plugins?: string[] } = {}) {
         isNodelink: false,
     } as never;
     const player = createRealPlayer(manager);
-    const spy = node.rest.updatePlayer as unknown as Mock;
+    const spy = node.updatePlayer as unknown as Mock;
     spy.mockClear();
     return { manager, node, player, fm: player.filterManager, spy };
 }
