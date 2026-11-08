@@ -21,6 +21,19 @@ import { RestError } from "../Errors";
 import { createRoute } from "./Route";
 
 /**
+ *
+ * Serialize a request body. A string is sent as it is, anything else as JSON.
+ * @param {RestOptions["body"]} body The body to serialize.
+ * @returns {string | undefined} The serialized body, or undefined when there is none.
+ */
+function serializeBody(body: RestOptions["body"]): string | undefined {
+    if (!body) return undefined;
+    if (typeof body === "string") return body;
+
+    return stringify(body);
+}
+
+/**
  * Class representing the REST for the node.
  * @class Rest
  */
@@ -161,8 +174,7 @@ export class Rest {
         };
 
         // Serialized once, here: the same string goes on the wire and into the debug line.
-        const body: string | undefined =
-            typeof options.body === "string" ? options.body : options.body ? stringify(options.body) : undefined;
+        const body: string | undefined = serializeBody(options.body);
 
         if (![HttpMethods.Get, HttpMethods.Head].includes(options.method) && body) fetchOptions.body = body;
 
