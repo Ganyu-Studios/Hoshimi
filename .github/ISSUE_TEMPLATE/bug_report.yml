@@ -1,145 +1,145 @@
 name: Bug report
 description: Report a reproducible problem in Hoshimi
 labels:
-  - bug
+    - bug
 title: "bug: "
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to report a bug. Please fill out all required fields so we can reproduce and fix it quickly.
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to report a bug. Please fill out all required fields so we can reproduce and fix it quickly.
 
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Pre-checks
-      description: Please confirm these before submitting.
-      options:
-        - label: I've searched open/closed issues for duplicates
+    - type: checkboxes
+      id: checks
+      attributes:
+          label: Pre-checks
+          description: Please confirm these before submitting.
+          options:
+              - label: I've searched open/closed issues for duplicates
+                required: true
+              - label: I'm using the latest Hoshimi release
+                required: true
+              - label: I read the README and followed the setup instructions
+                required: true
+
+    - type: textarea
+      id: description
+      attributes:
+          label: Description
+          description: What happened? Provide a clear and concise description of the bug.
+          placeholder: Tell us what you saw.
+      validations:
           required: true
-        - label: I'm using the latest Hoshimi release
+
+    - type: textarea
+      id: repro
+      attributes:
+          label: Steps to reproduce
+          description: Provide minimal steps or a small code sample to reproduce.
+          placeholder: |
+              1. ...
+              2. ...
+              3. ...
+              4. ...
+          render: markdown
+      validations:
           required: true
-        - label: I read the README and followed the setup instructions
+
+    - type: textarea
+      id: expected
+      attributes:
+          label: Expected behavior
+          description: What did you expect to happen?
+          placeholder: A clear description of the expected behavior.
+      validations:
           required: true
 
-  - type: textarea
-    id: description
-    attributes:
-      label: Description
-      description: What happened? Provide a clear and concise description of the bug.
-      placeholder: Tell us what you saw.
-    validations:
-      required: true
+    - type: textarea
+      id: actual
+      attributes:
+          label: Actual behavior
+          description: What actually happened? Include full error messages.
+          placeholder: A clear description of what actually happened.
+          render: text
+      validations:
+          required: true
 
-  - type: textarea
-    id: repro
-    attributes:
-      label: Steps to reproduce
-      description: Provide minimal steps or a small code sample to reproduce.
-      placeholder: |
-        1. ...
-        2. ...
-        3. ...
-        4. ...
-      render: markdown
-    validations:
-      required: true
+    - type: textarea
+      id: logs
+      attributes:
+          label: Relevant logs/output
+          description: Paste logs or stack traces. If possible, run with verbose/debug logging.
+          render: text
+          placeholder: |
+              <paste logs>
+      validations:
+          required: false
 
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected behavior
-      description: What did you expect to happen?
-      placeholder: A clear description of the expected behavior.
-    validations:
-      required: true
+    - type: input
+      id: repro-repo
+      attributes:
+          label: Minimal reproduction repository or gist
+          description: Link to a small repo/gist that reproduces the issue (strongly recommended).
+          placeholder: https://github.com/<user>/<repo>/repro
 
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual behavior
-      description: What actually happened? Include full error messages.
-      placeholder: A clear description of what actually happened.
-      render: text
-    validations:
-      required: true
+    - type: dropdown
+      id: package-manager
+      attributes:
+          label: Package manager
+          options:
+              - pnpm
+              - npm
+              - yarn
+      validations:
+          required: true
 
-  - type: textarea
-    id: logs
-    attributes:
-      label: Relevant logs/output
-      description: Paste logs or stack traces. If possible, run with verbose/debug logging.
-      render: text
-      placeholder: |
-        <paste logs>
-    validations:
-      required: false
+    - type: input
+      id: hoshimi-version
+      attributes:
+          label: Hoshimi version
+          placeholder: e.g. 1.2.3 or git SHA
+      validations:
+          required: true
 
-  - type: input
-    id: repro-repo
-    attributes:
-      label: Minimal reproduction repository or gist
-      description: Link to a small repo/gist that reproduces the issue (strongly recommended).
-      placeholder: https://github.com/<user>/<repo>/repro
+    - type: input
+      id: node-version
+      attributes:
+          label: Node.js version
+          placeholder: node -v
+      validations:
+          required: true
 
-  - type: dropdown
-    id: package-manager
-    attributes:
-      label: Package manager
-      options:
-        - pnpm
-        - npm
-        - yarn
-    validations:
-      required: true
+    - type: input
+      id: lavalink-version
+      attributes:
+          label: Lavalink server version (if applicable)
+          placeholder: e.g. 4.x
 
-  - type: input
-    id: hoshimi-version
-    attributes:
-      label: Hoshimi version
-      placeholder: e.g. 1.2.3 or git SHA
-    validations:
-      required: true
+    - type: input
+      id: os
+      attributes:
+          label: Operating system
+          placeholder: Windows, macOS, Linux (distro)
+      validations:
+          required: true
 
-  - type: input
-    id: node-version
-    attributes:
-      label: Node.js version
-      placeholder: node -v
-    validations:
-      required: true
+    - type: checkboxes
+      id: scope
+      attributes:
+          label: Affected areas
+          options:
+              - label: Library (core Hoshimi)
+              - label: Bot (in `bot/`)
+              - label: Queue/Playback
+              - label: Filters/DSP
+              - label: Lavalink Node/Connection
+              - label: Lyrics
+              - label: Types/Definitions
 
-  - type: input
-    id: lavalink-version
-    attributes:
-      label: Lavalink server version (if applicable)
-      placeholder: e.g. 4.x
-
-  - type: input
-    id: os
-    attributes:
-      label: Operating system
-      placeholder: Windows, macOS, Linux (distro)
-    validations:
-      required: true
-
-  - type: checkboxes
-    id: scope
-    attributes:
-      label: Affected areas
-      options:
-        - label: Library (core Hoshimi)
-        - label: Bot (in `bot/`)
-        - label: Queue/Playback
-        - label: Filters/DSP
-        - label: Lavalink Node/Connection
-        - label: Lyrics
-        - label: Types/Definitions
-
-  - type: textarea
-    id: extra
-    attributes:
-      label: Additional context
-      description: Any other context, screenshots, or notes.
-    validations:
-      required: false
+    - type: textarea
+      id: extra
+      attributes:
+          label: Additional context
+          description: Any other context, screenshots, or notes.
+      validations:
+          required: false

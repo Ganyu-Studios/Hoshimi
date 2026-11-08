@@ -985,6 +985,29 @@ export type DeepRequired<T> = T extends (...args: any[]) => any
 export type RequiredHoshimiOptions = DeepRequired<HoshimiOptions>;
 
 /**
+ * The default queue options. The storage is the only option without a default value: an instance there
+ * would be shared by every manager, so each one creates its own instead.
+ */
+export interface DefaultHoshimiQueueOptions extends Omit<RequiredHoshimiOptions["queueOptions"], "storage"> {
+    /**
+     * The storage manager to use for the queue.
+     * @type {QueueStorageAdapter | undefined}
+     */
+    storage: HoshimiQueueOptions["storage"];
+}
+
+/**
+ * The default options for the manager.
+ */
+export interface DefaultHoshimiOptions extends Omit<RequiredHoshimiOptions, "queueOptions"> {
+    /**
+     * The default queue options.
+     * @type {DefaultHoshimiQueueOptions}
+     */
+    queueOptions: DefaultHoshimiQueueOptions;
+}
+
+/**
  * The required options for the node.
  */
 export type RequiredHoshimiNodeOptions = DeepRequired<NodeOptions>;

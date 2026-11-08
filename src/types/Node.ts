@@ -1097,11 +1097,26 @@ export interface NodeOptions {
      */
     retryAmount?: number;
     /**
-     * The delay between retries in milliseconds.
+     * The delay between retries in milliseconds. With `retryBackoff` enabled this is the base delay the
+     * backoff grows from; otherwise it is used as a fixed delay.
      * @type {number}
      * @default 20000
      */
     retryDelay?: number;
+    /**
+     * Whether reconnect attempts use exponential backoff with jitter (capped at `retryDelayMax`). When
+     * disabled, `retryDelay` is used as a fixed delay between every attempt.
+     * @type {boolean}
+     * @default true
+     */
+    retryBackoff?: boolean;
+    /**
+     * The maximum delay between reconnect attempts in milliseconds, used as the cap for the backoff.
+     * Clamped to at least `retryDelay`.
+     * @type {number}
+     * @default 60000
+     */
+    retryDelayMax?: number;
     /**
      * The session id of the node.
      * @type {string}

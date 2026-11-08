@@ -17,16 +17,15 @@ import {
     type WebSocketClosedEvent,
 } from "../../types/Player";
 import type { NodeStructure, PlayerStructure, TrackStructure } from "../../types/Structures";
-import { isPlayerGone, stringify } from "../functions/utils";
+import { isPlayerGone } from "../functions/utils";
 
 /**
  *
- * Emitted when a queue track ends.
+ * Record the current track in the history, newest first.
  * @param {PlayerStructure} this The player that emitted the event.
- * @param {boolean} [updateCurrent=true] Whether to update the current track or not.
- * @returns {Promise<void>} Yeah, this is something weird but it works.
+ * @returns {Promise<void>}
  */
-async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Promise<void> {
+async function addToHistory(this: PlayerStructure): Promise<void> {
     if (
         this.queue.current &&
         !this.queue.history.find(
@@ -44,11 +43,22 @@ async function onEnd(this: PlayerStructure, updateCurrent: boolean = true): Prom
             `[Player] -> [Previous] The track: ${this.queue.current.info.title} has been added to the previous track list.`,
         );
     }
+}
+
+/**
+ *
+ * Emitted when a queue track ends.
+ * @param {PlayerStructure} this The player that emitted the event.
+ * @returns {Promise<void>} Yeah, this is something weird but it works.
+ */
+async function onEnd(this: PlayerStructure): Promise<void> {
+    await addToHistory.call(this);
 
     if (this.loop === LoopMode.Track && this.queue.current) await this.queue.unshift(this.queue.current);
     if (this.loop === LoopMode.Queue && this.queue.current) await this.queue.add(this.queue.current);
 
-    if (!this.queue.current && updateCurrent) this.queue.current = await this.queue.utils.build(await this.queue.shift());
+    // No shift here: play() is the sole place the queue advances (it shifts the next track into
+    // current). onEnd only records history and applies the loop mode.
 
     await this.queue.utils.save();
 
@@ -70,19 +80,37 @@ async function queueEnd(
 ): Promise<void> {
     if (await this.data.get("internal_nodeChange")) return;
 
+    const isStopPlaying = await this.data.get("internal_stopPlaying");
+
     await this.data.delete("internal_stopPlaying");
+
+    // Recorded before `current` is cleared below: the queue is over, so only the history applies here,
+    // never the loop modes, and doing it later found no current track and dropped the last one. A track
+    // ended by `stop()` is left out: `stop({ clearQueue: true })` has just emptied the history, and
+    // writing to it again would resurrect the stored queue it deleted.
+    if (!isStopPlaying) await addToHistory.call(this);
 
     this.playing = false;
     this.paused = false;
     this.queue.current = null;
 
-    if (typeof this.manager.options.queueOptions.autoplayFn === "function") {
+    // Autoplay enablement is the caller's decision, not the function's: gating here means a custom
+    // autoplayFn no longer has to re-implement the check, and the built-in isn't called (nor logged
+    // as "executed") on every queue end when autoplay is off.
+    const isAutoplayEnabled: boolean = !!(await this.data.get("enabledAutoplay")) || this.manager.options.queueOptions.autoPlay;
+
+    this.manager.debug(DebugLevels.Player, `[Queue] -> [Autoplay] Autoplay enabled: ${isAutoplayEnabled} | Guild: ${this.guildId}`);
+
+    if (isAutoplayEnabled && typeof this.manager.options.queueOptions.autoplayFn === "function") {
         await this.manager.options.queueOptions.autoplayFn(this, track);
 
         this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Autoplay function executed.");
 
-        if (this.queue.size > 0) await onEnd.call(this);
-        if (this.queue.current) {
+        // Autoplay seeds the queue; play() shifts the first track into current and plays it. Running
+        // onEnd here first would shift one track in, and play()'s own shift would then skip past it —
+        // and with a single seeded track the second shift hits an empty queue and crashes in build().
+        // So go straight to play(), which advances exactly once.
+        if (this.queue.size > 0) {
             if (payload.type === PlayerEventType.TrackEnd) this.manager.emit(EventNames.TrackEnd, this, track, payload);
 
             this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Track(s) queued from autoplay function.");
@@ -91,15 +119,9 @@ async function queueEnd(
         }
     }
 
-    if (this.queue.current) {
-        if (payload.type === PlayerEventType.TrackEnd) this.manager.emit(EventNames.TrackEnd, this, track, payload);
-
-        return this.play({ noReplace: true, paused: false });
-    }
-
-    if (payload.type === PlayerEventType.TrackEnd && payload.reason !== TrackEndReason.Stopped) await this.queue.utils.save();
-
-    await onEnd.call(this, false);
+    // Persists the cleared current track. The history was already recorded above, and with no current
+    // track `onEnd` had nothing left to do but this save.
+    await this.queue.utils.save();
 
     this.manager.emit(EventNames.QueueEnd, this, this.queue);
     this.manager.debug(DebugLevels.Player, "[Player] -> [Queue] The queue has ended.");
@@ -154,8 +176,12 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
     const current: TrackStructure | null = this.queue.current;
 
     if (payload.reason === TrackEndReason.Replaced) {
+        // A replace is a user-forced play() over active playback. Mirror lavalink-client: emit the
+        // end event and return WITHOUT touching history. `queue.current` has already been advanced
+        // to the replacement by play(), so it is not the ended track; and the outgoing track should
+        // not be pushed to history from a replace at all (natural ends are what populate history).
         this.manager.emit(EventNames.TrackEnd, this, current, payload);
-        return onEnd.call(this, false);
+        return;
     }
 
     const isStopPlaying = await this.data.get("internal_stopPlaying");
@@ -201,24 +227,23 @@ export async function trackStuck(this: PlayerStructure, payload: TrackStuckEvent
     this.manager.emit(EventNames.TrackStuck, this, this.queue.current, payload);
     this.manager.debug(DebugLevels.Player, `[Player] -> [Stuck] The track: ${this.queue.current?.info.title ?? "Unknown"} has stuck.`);
 
-    const isStopPlaying = await this.data.get("internal_stopPlaying");
+    // Advancing is left to the TrackEnd that stopping the track produces, so history, loop modes and the
+    // next track go through one path. Handling them here as well applied the loop twice whenever the node
+    // stopped the track on its own (NodeLink does after most stucks), and stalled the queue when it did
+    // not (NodeLink's stalled-stream check), since nothing played the next track.
+    //
+    // The node may have already ended the track and the queue moved on while this handler waited: only
+    // the stuck track is stopped, never the one that replaced it.
+    if (this.queue.current?.encoded !== payload.track.encoded) return;
 
-    if (!this.queue.size && (this.loop === LoopMode.Off || isStopPlaying)) {
-        try {
-            await this.node.updatePlayer({
-                guildId: this.guildId,
-                playerOptions: { track: { encoded: null } },
-            });
-
-            return;
-        } catch {
-            return queueEnd.call(this, this.queue.current, payload);
-        }
+    try {
+        await this.node.updatePlayer({
+            guildId: this.guildId,
+            playerOptions: { track: { encoded: null } },
+        });
+    } catch {
+        return queueEnd.call(this, this.queue.current, payload);
     }
-
-    await onEnd.call(this);
-
-    if (!this.queue.current) return queueEnd.call(this, this.queue.current, payload);
 }
 
 /**
@@ -289,7 +314,7 @@ export async function playerUpdate(this: NodeStructure, payload: PlayerUpdate): 
     this.nodeManager.manager.emit(EventNames.PlayerUpdate, player, oldPlayer, payload);
     this.nodeManager.manager.debug(
         DebugLevels.Node,
-        `[Player] -> [Update] Player updated: ${player.guildId} | Payload: ${stringify(payload)}`,
+        `[Player] -> [Update] Player updated: ${player.guildId} | Position: ${payload.state.position} | Ping: ${payload.state.ping} | Connected: ${payload.state.connected}`,
     );
 }
 
@@ -303,7 +328,7 @@ export async function lyricsFound(this: PlayerStructure, payload: LyricsFoundEve
     this.manager.emit(EventNames.LyricsFound, this, this.queue.current, payload);
     this.manager.debug(
         DebugLevels.Player,
-        `[Player] -> [Lyrics] The lyrics have been found: ${this.guildId} | Payload: ${stringify(payload)}`,
+        `[Player] -> [Lyrics] The lyrics have been found: ${this.guildId} | Source: ${payload.lyrics.sourceName} | Provider: ${payload.lyrics.provider} | Lines: ${payload.lyrics.lines.length}`,
     );
 }
 
@@ -317,7 +342,7 @@ export async function lyricsLine(this: PlayerStructure, payload: LyricsLineEvent
     this.manager.emit(EventNames.LyricsLine, this, this.queue.current, payload);
     this.manager.debug(
         DebugLevels.Player,
-        `[Player] -> [Lyrics] The lyrics line has been found: ${this.guildId} | Payload: ${stringify(payload)}`,
+        `[Player] -> [Lyrics] The lyrics line has been found: ${this.guildId} | Line ${payload.lineIndex}: ${payload.line.line}`,
     );
 }
 
@@ -329,10 +354,7 @@ export async function lyricsLine(this: PlayerStructure, payload: LyricsLineEvent
  */
 export async function lyricsNotFound(this: PlayerStructure, payload: LyricsNotFoundEvent): Promise<void> {
     this.manager.emit(EventNames.LyricsNotFound, this, this.queue.current, payload);
-    this.manager.debug(
-        DebugLevels.Player,
-        `[Player] -> [Lyrics] The lyrics were not found: ${this.guildId} | Payload: ${stringify(payload)}`,
-    );
+    this.manager.debug(DebugLevels.Player, `[Player] -> [Lyrics] The lyrics were not found: ${this.guildId}`);
 }
 
 /**
@@ -343,7 +365,10 @@ export async function lyricsNotFound(this: PlayerStructure, payload: LyricsNotFo
  */
 export async function socketClosed(this: PlayerStructure, payload: WebSocketClosedEvent): Promise<void> {
     this.manager.emit(EventNames.WebSocketClosed, this, payload);
-    this.manager.debug(DebugLevels.Player, `[Player] -> [Socket] The socket has closed: ${this.guildId} | Payload: ${stringify(payload)}`);
+    this.manager.debug(
+        DebugLevels.Player,
+        `[Player] -> [Socket] The socket has closed: ${this.guildId} | Code: ${payload.code} | Reason: ${payload.reason} | ByRemote: ${payload.byRemote}`,
+    );
 }
 
 /**

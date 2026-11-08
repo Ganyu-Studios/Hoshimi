@@ -241,7 +241,11 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
         );
 
         return player.search({ query, source, requester: this.requester }).then((result): TrackStructure => {
-            let track: TrackStructure | null = result.tracks.at(0) ?? null;
+            // From the most exact match to the loosest, falling back to the first result. Taking the first
+            // result up front made every match below unreachable: they only ran when nothing was found.
+            let track: TrackStructure | null = null;
+
+            if (this.info.isrc) track = result.tracks.find((t): boolean => t.info.isrc === this.info.isrc) ?? null;
 
             if (this.info.author && !track)
                 track =
@@ -261,7 +265,7 @@ export class UnresolvedTrack implements UnresolvedLavalinkTrack {
                         return t.info.length >= length - 1500 && t.info.length <= length + 1500;
                     }) ?? null;
 
-            if (this.info.isrc && !track) track = result.tracks.find((t): boolean => t.info.isrc === this.info.isrc) ?? null;
+            track ??= result.tracks.at(0) ?? null;
 
             if (!track) throw new ResolveError("Track could not be resolved from search query.");
 

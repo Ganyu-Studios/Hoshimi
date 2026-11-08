@@ -258,8 +258,13 @@ export class FilterManager {
         const list: EQBandSettings[] = bands.flat();
         if (!list.length || !list.every((b): boolean => typeof b.band === "number" && typeof b.gain === "number"))
             throw new PlayerError("Bands must be a non-empty object array containing 'band' and 'gain' properties.");
+        // `bands` is indexed by band number, so a band used as an index has to be one Lavalink has (0-14).
+        if (!list.every(({ band }): boolean => Number.isInteger(band) && band >= 0 && band <= 14))
+            throw new PlayerError("Band must be an integer between 0 and 14.");
         for (const { band, gain } of list) this.bands[band] = { band, gain };
-        this.data.equalizer = [...this.bands];
+        // Setting band 3 alone leaves holes before it, and a hole goes on the wire as `null`, which the
+        // node rejects: only the bands actually set are sent.
+        this.data.equalizer = this.bands.filter((b): boolean => !!b);
         await FilterPayload.commit(this);
         return this;
     }

@@ -1,0 +1,90 @@
+import { describe, expect, it, vi } from "vitest";
+import { PlayerEventType, type TrackEndEvent, TrackEndReason } from "../../src/types/Player";
+import { Structures } from "../../src/types/Structures";
+import { trackEnd } from "../../src/util/events/player";
+import { createMockTrackData, createRealManager, createRealNode, createRealPlayer } from "../helpers";
+
+describe("previous(true) history navigation", () => {
+    it("removes the pulled track from history and returns it", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        const A = Structures.Track(createMockTrackData({ info: { identifier: "A", title: "Track A" } }) as never, {});
+        player.queue.history = [A];
+
+        const prev = await player.queue.previous(true);
+        expect(prev).toBe(A);
+        expect(player.queue.history).toEqual([]);
+    });
+
+    it("a REPLACED end does not touch history", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        const A = Structures.Track(createMockTrackData({ info: { identifier: "A", title: "Track A" } }) as never, {});
+        const B = Structures.Track(createMockTrackData({ info: { identifier: "B", title: "Track B" } }) as never, {});
+
+        player.queue.current = B;
+        player.queue.history = [A];
+
+        await player.queue.previous(true); // removes A, history []
+        vi.spyOn(player, "updatePlayer").mockResolvedValue(null);
+        await player.play({ track: A }); // current -> A, replace B
+
+        await trackEnd.call(player, {
+            type: PlayerEventType.TrackEnd,
+            guildId: player.guildId,
+            reason: TrackEndReason.Replaced,
+            track: B,
+        } as unknown as TrackEndEvent);
+
+        expect(player.queue.history).toEqual([]); // the replaced (forced) end never populates history
+    });
+
+    it("a track ending naturally IS added to history", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        const A = Structures.Track(createMockTrackData({ info: { identifier: "A", title: "Track A" } }) as never, {});
+        const B = Structures.Track(createMockTrackData({ info: { identifier: "B", title: "Track B" } }) as never, {});
+        player.queue.current = A;
+        player.queue.tracks = [B]; // a next track exists, so the queue does not end here
+        vi.spyOn(player, "updatePlayer").mockResolvedValue(null);
+
+        await trackEnd.call(player, {
+            type: PlayerEventType.TrackEnd,
+            guildId: player.guildId,
+            reason: TrackEndReason.Finished,
+            track: A,
+        } as unknown as TrackEndEvent);
+
+        expect(player.queue.history.map((t) => t.info.identifier)).toContain("A");
+    });
+
+    it("the last track of the queue IS added to history when the queue ends", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        const A = Structures.Track(createMockTrackData({ info: { identifier: "A", title: "Track A" } }) as never, {});
+        player.queue.current = A;
+        vi.spyOn(player, "updatePlayer").mockResolvedValue(null);
+
+        const queueEnd = vi.fn();
+        manager.on("queueEnd", queueEnd);
+
+        await trackEnd.call(player, {
+            type: PlayerEventType.TrackEnd,
+            guildId: player.guildId,
+            reason: TrackEndReason.Finished,
+            track: A,
+        } as unknown as TrackEndEvent);
+
+        expect(queueEnd).toHaveBeenCalledOnce();
+        expect(player.queue.current).toBeNull();
+        expect(player.queue.history.map((t) => t.info.identifier)).toEqual(["A"]);
+    });
+});

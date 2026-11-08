@@ -173,7 +173,7 @@ export enum HttpStatusCodes {
 }
 
 /**
- * The REST routes.
+ * The REST routes, for `rest.request`. The typed `node.rest.route` builder covers the same endpoints.
  */
 export const RestRoutes = {
     /**
@@ -284,10 +284,10 @@ export interface RestOptions {
      */
     headers?: Record<string, string>;
     /**
-     * The body for the REST.
-     * @type {Record<string, unknown> | string | undefined}
+     * The body for the REST. Anything but a string is serialized as JSON.
+     * @type {Record<string, unknown> | unknown[] | string | undefined}
      */
-    body?: Record<string, unknown> | string;
+    body?: Record<string, unknown> | unknown[] | string;
     /**
      * The query parameters for the REST.
      * @type {Record<string, string>}
@@ -460,12 +460,6 @@ export interface LavalinkSession {
  */
 export interface HoshimiRestOptions {
     /**
-     * The amount of time to wait for the player to resume. (in milliseconds)
-     * @type {number}
-     * @default 10000
-     */
-    resumeTimeout?: number;
-    /**
      * The default REST request timeout applied to nodes that do not set their own `restTimeout`. (in milliseconds)
      * @type {number}
      * @default 10000
@@ -517,7 +511,7 @@ export interface SessionResumingOptions {
      */
     resuming: boolean;
     /**
-     * The timeout for resuming the session in milliseconds.
+     * The timeout for resuming the session in seconds.
      * @type {number | null | undefined}
      */
     timeout?: number | null;

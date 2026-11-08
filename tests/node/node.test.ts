@@ -40,11 +40,13 @@ import { WebSocket } from "ws";
 import { NodeError, OptionError } from "../../src/classes/Errors";
 import { LyricsManager } from "../../src/classes/node/Lyrics";
 import { Node } from "../../src/classes/node/Node";
+import { createRoute } from "../../src/classes/node/Route";
 import { EventNames, type HoshimiOptions, SearchSources } from "../../src/types/Manager";
-import { NodeDestroyReasons, PluginNames, State, WebsocketCloseCodes } from "../../src/types/Node";
-import { HttpMethods, RestRoutes } from "../../src/types/Rest";
+import { NodeDestroyReasons, type NodeOptions, PluginNames, State, WebsocketCloseCodes } from "../../src/types/Node";
+import { HttpMethods } from "../../src/types/Rest";
+import type { LavalinkRoutes } from "../../src/types/Route";
 
-function createNode(client?: { id?: string; username?: string }) {
+function createNode(client?: { id?: string; username?: string }, overrides: Partial<NodeOptions> = {}) {
     const emit = vi.fn();
     const nodeManager = {
         manager: {
@@ -71,7 +73,7 @@ function createNode(client?: { id?: string; username?: string }) {
                     },
                 },
                 restOptions: {
-                    resumeTimeout: 120,
+                    restTimeout: 120,
                 },
             } satisfies HoshimiOptions,
         },
@@ -85,6 +87,7 @@ function createNode(client?: { id?: string; username?: string }) {
         id: "node-1",
         retryAmount: 2,
         retryDelay: 50,
+        ...overrides,
     });
 
     return { node, nodeManager, emit };
@@ -99,7 +102,7 @@ function createLyricsNode(
     const node = {
         id: "node-1",
         sessionId,
-        rest: { request },
+        rest: { request, route: createRoute<LavalinkRoutes>(request as never) },
         info: {
             plugins: plugins.map((name) => ({ name })),
             filters: [],
@@ -126,18 +129,19 @@ describe("Node", () => {
         vi.restoreAllMocks();
     });
 
-    it("builds secure address using port 443", () => {
+    it("builds a secure address keeping the given port", () => {
         const { node } = createNode({ id: "1", username: "bot" });
         const secureNode = new Node(node.nodeManager, {
             host: "example.com",
-            port: 2333,
+            port: 8443,
             password: "pass",
             secure: true,
             id: "secure-1",
         });
 
-        expect(secureNode.options.port).toBe(443);
-        expect(secureNode.address).toBe("wss://example.com:443/v4/websocket");
+        expect(secureNode.options.port).toBe(8443);
+        expect(secureNode.address).toBe("wss://example.com:8443/v4/websocket");
+        expect(secureNode.rest.url).toBe("https://example.com:8443");
     });
 
     it("throws when connect is called without client data", () => {
@@ -220,12 +224,13 @@ describe("Node", () => {
 
         await node.search({ query: "hello world", source: SearchSources.Youtube });
 
-        expect(requestSpy).toHaveBeenCalledWith({
-            endpoint: RestRoutes.LoadTracks,
-            params: {
-                identifier: "ytsearch:hello world",
-            },
-        });
+        expect(requestSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                endpoint: "/loadtracks",
+                method: HttpMethods.Get,
+                params: { identifier: "ytsearch:hello world" },
+            }),
+        );
     });
 
     it("search throws OptionError for invalid source", async () => {
@@ -265,7 +270,7 @@ describe("Node", () => {
     it("reconnect retries and calls connect when retries remain", () => {
         vi.useFakeTimers();
 
-        const { node, emit } = createNode({ id: "123", username: "bot" });
+        const { node, emit } = createNode({ id: "123", username: "bot" }, { retryBackoff: false });
         node.state = State.Connected;
         node.ws = { removeAllListeners: vi.fn() } as never;
 
@@ -281,10 +286,30 @@ describe("Node", () => {
         expect(connectSpy).toHaveBeenCalledTimes(1);
     });
 
+    it("reconnect brings back a node left disconnected on purpose, but never a destroyed one", () => {
+        vi.useFakeTimers();
+
+        const { node } = createNode({ id: "123", username: "bot" }, { retryBackoff: false });
+        const connectSpy = vi.spyOn(node, "connect").mockImplementation(() => undefined);
+
+        node.state = State.Connected;
+        node.disconnect();
+        expect(node.state).toBe(State.Disconnected);
+
+        node.reconnect();
+        vi.advanceTimersByTime(60);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
+
+        node.state = State.Destroyed;
+        node.reconnect();
+        vi.advanceTimersByTime(60);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
+    });
+
     it("reconnect emits error and destroys when retries are exhausted", () => {
         vi.useFakeTimers();
 
-        const { node, emit } = createNode({ id: "123", username: "bot" });
+        const { node, emit } = createNode({ id: "123", username: "bot" }, { retryBackoff: false });
         node.state = State.Connected;
         node.retryAmount = 0;
 
@@ -298,6 +323,29 @@ describe("Node", () => {
             reason: NodeDestroyReasons.Destroy,
         });
         expect(emit).toHaveBeenCalledWith(EventNames.NodeError, node, expect.any(Error));
+    });
+
+    it("reconnect grows the delay with exponential backoff and jitter", () => {
+        vi.useFakeTimers();
+        // Equal jitter with random() === 0 collapses to exactly half the target, making it deterministic.
+        const random = vi.spyOn(Math, "random").mockReturnValue(0);
+
+        const { node, emit } = createNode({ id: "123", username: "bot" }); // backoff on by default
+        node.state = State.Connected;
+        node.ws = { removeAllListeners: vi.fn() } as never;
+        vi.spyOn(node, "connect").mockImplementation(() => undefined);
+
+        // attempt 0: target = base (50), delay = 25
+        node.reconnect();
+        expect(emit).toHaveBeenLastCalledWith(EventNames.NodeReconnecting, node, 2, 25);
+        vi.advanceTimersByTime(25);
+        expect(node.retryAmount).toBe(1);
+
+        // attempt 1: target = base * 2 (100), delay = 50
+        node.reconnect();
+        expect(emit).toHaveBeenLastCalledWith(EventNames.NodeReconnecting, node, 1, 50);
+
+        random.mockRestore();
     });
 });
 
@@ -318,10 +366,13 @@ describe("LyricsManager", () => {
 
         await manager.current("guild-1", true);
 
-        expect(request).toHaveBeenCalledWith({
-            endpoint: RestRoutes.CurrentLyrics("sess-1", "guild-1"),
-            params: { skipTrackSource: "true" },
-        });
+        expect(request).toHaveBeenCalledWith(
+            expect.objectContaining({
+                endpoint: "/sessions/sess-1/players/guild-1/track/lyrics",
+                method: HttpMethods.Get,
+                params: { skipTrackSource: "true" },
+            }),
+        );
     });
 
     it("get requests track lyrics", async () => {
@@ -330,13 +381,13 @@ describe("LyricsManager", () => {
 
         await manager.get({ encoded: "abc" } as never, false);
 
-        expect(request).toHaveBeenCalledWith({
-            endpoint: RestRoutes.GetLyrics,
-            params: {
-                track: "abc",
-                skipTrackSource: "false",
-            },
-        });
+        expect(request).toHaveBeenCalledWith(
+            expect.objectContaining({
+                endpoint: "/lyrics",
+                method: HttpMethods.Get,
+                params: { track: "abc", skipTrackSource: "false" },
+            }),
+        );
     });
 
     it("subscribe and unsubscribe call expected REST endpoints", async () => {
@@ -346,15 +397,18 @@ describe("LyricsManager", () => {
         await manager.subscribe("guild-1", true);
         await manager.unsubscribe("guild-1");
 
-        expect(request).toHaveBeenNthCalledWith(1, {
-            endpoint: RestRoutes.SubscribeLyrics("sess-1", "guild-1"),
-            method: HttpMethods.Post,
-            params: { skipTrackSource: "true" },
-        });
-        expect(request).toHaveBeenNthCalledWith(2, {
-            endpoint: RestRoutes.SubscribeLyrics("sess-1", "guild-1"),
-            method: HttpMethods.Delete,
-        });
+        expect(request).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({
+                endpoint: "/sessions/sess-1/players/guild-1/lyrics/subscribe",
+                method: HttpMethods.Post,
+                params: { skipTrackSource: "true" },
+            }),
+        );
+        expect(request).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({ endpoint: "/sessions/sess-1/players/guild-1/lyrics/subscribe", method: HttpMethods.Delete }),
+        );
     });
 
     it("throws NodeError when required plugins are missing", async () => {

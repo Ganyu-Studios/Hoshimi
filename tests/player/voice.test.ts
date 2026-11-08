@@ -40,6 +40,21 @@ describe("PlayerVoiceState", () => {
         });
     });
 
+    it("setState leaves the channel on a null voiceId and keeps it on undefined", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+        const voice = player.voice;
+        const sendPayload = manager.options.sendPayload as ReturnType<typeof vi.fn>;
+
+        await voice.setState({ selfMute: true });
+        expect(sendPayload.mock.lastCall?.[1]).toMatchObject({ d: { channel_id: "voice-1" } });
+
+        await voice.setState({ voiceId: null });
+        expect(sendPayload.mock.lastCall?.[1]).toMatchObject({ d: { channel_id: null } });
+        expect(player.voiceId).toBeUndefined();
+    });
+
     it("connect returns early when already connected or no voice channel", async () => {
         const manager = createRealManager();
         createRealNode(manager);

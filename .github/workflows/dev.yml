@@ -1,49 +1,49 @@
 name: Publish beta version
 
 on:
-  push:
-    branches:
-      - lib
+    push:
+        branches:
+            - lib
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  publish_dev:
-    name: Publish Dev
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    if: github.repository == 'Ganyu-Studios/Hoshimi'
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v6
+    publish_dev:
+        name: Publish Dev
+        runs-on: ubuntu-latest
+        permissions:
+            id-token: write
+        if: github.repository == 'Ganyu-Studios/Hoshimi'
+        env:
+            NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v6
 
-      - name: Install Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24.x'
-          registry-url: 'https://registry.npmjs.org'
+            - name: Install Node
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "24.x"
+                  registry-url: "https://registry.npmjs.org"
 
-      - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v4
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
-      # This publishes to npm on every push to lib, so it does not go out on a red suite.
-      - name: Run tests
-        run: pnpm test
+            # This publishes to npm on every push to lib, so it does not go out on a red suite.
+            - name: Run tests
+              run: pnpm test
 
-      - name: Verify npm token
-        run: npm whoami
+            - name: Verify npm token
+              run: npm whoami
 
-      - name: Publish dev tag
-        id: publish
-        run: |
-          new_version=$(npm version prerelease --preid dev-${{github.run_id}} --no-git-tag-version)
-          echo "New version: $new_version"
-          npm config set //registry.npmjs.org/:_authToken ${NODE_AUTH_TOKEN}
-          npm publish --provenance --tag=dev
+            - name: Publish dev tag
+              id: publish
+              run: |
+                  new_version=$(npm version prerelease --preid dev-${{github.run_id}} --no-git-tag-version)
+                  echo "New version: $new_version"
+                  npm config set //registry.npmjs.org/:_authToken ${NODE_AUTH_TOKEN}
+                  npm publish --provenance --tag=dev

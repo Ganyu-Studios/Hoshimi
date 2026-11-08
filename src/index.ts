@@ -7,6 +7,7 @@ export * from "./classes/node/Lyrics";
 export * from "./classes/node/Manager";
 export * from "./classes/node/Node";
 export * from "./classes/node/Rest";
+export * from "./classes/node/Route";
 
 // Exports related to filters.
 export * from "./classes/player/filters/DSPXPlugin";
@@ -41,6 +42,7 @@ export * from "./types/Node";
 export * from "./types/Player";
 export * from "./types/Queue";
 export * from "./types/Rest";
+export * from "./types/Route";
 export * from "./types/Structures";
 
 // Exports related to constants.

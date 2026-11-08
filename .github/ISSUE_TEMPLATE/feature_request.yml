@@ -1,76 +1,76 @@
 name: Feature request
 description: Suggest an idea to improve Hoshimi
 labels:
-  - enhancement
+    - enhancement
 title: "feat: "
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for suggesting an improvement. Please provide as much detail as possible to help us evaluate it.
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for suggesting an improvement. Please provide as much detail as possible to help us evaluate it.
 
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Pre-checks
-      options:
-        - label: I've searched open/closed issues to make sure this is new
+    - type: checkboxes
+      id: checks
+      attributes:
+          label: Pre-checks
+          options:
+              - label: I've searched open/closed issues to make sure this is new
+                required: true
+              - label: This feature fits Hoshimi's scope (music/Lavalink library and bot)
+                required: true
+
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problem statement
+          description: What problem does this feature solve? Why is it valuable?
+          placeholder: Describe the pain point or limitation.
+      validations:
           required: true
-        - label: This feature fits Hoshimi's scope (music/Lavalink library and bot)
+
+    - type: textarea
+      id: proposal
+      attributes:
+          label: Proposed solution
+          description: Describe your preferred solution/API. Include example usage when possible.
+          placeholder: Provide a high-level design or API sketch.
+          render: typescript
+      validations:
           required: true
 
-  - type: textarea
-    id: problem
-    attributes:
-      label: Problem statement
-      description: What problem does this feature solve? Why is it valuable?
-      placeholder: Describe the pain point or limitation.
-    validations:
-      required: true
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives considered
+          description: What other solutions have you considered?
+      validations:
+          required: false
 
-  - type: textarea
-    id: proposal
-    attributes:
-      label: Proposed solution
-      description: Describe your preferred solution/API. Include example usage when possible.
-      placeholder: Provide a high-level design or API sketch.
-      render: typescript
-    validations:
-      required: true
+    - type: checkboxes
+      id: area
+      attributes:
+          label: Area(s)
+          options:
+              - label: Library (core Hoshimi)
+              - label: Bot (in `bot/`)
+              - label: Filters/DSP
+              - label: Queue/Playback
+              - label: Lavalink Node/Connection
+              - label: Types/Definitions
+              - label: Documentation
 
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives considered
-      description: What other solutions have you considered?
-    validations:
-      required: false
+    - type: textarea
+      id: breaking
+      attributes:
+          label: Breaking changes
+          description: Would this introduce breaking changes? If yes, describe the migration path.
+      validations:
+          required: false
 
-  - type: checkboxes
-    id: area
-    attributes:
-      label: Area(s)
-      options:
-        - label: Library (core Hoshimi)
-        - label: Bot (in `bot/`)
-        - label: Filters/DSP
-        - label: Queue/Playback
-        - label: Lavalink Node/Connection
-        - label: Types/Definitions
-        - label: Documentation
-
-  - type: textarea
-    id: breaking
-    attributes:
-      label: Breaking changes
-      description: Would this introduce breaking changes? If yes, describe the migration path.
-    validations:
-      required: false
-
-  - type: textarea
-    id: context
-    attributes:
-      label: Additional context
-      description: Links, references, benchmarks, or screenshots.
-    validations:
-      required: false
+    - type: textarea
+      id: context
+      attributes:
+          label: Additional context
+          description: Links, references, benchmarks, or screenshots.
+      validations:
+          required: false

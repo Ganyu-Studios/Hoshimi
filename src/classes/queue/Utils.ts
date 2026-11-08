@@ -1,4 +1,4 @@
-import { type Awaitable, DebugLevels } from "../../types/Manager";
+import { DebugLevels } from "../../types/Manager";
 import type { AnyLavalinkTrack } from "../../types/Player";
 import type { HoshimiQueueOptions, QueueJSON, SyncOptions, TrackJSON } from "../../types/Queue";
 import { type QueueStructure, Structures, type TrackStructure } from "../../types/Structures";
@@ -70,7 +70,8 @@ export class QueueUtils {
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
-            `[Queue] -> [Utils] Building track for ${this.queue.player.guildId} | Input: ${stringify(track)} | Requester: ${stringify(trackRequester)}`,
+            () =>
+                `[Queue] -> [Utils] Building track for ${this.queue.player.guildId} | Input: ${stringify(track)} | Requester: ${stringify(trackRequester)}`,
         );
 
         if (TrackResolution.isResolved(track)) return track;
@@ -91,7 +92,7 @@ export class QueueUtils {
      * await player.queue.utils.save();
      * ```
      */
-    public save(): Awaitable<void> {
+    public async save(): Promise<void> {
         // `destroy()` removes the stored queue and only unregisters the player afterwards, so a late
         // node event landing in between would write the key straight back and leak it forever: the
         // player is gone, but the storage entry stays. Persisting for a destroyed player is never
@@ -105,14 +106,27 @@ export class QueueUtils {
             return;
         }
 
-        const max: number = this.options.maxHistory;
-        const length: number = this.queue.history.length;
+        // A fully empty queue (no current, nothing upcoming, no history) has nothing worth persisting.
+        // Writing an empty object here would resurrect the entry that clear()/destroy() just removed —
+        // so delete instead. The invariant is "empty queue -> no stored entry".
+        if (!this.queue.totalSize && !this.queue.history.length) {
+            this.queue.player.manager.debug(
+                DebugLevels.Queue,
+                `[Queue] -> [Adapter] Removing empty queue for ${this.queue.player.guildId}.`,
+            );
 
-        if (length > max) this.queue.history.splice(0, length - max);
+            await this.storage.delete(this.queue.player.guildId);
+
+            return;
+        }
+
+        // The history is newest first, so the oldest entries are the ones past `max`.
+        const max: number = this.options.maxHistory;
+        if (this.queue.history.length > max) this.queue.history.splice(max);
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
-            `[Queue] -> [Adapter] Saving queue for ${this.queue.player.guildId} | Object: ${stringify(this.queue.toJSON())}`,
+            `[Queue] -> [Adapter] Saving queue for ${this.queue.player.guildId} | Tracks: ${this.queue.size} | History: ${this.queue.history.length} | Current: ${this.queue.current?.info.title ?? "none"}`,
         );
 
         return this.storage.set(this.queue.player.guildId, this.queue.toJSON());
@@ -121,13 +135,13 @@ export class QueueUtils {
     /**
      *
      * Destroy the queue, removing all stored data.
-     * @returns {Awaitable<boolean>} Whether the stored queue entry was deleted.
+     * @returns {Promise<boolean>} Whether the stored queue entry was deleted.
      * @example
      * ```ts
      * await player.queue.utils.destroy();
      * ```
      */
-    public destroy(): Awaitable<boolean> {
+    public async destroy(): Promise<boolean> {
         this.queue.player.manager.debug(DebugLevels.Queue, `[Queue] -> [Adapter] Destroying queue for ${this.queue.player.guildId}`);
 
         return this.storage.delete(this.queue.player.guildId);
@@ -163,11 +177,12 @@ export class QueueUtils {
         const length: number = this.queue.tracks.length;
 
         if (tracks.length) this.queue.tracks.splice(override ? 0 : length, override ? length : 0, ...tracks);
-        if (history.length) this.queue.history.splice(0, override ? length : 0, ...history);
+        // Overriding replaces the whole history: it is its own length, not the one of the tracks.
+        if (history.length) this.queue.history.splice(0, override ? this.queue.history.length : 0, ...history);
 
         this.queue.player.manager.debug(
             DebugLevels.Queue,
-            `[Queue] -> [Adapter] Syncing queue for ${this.queue.player.guildId} | Object: ${stringify(storedQueue)}`,
+            `[Queue] -> [Adapter] Syncing queue for ${this.queue.player.guildId} | Tracks: ${storedQueue.tracks.length} | History: ${storedQueue.history.length} | Current: ${storedQueue.current?.info.title ?? "none"}`,
         );
 
         return this.save();

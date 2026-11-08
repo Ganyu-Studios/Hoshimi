@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { clearHeartbeatTimer, onPong, startHeartbeat } from "../../src/util/events/websocket";
+import { NodeDestroyReasons, WebsocketCloseCodes } from "../../src/types/Node";
+import { clearHeartbeatTimer, onClose, onPong, startHeartbeat } from "../../src/util/events/websocket";
 
 function createFakeNode(interval: number = 30000) {
     const ws = { readyState: 1, terminate: vi.fn(), ping: vi.fn() };
@@ -67,5 +68,40 @@ describe("heartbeat ping/pong", () => {
         vi.advanceTimersByTime(10000);
         expect(ws.ping).not.toHaveBeenCalled();
         expect(ws.terminate).not.toHaveBeenCalled();
+    });
+});
+
+describe("onClose", () => {
+    function createClosingNode() {
+        const node = {
+            id: "node-1",
+            address: "ws://localhost:2333/v4/websocket",
+            heartbeatInterval: null,
+            sessionId: "session-1",
+            state: "CONNECTED",
+            reconnect: vi.fn(),
+            nodeManager: {
+                nodes: { has: () => true },
+                manager: { debug: vi.fn(), emit: vi.fn(), options: { nodeOptions: { moveOptions: { move: false } } } },
+            },
+        };
+
+        return node;
+    }
+
+    it("does not reconnect on a destroy close, with the reason as the Buffer ws gives", async () => {
+        const node = createClosingNode();
+
+        await onClose.call(node as never, WebsocketCloseCodes.NormalClosure, Buffer.from(NodeDestroyReasons.Destroy));
+
+        expect(node.reconnect).not.toHaveBeenCalled();
+    });
+
+    it("reconnects on any other close", async () => {
+        const node = createClosingNode();
+
+        await onClose.call(node as never, WebsocketCloseCodes.AbnormalClosure, Buffer.from(""));
+
+        expect(node.reconnect).toHaveBeenCalledOnce();
     });
 });

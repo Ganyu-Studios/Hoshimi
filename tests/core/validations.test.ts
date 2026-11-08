@@ -22,6 +22,13 @@ describe("Validations.validateQuery", () => {
         );
     });
 
+    it("keeps URLs with a port, an IP or localhost untouched", () => {
+        for (const query of ["http://localhost:8080/a.mp3", "http://192.168.1.5/a.mp3", "https://cdn.example.com:8443/a.mp3"]) {
+            expect(Validations.validateQuery({ query, source: SearchSources.Youtube })).toBe(query);
+            expect(Validations.validateQuery({ query: `spsearch:${query}`, source: SearchSources.Youtube })).toBe(query);
+        }
+    });
+
     it("builds an identifier for free text using the given source", () => {
         expect(Validations.validateQuery({ query: "  never gonna give you up  ", source: SearchSources.Youtube })).toBe(
             "ytsearch:never gonna give you up",
@@ -45,7 +52,6 @@ describe("Validations.validateManagerOptions", () => {
             { queueOptions: { maxHistory: Number.NaN } },
             { queueOptions: { maxHistory: -1 } },
             { restOptions: { restTimeout: Number.NaN } },
-            { restOptions: { resumeTimeout: 1.5 } },
             { nodeOptions: { heartbeatOptions: { interval: Number.NaN } } },
             { nodeOptions: { sessionOptions: { timeout: Number.POSITIVE_INFINITY } } },
         ];
@@ -78,7 +84,7 @@ describe("Validations.validateManagerOptions", () => {
                 ...createOptions(),
                 nodes: [{ host: "localhost", port: 443, password: "pass", retryAmount: 0, retryDelay: 20000 }],
                 queueOptions: { maxHistory: 0 },
-                restOptions: { restTimeout: 5000, resumeTimeout: 10000 },
+                restOptions: { restTimeout: 5000 },
                 nodeOptions: {
                     sessionOptions: { timeout: 60 },
                     heartbeatOptions: { interval: 0 },

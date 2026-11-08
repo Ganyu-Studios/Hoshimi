@@ -262,6 +262,22 @@ export class Player {
     }
 
     /**
+     * Check if the player is currently paused.
+     * @returns {boolean} Whether the player is currently paused.
+     */
+    public isPaused(): boolean {
+        return !this.playing && this.paused;
+    }
+
+    /**
+     * Check if the player is currently idle.
+     * @returns {boolean} Whether the player is currently idle.
+     */
+    public isIdle(): boolean {
+        return !this.playing && !this.paused;
+    }
+
+    /**
      *
      * Search for a track or playlist.
      * @param {SearchOptions} options The options for the search.
@@ -356,10 +372,14 @@ export class Player {
         this.lastPosition = position;
         this.lastPositionUpdate = Date.now();
 
+        // `noReplace` is a query parameter, not a player field, so it stays out of the body; `track` is
+        // rebuilt below from the resolved current track.
+        const { noReplace, track: _, ...playerOptions } = options;
+
         await this.updatePlayer({
-            noReplace: options.noReplace,
+            noReplace,
             playerOptions: {
-                ...options,
+                ...playerOptions,
                 position,
                 track: {
                     encoded: this.queue.current.encoded,
@@ -509,46 +529,53 @@ export class Player {
 
         await this.data.set("internal_nodeChange", true);
 
-        if (this.queue.current || this.queue.size) {
-            const sources: SourceName[] = [this.queue.current, ...this.queue.tracks]
-                .filter((t) => !!t)
-                .map((t): SourceName | undefined => t.info.sourceName)
-                .filter((s) => !!s);
+        try {
+            if (this.queue.current || this.queue.size) {
+                const sources: SourceName[] = [this.queue.current, ...this.queue.tracks]
+                    .filter((t) => !!t)
+                    .map((t): SourceName | undefined => t.info.sourceName)
+                    .filter((s) => !!s);
 
-            const missings: SourceName[] = [...new Set(sources)].filter((s): boolean => !target.info!.sourceManagers.includes(s));
-            if (missings.length) throw new PlayerError(`Target node is missing source managers for: ${missings.join(", ")}`);
+                const missings: SourceName[] = [...new Set(sources)].filter((s): boolean => !target.info!.sourceManagers.includes(s));
+                if (missings.length) throw new PlayerError(`Target node is missing source managers for: ${missings.join(", ")}`);
+            }
+
+            const current: TrackStructure | null = this.queue.current;
+
+            const voice: LavalinkPlayerVoice | null = this.voice.toNode();
+            if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
+
+            if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);
+
+            this.node = target;
+
+            await this.connect();
+
+            const playerOptions: LavalinkPlayOptions = { voice };
+
+            if (current) {
+                // `position`, not `lastPosition`: the latter is the last value the old node reported, up
+                // to a whole update interval behind. And without `paused` the new node always resumed.
+                playerOptions.position = this.position;
+                playerOptions.paused = this.paused;
+                playerOptions.volume = this.volume;
+                playerOptions.track = {
+                    encoded: current.encoded,
+                    info: current.info,
+                    userData: current.userData,
+                    pluginInfo: current.pluginInfo,
+                };
+            }
+
+            await this.updatePlayer({ playerOptions });
+            await this.filterManager.apply();
+
+            this.manager.debug(DebugLevels.Player, `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`);
+        } finally {
+            // A failed move must not leave the flag behind: the track end
+            // handlers ignore the player while it is set.
+            await this.data.delete("internal_nodeChange");
         }
-
-        const current: TrackStructure | null = this.queue.current;
-
-        const voice: LavalinkPlayerVoice | null = this.voice.toNode();
-        if (!voice) throw new PlayerError("Player voice connection data is incomplete.");
-
-        if (this.node.state === State.Connected) await this.node.destroyPlayer(this.guildId);
-
-        this.node = target;
-
-        await this.connect();
-
-        const playerOptions: LavalinkPlayOptions = { voice };
-
-        if (current) {
-            playerOptions.position = this.lastPosition;
-            playerOptions.volume = this.volume;
-            playerOptions.track = {
-                encoded: current.encoded,
-                info: current.info,
-                userData: current.userData,
-                pluginInfo: current.pluginInfo,
-            };
-        }
-
-        await this.updatePlayer({ playerOptions });
-        await this.filterManager.apply();
-
-        this.manager.debug(DebugLevels.Player, `[Player] -> [Move] Player moved to node: ${target.id} for guild: ${this.guildId}`);
-
-        await this.data.delete("internal_nodeChange");
     }
 
     /**
@@ -609,8 +636,10 @@ export class Player {
     public async setPaused(paused: boolean = !this.paused): Promise<boolean> {
         this.manager.debug(DebugLevels.Player, `[Player] -> [Pause] Player is now ${paused} for guild: ${this.guildId}`);
 
-        // When pausing, stop position calculation by setting lastPositionUpdate to null
+        // When pausing, freeze the position where it is now, then stop the calculation. Nulling the update
+        // alone made the position jump back to the last value Lavalink reported.
         if (paused) {
+            this.lastPosition = this.position;
             this.lastPositionUpdate = null;
         } else {
             // When resuming, restart position calculation from current position

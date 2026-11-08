@@ -20,14 +20,20 @@ import { type NodeManagerStructure, type NodeStructure, type PlayerStructure, St
 import { Collection } from "../util/collection";
 import { HoshimiDefaultOptions } from "../util/constants";
 import { TypedEmitter } from "../util/emitter";
-import { isPlainObject, isPlayerGone, mergeDefault, stringify } from "../util/functions/utils";
+import { isPlainObject, isPlayerGone, mergeDefault } from "../util/functions/utils";
 import { Validations } from "../util/functions/validations";
 import { ManagerError, OptionError } from "./Errors";
+import { QueueMemoryStorage } from "./storage/QueueMemory";
 
 /**
  * The packet type for the manager.
  */
 type GatewayPackets = VoicePacket | VoiceServer | VoiceState | ChannelDeletePacket;
+
+/**
+ * A lazy debug message: a thunk that builds the string only when a debug listener is attached.
+ */
+type DebugMessageFunction = () => string;
 
 /**
  * Class representing the Hoshimi manager.
@@ -114,7 +120,7 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
      * 	},
      * 	defaultSearchSource: SearchSources.Youtube,
      * 	restOptions: {
-     * 		resumeTimeout: 10000,
+     * 		restTimeout: 10000,
      * 	},
      * 	nodeOptions: {
      * 		userAgent: HoshimiAgent,
@@ -134,7 +140,6 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
      *    	onDisconnect: {
      *        autoDestroy: false,
      *        autoReconnect: false,
-     *        autoQueue: false,
      *   	},
      *   	onError: {
      *        autoDestroy: false,
@@ -152,6 +157,10 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
         if (!options || !isPlainObject(options)) throw new ManagerError("You must provide the options for the manager.");
 
         this.options = mergeDefault(HoshimiDefaultOptions, options);
+
+        // Not a default value: the defaults are one object shared by every manager, so a storage instance
+        // there made two managers in one process read and write each other's queues for the same guild.
+        this.options.queueOptions.storage ??= new QueueMemoryStorage();
 
         Validations.validateManagerOptions(this.options);
 
@@ -188,15 +197,21 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
      *
      * Emit a debug event.
      * @param {DebugLevels} level The debug level.
-     * @param {string} message The debug message.
+     * @param {string | DebugMessageFunction} message The debug message, or a thunk that builds it. Pass a thunk
+     * for messages that serialize payloads so the work is skipped entirely when no debug listener is attached.
      * @returns {void}
      * @example
      * ```ts
      * manager.debug(DebugLevels.Manager, "This is a debug message.");
      * ```
      */
-    public debug(level: DebugLevels, message: string): void {
-        this.emit(EventNames.Debug, level, message);
+    public debug(level: DebugLevels, message: string | DebugMessageFunction): void {
+        // Bail before building the message when nobody is listening. Callers that interpolate
+        // `stringify(...)` should pass a thunk so that serialization only runs when a debug
+        // listener is attached, keeping the hot paths (search, requests, player updates) allocation-free.
+        if (!this.listenerCount(EventNames.Debug)) return;
+
+        this.emit(EventNames.Debug, level, typeof message === "function" ? message() : message);
     }
 
     /**
@@ -383,36 +398,48 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
                     } else {
                         this.debug(DebugLevels.Player, `[Player] -> [Voice] The channel id is missing for: ${data.guild_id}`);
 
-                        const { autoDestroy, autoReconnect, autoQueue } = this.options.playerOptions.onDisconnect;
+                        const { autoDestroy, autoReconnect } = this.options.playerOptions.onDisconnect;
 
                         if (autoDestroy) {
                             await player.destroy({ reason: DestroyReasons.VoiceChannelLeft });
                             return;
                         }
 
-                        if (autoReconnect) {
-                            try {
-                                const position: number = player.position;
-                                const paused: boolean = player.paused;
+                        // `voiceId` is only still set when the client was disconnected from outside: `disconnect()`
+                        // clears it before leaving, so a disconnect of our own is never undone here.
+                        if (autoReconnect && player.voiceId) {
+                            const position: number = player.position;
+                            const paused: boolean = player.paused;
 
+                            // The old voice connection is gone. Its state has to go too, or `connect()` sees the
+                            // player as connected and returns without sending the join, and the track is
+                            // replayed over a connection that no longer exists.
+                            player.connected = false;
+                            player.voice.reset();
+
+                            try {
                                 this.debug(
                                     DebugLevels.Player,
                                     `[Player] -> [Voice] Attempting to reconnect the player for: ${data.guild_id}`,
                                 );
 
-                                if (autoQueue && player.queue.current && !player.queue.isEmpty()) await player.connect();
+                                await player.connect();
 
-                                if (player.queue.current) return player.play({ track: player.queue.current, paused, position });
-                                if (!player.queue.isEmpty()) return player.play({ paused });
+                                // Only what was playing is resumed. A player with tracks queued but nothing current was
+                                // left idle on purpose (never started, or stopped by `onError.autoStop`), and a
+                                // reconnect is no reason to start it.
+                                if (player.queue.current) return await player.play({ track: player.queue.current, paused, position });
 
                                 this.debug(
                                     DebugLevels.Player,
-                                    `[Player] -> [Voice] No tracks to play after reconnect for: ${data.guild_id}`,
+                                    `[Player] -> [Voice] Nothing was playing before the reconnect for: ${data.guild_id}`,
                                 );
                             } catch (error) {
                                 this.emit(EventNames.PlayerError, player, error);
                                 await player.destroy({ reason: DestroyReasons.ReconnectFailed });
                             }
+
+                            return;
                         }
 
                         player.connected = false;
@@ -541,65 +568,85 @@ export class Hoshimi extends TypedEmitter<HoshimiEvents> {
                 tracks: [],
             };
 
-        this.debug(
-            DebugLevels.Manager,
-            `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Result: ${stringify(search)}`,
-        );
-
         const requesterFn = this.options.playerOptions.requesterFn;
         const requester = await requesterFn(options.requester);
 
+        let result: QueryResult;
+
         switch (search.loadType) {
             case LoadType.Empty: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: null,
                     playlist: null,
                     pluginInfo: null,
                     tracks: [],
                 };
+                break;
             }
 
             case LoadType.Error: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: search.data,
                     playlist: null,
                     pluginInfo: null,
                     tracks: [],
                 };
+                break;
             }
 
             case LoadType.Playlist: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: null,
                     playlist: search.data,
                     pluginInfo: search.data.pluginInfo,
                     tracks: search.data.tracks.map((t): TrackStructure => Structures.Track(t, requester)),
                 };
+                break;
             }
 
             case LoadType.Search: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: null,
                     playlist: null,
                     pluginInfo: null,
                     tracks: search.data.map((t): TrackStructure => Structures.Track(t, requester)),
                 };
+                break;
             }
 
             case LoadType.Track: {
-                return {
+                result = {
                     loadType: search.loadType,
                     exception: null,
                     playlist: null,
                     pluginInfo: search.data.pluginInfo,
                     tracks: [Structures.Track(search.data, requester)],
                 };
+                break;
+            }
+
+            default: {
+                result = {
+                    loadType: LoadType.Empty,
+                    exception: null,
+                    playlist: null,
+                    pluginInfo: null,
+                    tracks: [],
+                };
+                break;
             }
         }
+
+        this.debug(
+            DebugLevels.Manager,
+            `[Manager] -> [Search] Searching for: ${options.query} (${options.source ?? "unknown"}) | Load: ${result.loadType} | Tracks: ${result.tracks.length}`,
+        );
+
+        return result;
     }
 }
 

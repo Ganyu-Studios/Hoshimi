@@ -19,6 +19,7 @@
 </div>
 
 ## 📦 Features
+
 - 📋 **Lavalink V4**: Works with lavalink v4 and their features (wip).
 - 🔗 **Node Manager**: Manage nodes, auto least‑used selection, session resume and more.
 - ▶️ **Autoplay**: YouTube and Spotify recommendations out of the box; easily extend with your own function.
@@ -27,9 +28,9 @@
 - 📣 **Events**: Granular events with debug levels.
 - 🧩 **Extensible**: Override structures with your own ones.
 - 🧪 **Safety & DX**: Strict validation, descriptive errors, TypeScript-first API build, and formatting/linting.
-- 📜 **Filters**: Built-in filters, plugin filters, and anything your fork exposes — no registration needed.  
-
+- 📜 **Filters**: Built-in filters, plugin filters, and anything your fork exposes — no registration needed.
 ## ⚙️ Requirements
+
 - **Runtime** - atleast one of:
   - [Node.js](https://nodejs.org) v22+
   - [Bun](https://bun.com) v1.3+
@@ -82,9 +83,9 @@ client.events.values.READY = {
     data: { name: "ready", once: true },
     run(user, client) {
         client.logger.info(`Logged in as ${user.username}`);
-        
+
         // Call the manager to initialize hoshimi
-        hoshimi.init({ ...user, username: user.username });
+        hoshimi.init({ id: user.id, username: user.username });
     },
 };
 
@@ -158,11 +159,11 @@ await player.filterManager.setNightcore();
 await player.filterManager.set(FilterType.Echo, { delay: 200, decay: 0.5 });
 
 player.filterManager.isEnabled(FilterType.Echo); // true
-player.filterManager.getEnabled();               // ["timescale", "echo"]
-player.filterManager.get(FilterType.Timescale);  // TimescaleSettings | undefined
+player.filterManager.getEnabled(); // ["timescale", "echo"]
+player.filterManager.get(FilterType.Timescale); // TimescaleSettings | undefined
 
 await player.filterManager.clear(FilterType.Echo);
-await player.filterManager.reset();              // drops every filter
+await player.filterManager.reset(); // drops every filter
 ```
 
 `set` and `get` are typed per filter, so the payload of a built-in is checked for you — `set(FilterType.Volume, { nope: true })` does not compile.
@@ -195,8 +196,8 @@ import { FilterRegistry, FilterScope, PluginCapabilities } from "hoshimi";
 
 FilterRegistry.register({
     name: "boost",
-    scope: FilterScope.Plugin,      // Plugin -> pluginFilters · Core -> top level
-    pluginName: "my-plugin",        // omit to write it flat under pluginFilters
+    scope: FilterScope.Plugin, // Plugin -> pluginFilters · Core -> top level
+    pluginName: "my-plugin", // omit to write it flat under pluginFilters
     capability: PluginCapabilities.Filters,
 });
 
@@ -227,14 +228,15 @@ A filter nobody declared takes `unknown`, so ad-hoc payloads keep working withou
 Hoshimi powers these bots:
 
 - **Official Bots**:
-    - **[Stelle](https://github.com/Ganyu-Studios/stelle-music)**: by [Ganyu Studios](https://github.com/Ganyu-Studios/stelle-music)
+  - **[Stelle](https://github.com/Ganyu-Studios/stelle-music)**: by [Ganyu Studios](https://github.com/Ganyu-Studios/stelle-music)
 
 - **Community Bots**:
-    - **[Miyu](https://ptb.discord.com/oauth2/authorize?client_id=1277180179273482280)**: by [Kenver](https://github.com/Kenver123)
-    - **[GoTTY](https://discord.com/oauth2/authorize?client_id=1352131392993230869)**: by [Void](https://github.com/voidemx)
-    - **[Flixo](https://discord.com/oauth2/authorize?client_id=1380994881731952741&permissions=7107797346413761&integration_type=0&scope=bot)**: by [Ansh](https://github.com/titanxdevz)
+  - **[Miyu](https://ptb.discord.com/oauth2/authorize?client_id=1277180179273482280)**: by [Kenver](https://github.com/Kenver123)
+  - **[GoTTY](https://discord.com/oauth2/authorize?client_id=1352131392993230869)**: by [Void](https://github.com/voidemx)
+  - **[Flixo](https://discord.com/oauth2/authorize?client_id=1380994881731952741&permissions=7107797346413761&integration_type=0&scope=bot)**: by [Ansh](https://github.com/titanxdevz)
 
 ## 📝 Additional Notes
+
 I'm currently working on this package.</br> This package takes some ideas provided from libraries like:
 
 - 📦 [`lavalink-client`](https://github.com/Tomato6966/lavalink-client/)
@@ -255,6 +257,6 @@ Copyright © 2026 [Ganyu Studios](https://github.com/Ganyu-Studios).
 
 This project is [MIT](LICENSE) licensed.
 
-- *The character and assets are not my property, property of miHoYo Co. Ltd. (HoYoverse)*
+- _The character and assets are not my property, property of miHoYo Co. Ltd. (HoYoverse)_
 
-> *Made with 🐐❤️💪... A project made by the community, for the community.*
+> _Made with 🐐❤️💪... A project made by the community, for the community._

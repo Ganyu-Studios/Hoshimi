@@ -1,88 +1,87 @@
 name: Test, Lint, Format & Publish
 on:
-  push:
-  pull_request:
-    types: [opened, synchronize, reopened]
+    push:
+    pull_request:
+        types: [opened, synchronize, reopened]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # The lowest runtime the README supports, plus the version the other jobs use.
-        node-version: ['22.x', '24.x']
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v6
+    test:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                # The lowest runtime the README supports, plus the version the other jobs use.
+                node-version: ["22.x", "24.x"]
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v6
 
-      - name: Install Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
+            - name: Install Node
+              uses: actions/setup-node@v6
+              with:
+                  node-version: ${{ matrix.node-version }}
 
-      - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v4
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
-      # Redundant today (`prepare` -> `pnpm build` -> `pnpm typecheck`), kept as an explicit gate so the
-      # check does not silently disappear if that lifecycle script ever changes.
-      - name: Typecheck
-        run: pnpm typecheck
+            # Redundant today (`prepare` -> `pnpm build` -> `pnpm typecheck`), kept as an explicit gate so the
+            # check does not silently disappear if that lifecycle script ever changes.
+            - name: Typecheck
+              run: pnpm typecheck
 
-      - name: Run tests
-        run: pnpm test
+            - name: Run tests
+              run: pnpm test
 
-  linter:
-    # Nothing gets pushed back or published off a red test run.
-    needs: test
-    # Push events only: this job commits back to `github.ref`, which on a pull_request is the ephemeral
-    # `refs/pull/N/merge` — not a branch to push to, and gone the moment the pull request is merged.
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-        contents: write
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.ref }}
+    linter:
+        # Nothing gets pushed back or published off a red test run.
+        needs: test
+        # Push events only: this job commits back to `github.ref`, which on a pull_request is the ephemeral
+        # `refs/pull/N/merge` — not a branch to push to, and gone the moment the pull request is merged.
+        if: github.event_name == 'push'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.ref }}
 
-      - name: Install Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24.x'
-          registry-url: 'https://registry.npmjs.org'
+            - name: Install Node
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "24.x"
+                  registry-url: "https://registry.npmjs.org"
 
-      - uses: pnpm/action-setup@v4
+            - uses: pnpm/action-setup@v4
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
 
-      - name: Run Biome
-        run: pnpm run format
-        id: biome
+            - name: Run Biome
+              run: pnpm run format
+              id: biome
 
-      - name: Commit and Push changes
-        continue-on-error: true
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          if ! git diff-index --quiet HEAD; then
-            git commit -m "chore: apply formatting"
-            git push origin HEAD:${{ github.ref }}
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HUSKY: 0
+            - name: Commit and Push changes
+              continue-on-error: true
+              run: |
+                  git config --global user.name 'github-actions[bot]'
+                  git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                  git add -A
+                  if ! git diff-index --quiet HEAD; then
+                    git commit -m "chore: apply formatting"
+                    git push origin HEAD:${{ github.ref }}
+                  fi
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  HUSKY: 0
 
-
-      - name: Publish in pkg.pr.new
-        run: pnpx pkg-pr-new publish
-        if: github.repository == 'Ganyu-Studios/Hoshimi'
+            - name: Publish in pkg.pr.new
+              run: pnpx pkg-pr-new publish
+              if: github.repository == 'Ganyu-Studios/Hoshimi'
