@@ -87,4 +87,58 @@ describe("previous(true) history navigation", () => {
         expect(player.queue.current).toBeNull();
         expect(player.queue.history.map((t) => t.info.identifier)).toEqual(["A"]);
     });
+
+    it("survives the current track being cleared while the history is saved", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        const A = Structures.Track(createMockTrackData({ info: { identifier: "A", title: "Track A" } }) as never, {});
+        player.queue.current = A;
+        vi.spyOn(player, "updatePlayer").mockResolvedValue(null);
+
+        // Another handler for the same player clears the current track while this one waits on the storage.
+        const save = player.queue.utils.save.bind(player.queue.utils);
+        vi.spyOn(player.queue.utils, "save").mockImplementationOnce(async () => {
+            await save();
+            player.queue.current = null;
+        });
+
+        const queueEnd = vi.fn();
+        manager.on("queueEnd", queueEnd);
+
+        await trackEnd.call(player, {
+            type: PlayerEventType.TrackEnd,
+            guildId: player.guildId,
+            reason: TrackEndReason.Finished,
+            track: A,
+        } as unknown as TrackEndEvent);
+
+        expect(queueEnd).toHaveBeenCalledOnce();
+        expect(player.queue.history.map((t) => t.info.identifier)).toEqual(["A"]);
+    });
+
+    it("handles two track ends for the same player at once", async () => {
+        const manager = createRealManager();
+        createRealNode(manager);
+        const player = createRealPlayer(manager);
+
+        const A = Structures.Track(createMockTrackData({ info: { identifier: "A", title: "Track A" } }) as never, {});
+        player.queue.current = A;
+        vi.spyOn(player, "updatePlayer").mockResolvedValue(null);
+
+        const end = () =>
+            trackEnd.call(player, {
+                type: PlayerEventType.TrackEnd,
+                guildId: player.guildId,
+                reason: TrackEndReason.Finished,
+                track: A,
+            } as unknown as TrackEndEvent);
+
+        // The socket runs one handler per message without waiting for the previous one.
+        await expect(Promise.all([end(), end()])).resolves.toBeDefined();
+
+        expect(player.queue.current).toBeNull();
+        expect(player.queue.history.map((t) => t.info.identifier)).toEqual(["A"]);
+    });
 });
