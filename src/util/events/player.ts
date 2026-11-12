@@ -26,23 +26,23 @@ import { isPlayerGone } from "../functions/utils";
  * @returns {Promise<void>}
  */
 async function addToHistory(this: PlayerStructure): Promise<void> {
-    if (
-        this.queue.current &&
-        !this.queue.history.find(
-            (x): boolean => x.info.identifier === this.queue.current!.info.identifier && x.info.title === this.queue.current!.info.title,
-        )
-    ) {
-        this.queue.history.unshift(this.queue.current);
-        if (this.queue.history.length > this.manager.options.queueOptions.maxHistory!)
-            this.queue.history.splice(this.manager.options.queueOptions.maxHistory!, this.queue.history.length);
+    // Read once: the socket runs a handler per message without waiting for the previous one, so another
+    // handler for this player can clear `queue.current` while this one waits on the storage below.
+    const track: TrackStructure | null = this.queue.current;
+    if (!track) return;
 
-        await this.queue.utils.save();
+    if (this.queue.history.some((x): boolean => x.info.identifier === track.info.identifier && x.info.title === track.info.title)) return;
 
-        this.manager.debug(
-            DebugLevels.Player,
-            `[Player] -> [Previous] The track: ${this.queue.current.info.title} has been added to the previous track list.`,
-        );
-    }
+    this.queue.history.unshift(track);
+    if (this.queue.history.length > this.manager.options.queueOptions.maxHistory!)
+        this.queue.history.splice(this.manager.options.queueOptions.maxHistory!, this.queue.history.length);
+
+    await this.queue.utils.save();
+
+    this.manager.debug(
+        DebugLevels.Player,
+        `[Player] -> [Previous] The track: ${track.info.title} has been added to the previous track list.`,
+    );
 }
 
 /**
