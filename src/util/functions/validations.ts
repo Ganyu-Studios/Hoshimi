@@ -40,10 +40,10 @@ function assertNonNegativeInteger(value: unknown, option: string): void {
  *
  * Check whether a query is a URL that has to reach the node untouched.
  *
- * {@link UrlRegex} only knows `domain.tld` hosts, so a URL with a port, an IP or `localhost` (self-hosted
- * files, a local HTTP server) failed it and got its scheme stripped by the `http` source prefix. With an
- * explicit scheme the URL parser decides instead; without one, the regex is still what tells a bare
- * domain from a search term.
+ * {@link UrlRegex} only knows `domain.tld` hosts, so a URL with an IP or `localhost` (self-hosted files, a
+ * local HTTP server) failed it and got its scheme stripped by the `http` source prefix. With an explicit
+ * scheme the URL parser decides instead; without one, the regex is still what tells a bare domain (with
+ * or without a port) from a search term.
  * @param {string} value The query to check.
  * @returns {boolean} True when the query is a URL.
  */

@@ -29,6 +29,13 @@ describe("Validations.validateQuery", () => {
         }
     });
 
+    it("keeps a bare domain with a port untouched, and still searches text with a colon", () => {
+        expect(Validations.validateQuery({ query: "cdn.example.com:8080/a.mp3", source: SearchSources.Youtube })).toBe(
+            "cdn.example.com:8080/a.mp3",
+        );
+        expect(Validations.validateQuery({ query: "artist: song", source: SearchSources.Youtube })).toBe("ytsearch:artist: song");
+    });
+
     it("builds an identifier for free text using the given source", () => {
         expect(Validations.validateQuery({ query: "  never gonna give you up  ", source: SearchSources.Youtube })).toBe(
             "ytsearch:never gonna give you up",

@@ -20,10 +20,10 @@ type AudioOutputRecord = Record<AudioOutput, Required<ChannelMixSettings>>;
 export const HoshimiAgent: UserAgent = `hoshimi/v${PackageJson.version} (${PackageJson.repository.url})`;
 
 /**
- * The url regex for Hoshimi.
+ * The url regex for Hoshimi: a `domain.tld` host with an optional scheme, port and path.
  * @type {RegExp}
  */
-export const UrlRegex: RegExp = /^(https?:\/\/)?([a-zA-Z0-9\-_]+\.)+[a-zA-Z]{2,}(\/[^\s]*)?$/;
+export const UrlRegex: RegExp = /^(https?:\/\/)?([a-zA-Z0-9\-_]+\.)+[a-zA-Z]{2,}(:\d{1,5})?(\/[^\s]*)?$/;
 
 /**
  * The audio output data for Hoshimi.
