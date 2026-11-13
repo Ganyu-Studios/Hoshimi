@@ -19,6 +19,89 @@ import {
 } from "./player";
 
 /**
+ * A message from the node that belongs to a player.
+ */
+type PlayerEventPayload = Extract<LavalinkEventPayload, { op: OpCodes.Event }>;
+
+/**
+ * The tail of each player's event chain: the next event of a player waits for this one to finish.
+ * Weakly held, so a destroyed player's chain goes with it.
+ * @type {WeakMap<PlayerStructure, Promise<void>>}
+ */
+const playerChains: WeakMap<PlayerStructure, Promise<void>> = new WeakMap();
+
+/**
+ *
+ * Run a player event handler once the previous one of the same player has finished.
+ *
+ * Every socket message runs its own `onMessage`, and none waits for the one before. Without a chain, two
+ * events of the same player interleave across their awaits: a second track end got past every check
+ * while the first one was still saving the queue, and the queue ended twice.
+ * @param {PlayerStructure} player The player the event belongs to.
+ * @param {() => Promise<void>} handler The handler to run.
+ * @returns {Promise<void>} Settles when this handler has run, rejecting with its error.
+ */
+function enqueue(player: PlayerStructure, handler: () => Promise<void>): Promise<void> {
+    const previous: Promise<void> = playerChains.get(player) ?? Promise.resolve();
+    const run: Promise<void> = previous.then(handler);
+
+    // The chain itself never stays rejected: a failed handler is reported by its caller, and the next
+    // event of the player still runs.
+    playerChains.set(
+        player,
+        run.catch((): void => {}),
+    );
+
+    return run;
+}
+
+/**
+ *
+ * Dispatch a player event to its handler.
+ * @param {PlayerStructure} player The player the event belongs to.
+ * @param {PlayerEventPayload} payload The event payload.
+ * @returns {Promise<void>}
+ */
+async function handlePlayerEvent(player: PlayerStructure, payload: PlayerEventPayload): Promise<void> {
+    switch (payload.type) {
+        //
+        // Events related to tracks.
+        //
+        case PlayerEventType.TrackEnd:
+            return trackEnd.call(player, payload);
+        case PlayerEventType.TrackStart:
+            return trackStart.call(player, payload);
+        case PlayerEventType.TrackException:
+            return trackError.call(player, payload);
+        case PlayerEventType.TrackStuck:
+            return trackStuck.call(player, payload);
+
+        //
+        // Events related to lyrics.
+        //
+        case PlayerEventType.LyricsFound:
+            return lyricsFound.call(player, payload);
+        case PlayerEventType.LyricsNotFound:
+            return lyricsNotFound.call(player, payload);
+        case PlayerEventType.LyricsLine:
+            return lyricsLine.call(player, payload);
+
+        //
+        // Events related to the websocket.
+        //
+        case PlayerEventType.WebsocketClosed:
+            return socketClosed.call(player, payload);
+
+        default: {
+            // An event of the union without a case above does not compile. At runtime the node can still
+            // send types the union does not list (NodeLink has its own), so those are skipped, not thrown.
+            const unhandled: never = payload;
+            return void unhandled;
+        }
+    }
+}
+
+/**
  *
  * Emitted when the socket connection is opened.
  * @param {NodeStructure} this The node that emitted the event.
@@ -246,43 +329,7 @@ export async function onMessage(this: NodeStructure, message: Buffer | string): 
                 const player: PlayerStructure | undefined = this.nodeManager.manager.getPlayer(payload.guildId);
                 if (!player) return;
 
-                switch (payload.type) {
-                    //
-                    // Events related to tracks.
-                    //
-                    case PlayerEventType.TrackEnd:
-                        await trackEnd.call(player, payload);
-                        break;
-                    case PlayerEventType.TrackStart:
-                        await trackStart.call(player, payload);
-                        break;
-                    case PlayerEventType.TrackException:
-                        await trackError.call(player, payload);
-                        break;
-                    case PlayerEventType.TrackStuck:
-                        await trackStuck.call(player, payload);
-                        break;
-
-                    //
-                    // Events related to lyrics.
-                    //
-                    case PlayerEventType.LyricsFound:
-                        await lyricsFound.call(player, payload);
-                        break;
-                    case PlayerEventType.LyricsNotFound:
-                        await lyricsNotFound.call(player, payload);
-                        break;
-                    case PlayerEventType.LyricsLine:
-                        await lyricsLine.call(player, payload);
-                        break;
-
-                    //
-                    // Events related to the websocket.
-                    //
-                    case PlayerEventType.WebsocketClosed:
-                        await socketClosed.call(player, payload);
-                        break;
-                }
+                await enqueue(player, (): Promise<void> => handlePlayerEvent(player, payload));
 
                 break;
             }

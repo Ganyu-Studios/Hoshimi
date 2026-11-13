@@ -21,14 +21,12 @@ import { isPlayerGone } from "../functions/utils";
 
 /**
  *
- * Record the current track in the history, newest first.
+ * Record a track in the history, newest first.
  * @param {PlayerStructure} this The player that emitted the event.
+ * @param {TrackStructure | null} track The track to record, read by the caller before it awaits anything.
  * @returns {Promise<void>}
  */
-async function addToHistory(this: PlayerStructure): Promise<void> {
-    // Read once: the socket runs a handler per message without waiting for the previous one, so another
-    // handler for this player can clear `queue.current` while this one waits on the storage below.
-    const track: TrackStructure | null = this.queue.current;
+async function addToHistory(this: PlayerStructure, track: TrackStructure | null): Promise<void> {
     if (!track) return;
 
     if (this.queue.history.some((x): boolean => x.info.identifier === track.info.identifier && x.info.title === track.info.title)) return;
@@ -52,7 +50,7 @@ async function addToHistory(this: PlayerStructure): Promise<void> {
  * @returns {Promise<void>} Yeah, this is something weird but it works.
  */
 async function onEnd(this: PlayerStructure): Promise<void> {
-    await addToHistory.call(this);
+    await addToHistory.call(this, this.queue.current);
 
     if (this.loop === LoopMode.Track && this.queue.current) await this.queue.unshift(this.queue.current);
     if (this.loop === LoopMode.Queue && this.queue.current) await this.queue.add(this.queue.current);
@@ -80,19 +78,21 @@ async function queueEnd(
 ): Promise<void> {
     if (await this.data.get("internal_nodeChange")) return;
 
+    // The queue is over: the playing state goes first, before any other await. Anything that runs while
+    // this handler waits on the storage (another event, a command) then sees an ended player instead of
+    // one still holding the track that just finished.
+    this.playing = false;
+    this.paused = false;
+    this.queue.current = null;
+
     const isStopPlaying = await this.data.get("internal_stopPlaying");
 
     await this.data.delete("internal_stopPlaying");
 
-    // Recorded before `current` is cleared below: the queue is over, so only the history applies here,
-    // never the loop modes, and doing it later found no current track and dropped the last one. A track
-    // ended by `stop()` is left out: `stop({ clearQueue: true })` has just emptied the history, and
-    // writing to it again would resurrect the stored queue it deleted.
-    if (!isStopPlaying) await addToHistory.call(this);
-
-    this.playing = false;
-    this.paused = false;
-    this.queue.current = null;
+    // Only the history applies here, never the loop modes: the queue is over. A track ended by `stop()`
+    // is left out: `stop({ clearQueue: true })` has just emptied the history, and writing to it again
+    // would resurrect the stored queue it deleted.
+    if (!isStopPlaying) await addToHistory.call(this, track);
 
     // Autoplay enablement is the caller's decision, not the function's: gating here means a custom
     // autoplayFn no longer has to re-implement the check, and the built-in isn't called (nor logged
@@ -181,6 +181,13 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         // to the replacement by play(), so it is not the ended track; and the outgoing track should
         // not be pushed to history from a replace at all (natural ends are what populate history).
         this.manager.emit(EventNames.TrackEnd, this, current, payload);
+        return;
+    }
+
+    // The end of a track that is no longer the current one was already handled: the node reported it
+    // twice, or a stuck handler ended it first. Handling it again ran a second queueEnd.
+    if (!current || (payload.track?.encoded && payload.track.encoded !== current.encoded)) {
+        this.manager.debug(DebugLevels.Player, `[Player] -> [End] Ignoring the end of a track that is no longer current: ${this.guildId}`);
         return;
     }
 
