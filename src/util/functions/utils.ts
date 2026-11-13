@@ -1,10 +1,29 @@
 import { MergeError } from "../../classes/Errors";
 import type { TrackRequester } from "../../classes/Track";
 import { DebugLevels, type DeepRequired, type RestOrArray } from "../../types/Manager";
+import { State } from "../../types/Node";
 import type { PlayerScope } from "../../types/Player";
 import type { UpdatePlayerInfo } from "../../types/Rest";
 import type { NodeStructure, PlayerStructure } from "../../types/Structures";
 import type { PromiseWithResolvers } from "../../types/Utility";
+
+/**
+ *
+ * Get the session id when the node can take REST calls, logging the skipped action when it cannot.
+ * @param {NodeStructure} this The node to check.
+ * @param {string} action The name of the action that wants to run.
+ * @returns {string | null} The session id, or null when there is no session or the node is not connected.
+ */
+export function readySession(this: NodeStructure, action: string): string | null {
+    if (this.sessionId && this.state === State.Connected) return this.sessionId;
+
+    this.nodeManager.manager.debug(
+        DebugLevels.Rest,
+        `[Rest] -> [${this.id}]: Skipped ${action} because session is not ready. | Session: ${this.sessionId ?? "none"} | State: ${this.state}`,
+    );
+
+    return null;
+}
 
 /**
  *

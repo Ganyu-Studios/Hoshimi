@@ -34,27 +34,9 @@ import {
 } from "../../types/Structures";
 import { HoshimiAgent, HoshimiDefaultOptions } from "../../util/constants";
 import { clearHeartbeatTimer, onClose, onError, onMessage, onOpen } from "../../util/events/websocket";
-import { stringify, toHeaderValue, updatePlayerState } from "../../util/functions/utils";
+import { readySession, stringify, toHeaderValue, updatePlayerState } from "../../util/functions/utils";
 import { Validations } from "../../util/functions/validations";
 import { NodeError } from "../Errors";
-
-/**
- *
- * Get the session id when the node can take REST calls, logging the skipped action when it cannot.
- * @param {Node} this The node to check.
- * @param {string} action The name of the action that wants to run.
- * @returns {string | null} The session id, or null when there is no session or the node is not connected.
- */
-function readySession(this: Node, action: string): string | null {
-    if (this.sessionId && this.state === State.Connected) return this.sessionId;
-
-    this.nodeManager.manager.debug(
-        DebugLevels.Rest,
-        `[Rest] -> [${this.id}]: Skipped ${action} because session is not ready. | Session: ${this.sessionId ?? "none"} | State: ${this.state}`,
-    );
-
-    return null;
-}
 
 /**
  * Class representing a Lavalink node.

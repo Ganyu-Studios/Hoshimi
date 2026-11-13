@@ -1,6 +1,7 @@
 import { PluginCapabilities, PluginRegistry } from "../../registry/PluginRegistry";
 import type { LyricsResult } from "../../types/Node";
 import type { NodeStructure, TrackStructure } from "../../types/Structures";
+import { readySession } from "../../util/functions/utils";
 
 /**
  * Class representing a LyricsManager.
@@ -40,12 +41,13 @@ export class LyricsManager {
      * ```
      */
     public async current(guildId: string, skipSource: boolean = false): Promise<LyricsResult | null> {
-        if (!this.node.sessionId) return null;
+        const sessionId: string | null = readySession.call(this.node, "currentLyrics");
+        if (!sessionId) return null;
 
         PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
         return this.node.rest.route
-            .sessions(this.node.sessionId)
+            .sessions(sessionId)
             .players(guildId)
             .track.lyrics.get({ query: { skipTrackSource: skipSource } });
     }
@@ -63,7 +65,7 @@ export class LyricsManager {
      * ```
      */
     public async get(track: TrackStructure, skipSource: boolean = false): Promise<LyricsResult | null> {
-        if (!this.node.sessionId) return null;
+        if (!readySession.call(this.node, "getLyrics")) return null;
 
         PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
@@ -83,12 +85,13 @@ export class LyricsManager {
      * ```
      */
     public async subscribe(guildId: string, skipSource: boolean = false): Promise<void> {
-        if (!this.node.sessionId) return;
+        const sessionId: string | null = readySession.call(this.node, "subscribeLyrics");
+        if (!sessionId) return;
 
         PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
         await this.node.rest.route
-            .sessions(this.node.sessionId)
+            .sessions(sessionId)
             .players(guildId)
             .lyrics.subscribe.post({ query: { skipTrackSource: skipSource } });
     }
@@ -105,10 +108,11 @@ export class LyricsManager {
      * ```
      */
     public async unsubscribe(guildId: string): Promise<void> {
-        if (!this.node.sessionId) return;
+        const sessionId: string | null = readySession.call(this.node, "unsubscribeLyrics");
+        if (!sessionId) return;
 
         PluginRegistry.validate({ node: this.node, any: [PluginCapabilities.Lyrics] });
 
-        await this.node.rest.route.sessions(this.node.sessionId).players(guildId).lyrics.subscribe.delete();
+        await this.node.rest.route.sessions(sessionId).players(guildId).lyrics.subscribe.delete();
     }
 }

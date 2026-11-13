@@ -102,6 +102,7 @@ function createLyricsNode(
     const node = {
         id: "node-1",
         sessionId,
+        state: State.Connected,
         rest: { request, route: createRoute<LavalinkRoutes>(request as never) },
         info: {
             plugins: plugins.map((name) => ({ name })),
@@ -112,6 +113,7 @@ function createLyricsNode(
         nodeManager: {
             manager: {
                 emit: vi.fn(),
+                debug: vi.fn(),
             },
         },
     };
@@ -357,6 +359,19 @@ describe("LyricsManager", () => {
         const result = await manager.current("guild-1");
 
         expect(result).toBeNull();
+        expect(request).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing while the node is not connected, even with a session", async () => {
+        const { node, request } = createLyricsNode("sess-1");
+        node.state = State.Disconnected;
+        const manager = new LyricsManager(node as never);
+
+        expect(await manager.current("guild-1")).toBeNull();
+        expect(await manager.get({ encoded: "abc" } as never)).toBeNull();
+        await manager.subscribe("guild-1");
+        await manager.unsubscribe("guild-1");
+
         expect(request).not.toHaveBeenCalled();
     });
 
