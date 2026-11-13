@@ -395,6 +395,9 @@ export class Player {
 
     /**
      * Stop the player from playing.
+     * @description Without destroying, the current track stops and nothing else starts: not the next track,
+     * the loop or the autoplay. The queue is kept unless `clearQueue` is set, so `play()` resumes from the
+     * next track. To move on to the next track instead, use {@link Player.skip}.
      * @param {Partial<StopOptions>} [options] The options for stopping the player.
      * @returns {Promise<void>}
      * @example
@@ -402,6 +405,9 @@ export class Player {
      * // Stop and destroy the player (default)
      * const player = manager.getPlayer("guildId");
      * await player.stop();
+     *
+     * // Stop without destroying, keeping the queue for a later play()
+     * await player.stop({ destroy: false });
      *
      * // Stop without destroying, only clear queue
      * await player.stop({ destroy: false, clearQueue: true });
@@ -415,8 +421,21 @@ export class Player {
 
         if (clearQueue) await this.queue.clear();
 
-        await this.node.stopPlayer(this.guildId);
-        await this.data.set("internal_stopPlaying", true);
+        // Set before the request: the node can report the TrackEnd while it is still answering, and a flag
+        // set afterwards was missed by that end and left behind for an unrelated one. Only with a track to
+        // stop, since nothing else brings the TrackEnd that clears it.
+        const stopping: boolean = !!this.queue.current;
+        if (stopping) await this.data.set("internal_stopPlaying", true);
+
+        try {
+            const stopped: LavalinkPlayer | null = await this.node.stopPlayer(this.guildId);
+
+            // Not sent without a ready session, so no TrackEnd will come either.
+            if (!stopped && stopping) await this.data.delete("internal_stopPlaying");
+        } catch (error) {
+            if (stopping) await this.data.delete("internal_stopPlaying");
+            throw error;
+        }
 
         if (destroy) await this.destroy({ reason: DestroyReasons.Stop });
         if (leaveVoice) await this.voice.disconnect();

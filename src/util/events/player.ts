@@ -85,14 +85,9 @@ async function queueEnd(
     this.paused = false;
     this.queue.current = null;
 
-    const isStopPlaying = await this.data.get("internal_stopPlaying");
-
-    await this.data.delete("internal_stopPlaying");
-
     // Only the history applies here, never the loop modes: the queue is over. A track ended by `stop()`
-    // is left out: `stop({ clearQueue: true })` has just emptied the history, and writing to it again
-    // would resurrect the stored queue it deleted.
-    if (!isStopPlaying) await addToHistory.call(this, track);
+    // never gets here, trackEnd handles it.
+    await addToHistory.call(this, track);
 
     // Autoplay enablement is the caller's decision, not the function's: gating here means a custom
     // autoplayFn no longer has to re-implement the check, and the built-in isn't called (nor logged
@@ -172,6 +167,29 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         return;
     }
 
+    // Playback was stopped by stop(): nothing advances, not the queue, the loop or the autoplay, and the
+    // queue is kept for a later play(). Checked before anything else can return, so the flag is always
+    // cleared by the end it was set for.
+    if (await this.data.get("internal_stopPlaying")) {
+        await this.data.delete("internal_stopPlaying");
+
+        const stopped: TrackStructure | null = this.queue.current;
+
+        // With a play() between the stop and this end, the new track is current: it is left alone.
+        if (!stopped || (payload.track?.encoded && payload.track.encoded !== stopped.encoded)) return;
+
+        this.playing = false;
+        this.paused = false;
+        this.queue.current = null;
+
+        await this.queue.utils.save();
+
+        this.manager.emit(EventNames.TrackEnd, this, stopped, payload);
+        this.manager.debug(DebugLevels.Player, `[Player] -> [End] The track: ${stopped.info.title} was stopped.`);
+
+        return;
+    }
+
     // Just use queue.current - it should be correct now because trackStart handles sync
     const current: TrackStructure | null = this.queue.current;
 
@@ -191,9 +209,7 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         return;
     }
 
-    const isStopPlaying = await this.data.get("internal_stopPlaying");
-
-    if (!this.queue.size && (this.loop === LoopMode.Off || isStopPlaying)) return queueEnd.call(this, current, payload);
+    if (!this.queue.size && this.loop === LoopMode.Off) return queueEnd.call(this, current, payload);
 
     const reasons: TrackEndReason[] = [TrackEndReason.LoadFailed, TrackEndReason.Cleanup];
     if (reasons.includes(payload.reason)) {
