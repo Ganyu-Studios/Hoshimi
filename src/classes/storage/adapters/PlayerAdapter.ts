@@ -15,6 +15,13 @@ export type StorageValues<V extends StorageKeys = StorageKeys> = V extends keyof
 
 /**
  * Class representing a player storage adapter.
+ *
+ * The player keeps its own runtime flags here too, the keys starting with `internal_` (see
+ * {@link PlayerStorageAdapter.isInternal}). With the default in-memory storage they are read and written
+ * at once. An adapter that goes over the network (Redis, a database) makes every one of those reads a round
+ * trip, and a command can then land between a check and what follows it: for one, a `stop()` that arrives
+ * in the instant between a track end deciding to play the next track and that track starting is missed.
+ * Keep the player storage in memory unless the data has to outlive the process.
  * @abstract
  * @class PlayerStorageAdapter
  * @example

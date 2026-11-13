@@ -16,7 +16,13 @@ export interface HoshimiQueueOptions {
     maxHistory?: number;
     /**
      *
-     * The function to use for autoplay.
+     * The function to use for autoplay. It runs when the queue ends: add tracks to the queue and the first
+     * one plays, or call `player.play()` yourself.
+     *
+     * It runs inside the handling of the player's track end, and the player's events are handled one at a
+     * time, so the next event of this player waits until it returns. Do not await an event of the same
+     * player in here (a `trackStart`, for one): it cannot arrive before the function returns, and the
+     * function never would.
      * @param {Player} player The player.
      * @param {TrackResolvableStructure | null} lastTrack The last track played.
      */
