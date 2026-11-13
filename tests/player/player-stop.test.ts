@@ -105,29 +105,28 @@ describe("stop({ destroy: false })", () => {
         expect(await player.data.get("internal_stopPlaying")).toBeUndefined();
     });
 
-    it("sets no flag when nothing is playing", async () => {
-        const { player } = setup();
-        player.queue.current = null;
+    it("does not outlive the next play() when no TrackEnd reads it", async () => {
+        const { player, B } = setup();
+        player.queue.current = null; // nothing playing: no TrackEnd follows the stop
 
         await player.stop({ destroy: false });
+        await player.play();
 
         expect(await player.data.get("internal_stopPlaying")).toBeUndefined();
+        expect(player.queue.current).toBe(B);
+
+        // The track the play() started ends normally later: it is not taken for a stop.
+        await trackEnd.call(player, endOf(B, TrackEndReason.Finished));
+
+        expect(player.queue.history.map((t) => t.info.identifier)).toContain("B");
     });
 
-    it("clears the flag when the stop request is not sent", async () => {
-        const { node, player } = setup();
-        vi.mocked(node.stopPlayer).mockResolvedValueOnce(null);
-
-        await player.stop({ destroy: false });
-
-        expect(await player.data.get("internal_stopPlaying")).toBeUndefined();
-    });
-
-    it("clears the flag when the stop request fails", async () => {
+    it("does not outlive the next play() when the stop request fails", async () => {
         const { node, player } = setup();
         vi.mocked(node.stopPlayer).mockRejectedValueOnce(new Error("node down"));
 
         await expect(player.stop({ destroy: false })).rejects.toThrow("node down");
+        await player.play();
 
         expect(await player.data.get("internal_stopPlaying")).toBeUndefined();
     });

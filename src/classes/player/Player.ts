@@ -349,6 +349,10 @@ export class Player {
     public async play(options: Partial<PlayOptions> = {}): Promise<void> {
         if (typeof options !== "object") throw new PlayerError("The play options must be an object.");
 
+        // A new playback supersedes a stop still waiting to be read, so a stop never outlives the track it
+        // was meant for.
+        await this.data.delete("internal_stopPlaying");
+
         let track: TrackResolvableStructure | AnyLavalinkTrack | null;
 
         if (options.track) track = options.track;
@@ -421,21 +425,11 @@ export class Player {
 
         if (clearQueue) await this.queue.clear();
 
-        // Set before the request: the node can report the TrackEnd while it is still answering, and a flag
-        // set afterwards was missed by that end and left behind for an unrelated one. Only with a track to
-        // stop, since nothing else brings the TrackEnd that clears it.
-        const stopping: boolean = !!this.queue.current;
-        if (stopping) await this.data.set("internal_stopPlaying", true);
-
-        try {
-            const stopped: LavalinkPlayer | null = await this.node.stopPlayer(this.guildId);
-
-            // Not sent without a ready session, so no TrackEnd will come either.
-            if (!stopped && stopping) await this.data.delete("internal_stopPlaying");
-        } catch (error) {
-            if (stopping) await this.data.delete("internal_stopPlaying");
-            throw error;
-        }
+        // Set before the request: the node can report the TrackEnd while it is still answering. Also set with
+        // nothing playing, since a handler still ending the previous track (the autoplay search, a save)
+        // reads it before it plays anything. Whatever reads it clears it, and so does the next play().
+        await this.data.set("internal_stopPlaying", true);
+        await this.node.stopPlayer(this.guildId);
 
         if (destroy) await this.destroy({ reason: DestroyReasons.Stop });
         if (leaveVoice) await this.voice.disconnect();
@@ -745,6 +739,15 @@ export class Player {
      * ```
      */
     public async updatePlayer(data: NonGuildUpdatePlayerInfo): Promise<LavalinkPlayer | null> {
+        // An update for a destroyed player would create it again on the node, where nothing removes it.
+        if (this.destroyed) {
+            this.manager.debug(
+                DebugLevels.Player,
+                `[Player] -> [Update] Skipped the update of a destroyed player for guild: ${this.guildId}`,
+            );
+            return null;
+        }
+
         return this.node.updatePlayer({
             guildId: this.guildId,
             ...data,

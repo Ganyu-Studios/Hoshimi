@@ -65,6 +65,44 @@ async function onEnd(this: PlayerStructure): Promise<void> {
 
 /**
  *
+ * Whether a command took the player over while a handler was awaiting, logging the step it skips.
+ *
+ * Event handlers run one at a time, but the bot's commands do not wait for them: a `play()`, `stop()` or
+ * `destroy()` can land while a handler awaits the storage or the autoplay search. Read from the player's
+ * own state, so it holds for a subclass too: destroyed, another current track (a `play()`), or a stop
+ * waiting to be read. That stop is applied here, since its own TrackEnd may never come: the track had
+ * already ended when it was sent.
+ * @param {PlayerStructure} this The player that emitted the event.
+ * @param {TrackStructure | null} expected The track the handler expects to be current.
+ * @param {string} step What the handler would have done, for the debug line.
+ * @returns {Promise<boolean>} True when the handler has to step back.
+ */
+async function isTakenOver(this: PlayerStructure, expected: TrackStructure | null, step: string): Promise<boolean> {
+    if (this.destroyed || this.queue.current !== expected) {
+        this.manager.debug(
+            DebugLevels.Player,
+            `[Player] -> [Event] Skipped ${step}: a command took the player over for guild: ${this.guildId}`,
+        );
+        return true;
+    }
+
+    if (!(await this.data.get("internal_stopPlaying"))) return false;
+
+    await this.data.delete("internal_stopPlaying");
+
+    this.playing = false;
+    this.paused = false;
+    this.queue.current = null;
+
+    await this.queue.utils.save();
+
+    this.manager.debug(DebugLevels.Player, `[Player] -> [Event] Skipped ${step}: the player was stopped for guild: ${this.guildId}`);
+
+    return true;
+}
+
+/**
+ *
  * The queue end event.
  * @param {PlayerStructure} this The player that emitted the event.
  * @param {TrackStructure | null} track The track that ended.
@@ -77,6 +115,7 @@ async function queueEnd(
     payload: TrackEndEvent | TrackStuckEvent | TrackExceptionEvent,
 ): Promise<void> {
     if (await this.data.get("internal_nodeChange")) return;
+    if (await isTakenOver.call(this, track, "the queue end")) return;
 
     // The queue is over: the playing state goes first, before any other await. Anything that runs while
     // this handler waits on the storage (another event, a command) then sees an ended player instead of
@@ -88,6 +127,9 @@ async function queueEnd(
     // Only the history applies here, never the loop modes: the queue is over. A track ended by `stop()`
     // never gets here, trackEnd handles it.
     await addToHistory.call(this, track);
+
+    // A /play during the save started a new song: the queue did not end after all.
+    if (await isTakenOver.call(this, null, "the autoplay and the queue end")) return;
 
     // Autoplay enablement is the caller's decision, not the function's: gating here means a custom
     // autoplayFn no longer has to re-implement the check, and the built-in isn't called (nor logged
@@ -106,6 +148,10 @@ async function queueEnd(
         // and with a single seeded track the second shift hits an empty queue and crashes in build().
         // So go straight to play(), which advances exactly once.
         if (this.queue.size > 0) {
+            // The search takes a while: a song played meanwhile stays current, and the recommendations stay
+            // queued after it. After a stop or a destroy(), nothing plays.
+            if (await isTakenOver.call(this, null, "the autoplay")) return;
+
             if (payload.type === PlayerEventType.TrackEnd) this.manager.emit(EventNames.TrackEnd, this, track, payload);
 
             this.manager.debug(DebugLevels.Player, "[Queue] -> [Autoplay] Track(s) queued from autoplay function.");
@@ -117,6 +163,8 @@ async function queueEnd(
     // Persists the cleared current track. The history was already recorded above, and with no current
     // track `onEnd` had nothing left to do but this save.
     await this.queue.utils.save();
+
+    if (await isTakenOver.call(this, null, "the queue end")) return;
 
     this.manager.emit(EventNames.QueueEnd, this, this.queue);
     this.manager.debug(DebugLevels.Player, "[Player] -> [Queue] The queue has ended.");
@@ -220,7 +268,9 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
         this.manager.emit(EventNames.TrackEnd, this, current, payload);
         this.manager.debug(DebugLevels.Player, `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`);
 
-        if (this.queue.current) await this.play({ noReplace: true });
+        if (await isTakenOver.call(this, current, "the next track")) return;
+
+        await this.play({ noReplace: true });
 
         return;
     }
@@ -232,7 +282,9 @@ export async function trackEnd(this: PlayerStructure, payload: TrackEndEvent): P
     this.manager.emit(EventNames.TrackEnd, this, current, payload);
     this.manager.debug(DebugLevels.Player, `[Player] -> [End] The track: ${this.queue.current?.info.title ?? "Unknown"} has ended.`);
 
-    if (this.queue.current) await this.play({ noReplace: true });
+    if (await isTakenOver.call(this, current, "the next track")) return;
+
+    await this.play({ noReplace: true });
 
     return;
 }
