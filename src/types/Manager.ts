@@ -604,9 +604,9 @@ export interface HoshimiEvents {
     /**
      * Emitted when the player is destroyed.
      * @param {PlayerStructure} player The player that was destroyed.
-     * @param {string} reason The reason for the destroy.
+     * @param {Hint<DestroyReasons>} reason The reason for the destroy.
      */
-    playerDestroy: [player: PlayerStructure, reason: string];
+    playerDestroy: [player: PlayerStructure, reason: Hint<DestroyReasons>];
     /**
      * Emitted when the player has an error.
      * @param {PlayerStructure} player The player that emitted the event.
