@@ -1,6 +1,6 @@
 import type { TrackRequester, TrackResolvableStructure } from "../classes/Track";
 import type { FilterSettings } from "./Filters";
-import type { DestroyReasons, NodeIdentifier, Nullable, Prettify } from "./Manager";
+import type { DestroyReasons, Hint, NodeIdentifier, Nullable, Prettify } from "./Manager";
 import type { Exception, LavalinkTrack, LyricsLine, LyricsResult, NodeJSON, OpCodes, UnresolvedLavalinkTrack } from "./Node";
 import type { QueueJSON } from "./Queue";
 import type { TrackStructure } from "./Structures";
@@ -708,10 +708,10 @@ export interface StopOptions {
 export interface DestroyOptions {
     /**
      * The reason for destroying the player.
-     * @type {DestroyReasons | undefined}
+     * @type {Hint<DestroyReasons> | undefined}
      * @default DestroyReasons.Stop
      */
-    reason?: DestroyReasons;
+    reason?: Hint<DestroyReasons>;
     /**
      * Whether to clear the queue after destroying.
      * @type {boolean | undefined}
